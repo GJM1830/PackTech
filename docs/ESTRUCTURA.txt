@@ -1,0 +1,726 @@
+backend/
+
+database.py
+------------
+Responsabilidad:
+Conectar SQLAlchemy con PostgreSQL.
+
+Contiene:
+- engine
+- SessionLocal
+- Base
+
+Exactamente (un poco desactualizado):
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+DATABASE_URL = "postgresql://postgres:packtech123@127.0.0.1:5432/PackTech"
+
+engine = create_engine(DATABASE_URL)
+
+SessionLocal = sessionmaker(
+    autoflush=False,
+    autocommit=False,
+    bind=engine
+)
+
+class Base(DeclarativeBase):
+    pass
+
+
+
+
+
+
+
+models.py
+----------
+Responsabilidad:
+Representa las tablas de la base de datos.
+
+Modelos:
+- Cliente
+- Producto
+- Operario
+- OrdenProduccion
+- Movimiento
+
+Exactamente (un poco desactualizado):
+
+from datetime import datetime, date, time
+
+from sqlalchemy import DateTime, Date, Time, Integer, String, Numeric, Text, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from database import Base
+
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+
+class Cliente(Base):
+    __tablename__ = "clientes"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    ruc: Mapped[str] = mapped_column(
+        String(11),
+        unique=True,
+        nullable=False
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(150),
+        nullable=False
+    )
+
+
+class Producto(Base):
+    __tablename__ = "productos"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False
+    )
+
+    descripcion: Mapped[str | None] = mapped_column(
+        Text
+    )
+
+
+class Operario(Base):
+    __tablename__ = "operarios"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    cargo: Mapped[str | None] = mapped_column(
+        String(100)
+    )
+
+
+class OrdenProduccion(Base):
+    __tablename__ = "ordenes_produccion"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    codigo: Mapped[str] = mapped_column(
+        String(20),
+        unique=True,
+        nullable=False
+    )
+
+    cliente_id: Mapped[int] = mapped_column(
+        ForeignKey("clientes.id")
+    )
+
+    producto_id: Mapped[int] = mapped_column(
+        ForeignKey("productos.id")
+    )
+
+    numero_std: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    cantidad: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    unidad: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    estado: Mapped[str | None] = mapped_column(
+        String(50)
+    )
+
+    fecha: Mapped[date] = mapped_column(
+        Date,
+        default=datetime.utcnow().date
+    )
+
+    hora: Mapped[time] = mapped_column(
+        Time,
+        default=datetime.utcnow().time
+    )
+
+    cliente_obj: Mapped["Cliente"] = relationship("Cliente")
+
+
+class Movimiento(Base):
+    __tablename__ = "movimientos"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    orden_id: Mapped[int] = mapped_column(
+        ForeignKey("ordenes_produccion.id")
+    )
+
+    proceso: Mapped[str] = mapped_column(
+        String(50)
+    )
+
+    operario_id: Mapped[int] = mapped_column(
+        ForeignKey("operarios.id")
+    )
+
+    maquina: Mapped[str] = mapped_column(
+        String(100)
+    )
+
+    entrada: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    salida: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    unidad: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    merma: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    observacion: Mapped[str | None] = mapped_column(
+        Text
+    )
+
+    fecha: Mapped[date] = mapped_column(
+        Date,
+        default=datetime.utcnow().date
+    )
+
+    hora: Mapped[time] = mapped_column(
+        Time,
+        default=datetime.utcnow().time
+    )
+
+
+
+schemas.py
+-----------
+Responsabilidad:
+Define los datos que recibe y devuelve la API.
+
+Contiene:
+- OrdenProduccionCreate
+- OrdenProduccionResponse
+- MovimientoCreate
+- MovimientoResponse
+
+
+from datetime import date, time, datetime
+from pydantic import BaseModel
+
+class ClienteCreate(BaseModel):
+    ruc: str
+    nombre: str
+
+
+class ClienteResponse(BaseModel):
+    id: int
+    ruc: str
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+class OrdenProduccionCreate(BaseModel):
+    codigo: str
+    cliente_id: int
+    producto_id: int
+    numero_std: int
+    cantidad: float
+    unidad: str
+    estado: str | None = "Pendiente"
+
+
+class OrdenProduccionResponse(BaseModel):
+    id: int
+    codigo: str
+    cliente_id: int
+    producto_id: int
+    numero_std: int
+    cantidad: float
+    unidad: str
+    estado: str | None
+    fecha: date
+    hora: time
+    ruc: str
+    cliente: str
+
+    class Config:
+        from_attributes = True
+
+
+class MovimientoCreate(BaseModel):
+    orden_id: int
+    proceso: str
+    operario_id: int
+    maquina: str
+    entrada: float
+    salida: float
+    unidad: str
+    merma: float
+    observacion: str | None = None
+
+
+class MovimientoResponse(BaseModel):
+    id: int
+    orden_id: int
+    proceso: str
+    operario_id: int
+    maquina: str
+    entrada: float
+    salida: float
+    unidad: str
+    merma: float
+    observacion: str | None
+    fecha: date
+    hora: time
+
+    class Config:
+        from_attributes = True
+        
+class ProductoCreate(BaseModel):
+    nombre: str
+    descripcion: str | None = None
+
+
+class ProductoResponse(BaseModel):
+    id: int
+    nombre: str
+    descripcion: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class OperarioCreate(BaseModel):
+    nombre: str
+    cargo: str | None = None
+
+
+class OperarioResponse(BaseModel):
+    id: int
+    nombre: str
+    cargo: str | None
+
+    class Config:
+        from_attributes = True
+
+
+
+main.py
+--------
+Responsabilidad:
+Expone los endpoints.
+
+Exactamente (un poco desactualizado):
+
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+
+from database import Base, engine, SessionLocal
+
+import models
+
+Base.metadata.create_all(bind=engine)
+
+import schemas
+import crud
+
+
+app = FastAPI()
+
+Base.metadata.create_all(bind=engine)
+
+
+def obtener_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@app.get("/")
+def root():
+    return {"mensaje": "PackTech funcionando"}
+
+
+@app.post("/ordenes-produccion", response_model=schemas.OrdenProduccionResponse)
+def crear_orden(
+    orden: schemas.OrdenProduccionCreate,
+    db: Session = Depends(obtener_db)
+):
+    return crud.crear_orden_produccion(db, orden)
+
+
+@app.get("/ordenes-produccion", response_model=list[schemas.OrdenProduccionResponse])
+def listar_ordenes(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_ordenes_produccion(db)
+
+
+@app.post("/movimientos", response_model=schemas.MovimientoResponse)
+def crear_movimiento(
+    movimiento: schemas.MovimientoCreate,
+    db: Session = Depends(obtener_db)
+):
+    return crud.crear_movimiento(db, movimiento)
+
+
+@app.get("/movimientos", response_model=list[schemas.MovimientoResponse])
+def listar_movimientos(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos(db)
+
+
+@app.get(
+    "/ordenes-produccion/{orden_id}/movimientos",
+    response_model=list[schemas.MovimientoResponse]
+)
+def listar_movimientos_por_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos_por_orden(db, orden_id)
+
+
+
+
+
+
+
+
+
+
+ordenes.py
+--------
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from database import SessionLocal
+
+
+router = APIRouter(
+    prefix="/ordenes-produccion",
+    tags=["Órdenes de Producción"]
+)
+
+
+def obtener_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.post("", response_model=schemas.OrdenProduccionResponse)
+def crear_orden(
+    orden: schemas.OrdenProduccionCreate,
+    db: Session = Depends(obtener_db)
+):
+    return crud.crear_orden_produccion(db, orden)
+
+
+@router.get("", response_model=list[schemas.OrdenProduccionResponse])
+def listar_ordenes(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_ordenes_produccion(db)
+
+
+
+
+
+movimientos.py
+--------
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from database import SessionLocal
+
+
+router = APIRouter(
+    prefix="",
+    tags=["Movimientos"]
+)
+
+
+def obtener_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.post("/movimientos", response_model=schemas.MovimientoResponse)
+def crear_movimiento(
+    movimiento: schemas.MovimientoCreate,
+    db: Session = Depends(obtener_db)
+):
+    return crud.crear_movimiento(db, movimiento)
+
+
+@router.get("/movimientos", response_model=list[schemas.MovimientoResponse])
+def listar_movimientos(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos(db)
+
+
+@router.get(
+    "/ordenes-produccion/{orden_id}/movimientos",
+    response_model=list[schemas.MovimientoResponse]
+)
+def listar_movimientos_por_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos_por_orden(db, orden_id)
+
+
+
+
+
+dependencias.py
+----------------
+from database import SessionLocal
+
+
+def obtener_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+
+
+crud.py
+-------
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+
+import models
+import schemas
+
+def crear_cliente(
+    db: Session,
+    cliente: schemas.ClienteCreate
+):
+    cliente_existente = (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc == cliente.ruc)
+        .first()
+    )
+
+    if cliente_existente is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un cliente con ese RUC."
+        )
+
+    nuevo_cliente = models.Cliente(
+        ruc=cliente.ruc,
+        nombre=cliente.nombre
+    )
+
+    db.add(nuevo_cliente)
+    db.commit()
+    db.refresh(nuevo_cliente)
+
+    return nuevo_cliente
+
+
+def obtener_clientes(db: Session):
+    return db.query(models.Cliente).all()
+
+def crear_orden_produccion(
+    db: Session,
+    orden: schemas.OrdenProduccionCreate
+):
+    cliente = db.get(models.Cliente, orden.cliente_id)
+    if cliente is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El cliente no existe."
+        )
+
+    producto = db.get(models.Producto, orden.producto_id)
+    if producto is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El producto no existe."
+        )
+
+    orden_existente = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.codigo == orden.codigo)
+        .first()
+    )
+
+    if orden_existente is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe una Orden de Producción con ese código."
+        )
+
+    nueva_orden = models.OrdenProduccion(
+        codigo=orden.codigo,
+        cliente_id=orden.cliente_id,
+        producto_id=orden.producto_id,
+        numero_std=orden.numero_std,
+        cantidad=orden.cantidad,
+        unidad=orden.unidad,
+        estado=orden.estado
+    )
+
+    db.add(nueva_orden)
+    db.commit()
+    db.refresh(nueva_orden)
+
+    nueva_orden.ruc = cliente.ruc
+    nueva_orden.cliente = cliente.nombre
+
+    return nueva_orden
+
+
+def obtener_ordenes_produccion(db: Session):
+    ordenes = db.query(models.OrdenProduccion).all()
+
+    for orden in ordenes:
+        orden.ruc = orden.cliente_obj.ruc
+        orden.cliente = orden.cliente_obj.nombre
+
+    return ordenes
+
+
+def crear_movimiento(
+    db: Session,
+    movimiento: schemas.MovimientoCreate
+):
+    orden = db.get(models.OrdenProduccion, movimiento.orden_id)
+    if orden is None:
+        raise HTTPException(
+            status_code=404,
+            detail="La Orden de Producción no existe."
+        )
+
+    operario = db.get(models.Operario, movimiento.operario_id)
+    if operario is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El operario no existe."
+        )
+
+    nuevo_movimiento = models.Movimiento(
+        orden_id=movimiento.orden_id,
+        proceso=movimiento.proceso,
+        operario_id=movimiento.operario_id,
+        maquina=movimiento.maquina,
+        entrada=movimiento.entrada,
+        salida=movimiento.salida,
+        unidad=movimiento.unidad,
+        merma=movimiento.merma,
+        observacion=movimiento.observacion
+    )
+
+    db.add(nuevo_movimiento)
+    db.commit()
+    db.refresh(nuevo_movimiento)
+
+    return nuevo_movimiento
+
+
+def obtener_movimientos(db: Session):
+    return db.query(models.Movimiento).all()
+
+
+def obtener_movimientos_por_orden(
+    db: Session,
+    orden_id: int
+):
+    return (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden_id)
+        .all()
+    )
+
+
+clientes.py
+---------
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from database import SessionLocal
+
+
+router = APIRouter(
+    prefix="/clientes",
+    tags=["Clientes"]
+)
+
+
+def obtener_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.post("", response_model=schemas.ClienteResponse)
+def crear_cliente(
+    cliente: schemas.ClienteCreate,
+    db: Session = Depends(obtener_db)
+):
+    return crud.crear_cliente(db, cliente)
+
+
+@router.get("", response_model=list[schemas.ClienteResponse])
+def listar_clientes(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_clientes(db)

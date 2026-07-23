@@ -1,0 +1,166 @@
+# Sprint 2 - Estado del Proyecto
+
+## Proyecto
+
+Sistema de Gestión de Producción - Pack Tech S.A.C.
+
+Objetivo del Sprint:
+
+Ampliar el backend para permitir consultar el historial de producción y fortalecer la integridad de los datos mediante validaciones.
+
+---
+
+## Funcionalidades implementadas
+
+### 1. Consulta de movimientos
+
+Se implementó:
+
+GET /movimientos
+
+Permite obtener todos los movimientos registrados en el sistema.
+
+---
+
+### 2. Historial por Orden de Producción
+
+Se implementó:
+
+GET /ordenes-produccion/{orden_id}/movimientos
+
+Permite consultar únicamente los movimientos pertenecientes a una Orden de Producción específica.
+
+Esta consulta será utilizada posteriormente por el frontend para mostrar el historial de producción de una OP.
+
+---
+
+## Validaciones implementadas
+
+### Creación de Orden de Producción
+
+Antes de registrar una OP se valida:
+
+- Que el cliente exista.
+- Que el producto exista.
+- Que el código de la OP no esté repetido.
+
+Si alguna validación falla, la API devuelve un HTTPException con un mensaje claro.
+
+Ejemplos:
+
+404
+"El cliente no existe."
+
+404
+"El producto no existe."
+
+400
+"Ya existe una Orden de Producción con ese código."
+
+---
+
+### Registro de Movimientos
+
+Antes de registrar un movimiento se valida:
+
+- Que la Orden de Producción exista.
+- Que el operario exista.
+
+Ejemplos:
+
+404
+"La Orden de Producción no existe."
+
+404
+"El operario no existe."
+
+---
+
+## Endpoints disponibles
+
+GET /
+
+POST /ordenes-produccion
+
+GET /ordenes-produccion
+
+POST /movimientos
+
+GET /movimientos
+
+GET /ordenes-produccion/{orden_id}/movimientos
+
+---
+
+## Arquitectura mantenida
+
+Se conserva la filosofía definida desde el Sprint 1.
+
+- Nunca se sobrescribe información.
+- Cada movimiento representa un evento.
+- Los movimientos pertenecen a una Orden de Producción mediante orden_id.
+- Las relaciones utilizan IDs.
+- La información histórica permanece intacta.
+
+---
+
+## Estado del backend
+
+Actualmente el sistema permite:
+
+✓ Crear Clientes (datos de prueba)
+
+✓ Crear Productos (datos de prueba)
+
+✓ Crear Operarios (datos de prueba)
+
+✓ Registrar Órdenes de Producción
+
+✓ Registrar Movimientos
+
+✓ Consultar todas las OP
+
+✓ Consultar todos los movimientos
+
+✓ Consultar el historial de una OP
+
+✓ Validar referencias antes de insertar información
+
+✓ Evitar códigos de OP duplicados
+
+---
+
+## Decisiones tomadas
+
+No se implementó un campo que almacene el estado actual de la OP.
+
+El estado deberá calcularse posteriormente a partir del último movimiento registrado, evitando duplicar información y respetando el historial.
+
+---
+
+## Próximo Sprint
+
+Objetivo:
+
+Preparar el backend para el desarrollo del frontend en React.
+
+Pendientes principales:
+
+- Configurar CORS.
+- Mejorar la documentación de la API.
+- Organizar rutas mediante routers.
+- Mejorar el manejo de errores.
+- Preparar el backend para consumirlo desde React.
+- Iniciar el desarrollo de la interfaz web.
+
+---
+
+## Estado general
+
+Sprint 1:
+Finalizado.
+
+Sprint 2:
+Finalizado.
+
+El backend ya cuenta con todas las operaciones CRUD necesarias para el flujo principal de producción y una base sólida para comenzar el desarrollo del frontend.

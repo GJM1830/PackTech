@@ -1,0 +1,121 @@
+# Decisiones de Arquitectura
+
+## Regla principal
+
+No modificar el flujo productivo de la planta.
+
+El sistema únicamente registra información.
+
+---
+
+## Filosofía
+
+Cada evento debe quedar registrado.
+
+Nunca sobrescribir información.
+
+Toda la información debe ser histórica.
+
+---
+
+## Flujo
+
+Cliente
+
+↓
+
+OrdenProducción
+
+↓
+
+Extrusión
+
+↓
+
+Impresión
+
+↓
+
+Sellado
+
+↓
+
+Corte
+
+↓
+
+Almacén
+
+↓
+
+Despacho
+
+---
+
+## Registro
+
+Cada vez que una OP pasa por un proceso se crea un nuevo registro.
+
+Nunca se actualiza un movimiento anterior.
+
+---
+
+## Tabla elegida
+
+Se utilizará:
+
+movimientos
+
+No se utilizará:
+
+movimientos_produccion
+
+---
+
+## Identificadores
+
+Las relaciones se realizan mediante IDs.
+
+No mediante nombres.
+
+---
+
+## Operarios
+
+Los movimientos almacenan:
+
+operario_id
+
+No texto.
+
+---
+
+## Objetivo del sistema
+
+Saber en todo momento:
+
+- dónde está una OP
+
+- quién la procesó
+
+- cuándo ocurrió
+
+- qué máquina utilizó
+
+- cuánto entró
+
+- cuánto salió
+
+- cuánta merma tuvo
+
+---
+
+## Forma de trabajo
+
+Una acción por mensaje.
+
+Siempre entregar archivos completos.
+
+Resolver errores antes de avanzar.
+
+Explicar únicamente conceptos nuevos.
