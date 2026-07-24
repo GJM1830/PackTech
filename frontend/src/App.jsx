@@ -116,7 +116,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-50">
-        <nav className="bg-slate-900 text-white px-8 py-4 flex gap-6 items-center shadow-md">
+        <nav className="bg-slate-900 text-white px-4 sm:px-8 py-4 flex flex-wrap gap-3 sm:gap-6 items-center shadow-md">
           <span className="font-bold text-lg tracking-tight">📦 PackTech</span>
           <div className="h-5 w-px bg-slate-700" />
         <Link to="/" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Órdenes</Link>

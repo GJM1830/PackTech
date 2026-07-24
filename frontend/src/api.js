@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from './api'
 
 const api = axios.create({
   baseURL: 'https://packtech-production.up.railway.app'
