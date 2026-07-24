@@ -25,7 +25,7 @@ function CrearOrden({ onCreada }) {
     setExito(false)
 
     try {
-      await axios.post('http://127.0.0.1:8000/ordenes-produccion', {
+      await axios.post('https://packtech-production.up.railway.app/ordenes-produccion', {
         codigo: form.codigo,
         cliente_id: parseInt(form.cliente_id),
         numero_std: parseInt(form.numero_std),

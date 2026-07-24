@@ -35,7 +35,7 @@ function Movimientos() {
 
   const cargarMovimientos = () => {
     setCargando(true)
-    axios.get('http://127.0.0.1:8000/movimientos')
+    axios.get('https://packtech-production.up.railway.app/movimientos')
       .then((respuesta) => {
         setMovimientos(respuesta.data)
         setCargando(false)
@@ -67,7 +67,7 @@ function Movimientos() {
     setErrorForm(null)
 
     try {
-      await axios.post('http://127.0.0.1:8000/movimientos', {
+      await axios.post('https://packtech-production.up.railway.app/movimientos', {
         orden_id: parseInt(form.orden_id),
         proceso: form.proceso,
         operario_id: parseInt(form.operario_id),

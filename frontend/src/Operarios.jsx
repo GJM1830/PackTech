@@ -8,7 +8,7 @@ function Operarios() {
   const [enviando, setEnviando] = useState(false)
 
   const cargarOperarios = () => {
-    axios.get('http://127.0.0.1:8000/operarios')
+    axios.get('https://packtech-production.up.railway.app/operarios')
       .then((res) => setOperarios(res.data))
       .catch((err) => console.error(err))
   }
@@ -23,7 +23,7 @@ function Operarios() {
     setError(null)
 
     try {
-      await axios.post('http://127.0.0.1:8000/operarios', form)
+      await axios.post('https://packtech-production.up.railway.app/operarios', form)
       setForm({ nombre: '', cargo: '' })
       cargarOperarios()
     } catch (err) {

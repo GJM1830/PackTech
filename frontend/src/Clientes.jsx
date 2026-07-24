@@ -8,7 +8,7 @@ function Clientes() {
   const [enviando, setEnviando] = useState(false)
 
   const cargarClientes = () => {
-    axios.get('http://127.0.0.1:8000/clientes')
+    axios.get('https://packtech-production.up.railway.app/clientes')
       .then((res) => setClientes(res.data))
       .catch((err) => console.error(err))
   }
@@ -23,7 +23,7 @@ function Clientes() {
     setError(null)
 
     try {
-      await axios.post('http://127.0.0.1:8000/clientes', form)
+      await axios.post('https://packtech-production.up.railway.app/clientes', form)
       setForm({ ruc: '', nombre: '' })
       cargarClientes()
     } catch (err) {

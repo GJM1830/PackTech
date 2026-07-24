@@ -15,7 +15,7 @@ function Ordenes() {
 
   const cargarOrdenes = () => {
     setCargando(true)
-    axios.get('http://127.0.0.1:8000/ordenes-produccion')
+    axios.get('https://packtech-production.up.railway.app/ordenes-produccion')
       .then((respuesta) => {
         setOrdenes(respuesta.data)
         setCargando(false)

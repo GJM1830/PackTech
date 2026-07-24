@@ -9,7 +9,7 @@ function OrdenDetalle() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    axios.get(`http://127.0.0.1:8000/ordenes-produccion/${id}/movimientos`)
+    axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`)
       .then((respuesta) => {
         setMovimientos(respuesta.data)
         setCargando(false)
