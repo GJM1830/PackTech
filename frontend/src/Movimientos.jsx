@@ -110,7 +110,7 @@ function Movimientos() {
         </h2>
 
         <form onSubmit={manejarEnvio} className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 ID Orden
@@ -140,7 +140,7 @@ function Movimientos() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Proceso
@@ -185,7 +185,7 @@ function Movimientos() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Entrada
