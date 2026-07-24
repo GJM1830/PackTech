@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import axios from './api'
 
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import axios from 'axios'
+import axios from './api'
 
 function OrdenDetalle() {
   const { id } = useParams()

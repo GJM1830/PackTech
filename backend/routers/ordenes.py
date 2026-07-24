@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from database import SessionLocal
+from dependencias import obtener_db, verificar_clave
 
 
 router = APIRouter(
@@ -12,18 +12,11 @@ router = APIRouter(
 )
 
 
-def obtener_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("", response_model=schemas.OrdenProduccionResponse)
 def crear_orden(
     orden: schemas.OrdenProduccionCreate,
-    db: Session = Depends(obtener_db)
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
 ):
     return crud.crear_orden_produccion(db, orden)
 

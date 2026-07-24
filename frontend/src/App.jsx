@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import axios from './api'
 import CrearOrden from './CrearOrden'
 import Movimientos from './Movimientos'
 import OrdenDetalle from './OrdenDetalle'
 import Clientes from './Clientes'
 import Operarios from './Operarios'
+
+import { useState as useStateLogin } from 'react'
+import Login from './Login'
 
 function Ordenes() {
   const [ordenes, setOrdenes] = useState([])
@@ -102,6 +105,14 @@ function Ordenes() {
 }
 
 function App() {
+  const [autenticado, setAutenticado] = useState(
+    !!localStorage.getItem('packtech_clave')
+  )
+
+  if (!autenticado) {
+    return <Login onIngresar={() => setAutenticado(true)} />
+  }
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-50">
@@ -113,6 +124,12 @@ function App() {
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
         </nav>
+        <button
+  onClick={() => { localStorage.removeItem('packtech_clave'); window.location.reload() }}
+  className="ml-auto text-slate-300 hover:text-white text-sm"
+>
+  Salir
+</button>
 
         <div className="p-8">
           <Routes>

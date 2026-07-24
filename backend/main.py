@@ -11,6 +11,16 @@ from routers.operarios import router as operarios_router
 
 Base.metadata.create_all(bind=engine)
 
+import os
+from fastapi import Header, HTTPException
+
+CLAVE_SISTEMA = os.getenv("CLAVE_SISTEMA", "packtech2026")
+
+
+def verificar_clave(x_clave: str = Header(None)):
+    if x_clave != CLAVE_SISTEMA:
+        raise HTTPException(status_code=401, detail="Clave incorrecta o faltante.")
+
 app = FastAPI(
     title="Sistema de Gestión de Producción",
     description="API para el registro y consulta del historial de producción de Pack Tech S.A.C.",
