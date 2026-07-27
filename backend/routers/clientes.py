@@ -26,3 +26,20 @@ def listar_clientes(
     db: Session = Depends(obtener_db)
 ):
     return crud.obtener_clientes(db)
+
+@router.get("/{ruc}", response_model=schemas.ClienteResponse)
+def obtener_cliente(
+    ruc: str,
+    db: Session = Depends(obtener_db)
+):
+    cliente = crud.obtener_cliente_por_ruc(db, ruc)
+
+    if cliente is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=404,
+            detail="Cliente no encontrado."
+        )
+
+    return cliente

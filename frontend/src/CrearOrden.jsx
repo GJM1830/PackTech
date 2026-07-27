@@ -4,18 +4,52 @@ import axios from './api'
 function CrearOrden({ onCreada }) {
   const [form, setForm] = useState({
     codigo: '',
-    cliente_id: '',
+    ruc: '',
+    nombre_cliente: '',
     numero_std: '',
+    descripcion: '',
     cantidad: '',
     unidad: 'kg',
     estado: 'Pendiente'
   })
+
+  const [clienteExiste, setClienteExiste] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const [exito, setExito] = useState(false)
 
   const manejarCambio = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const buscarCliente = async (ruc) => {
+    if (ruc.length !== 11) {
+      setClienteExiste(false)
+      return
+    }
+
+    try {
+      const res = await axios.get(`/clientes/${ruc}`)
+
+      setForm((prev) => ({
+        ...prev,
+        ruc,
+        nombre_cliente: res.data.nombre
+      }))
+
+      setClienteExiste(true)
+    } catch {
+      setClienteExiste(false)
+
+      setForm((prev) => ({
+        ...prev,
+        ruc,
+        nombre_cliente: ''
+      }))
+    }
   }
 
   const manejarEnvio = async (e) => {
@@ -25,28 +59,38 @@ function CrearOrden({ onCreada }) {
     setExito(false)
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/ordenes-produccion', {
+      await axios.post('/ordenes-produccion', {
         codigo: form.codigo,
-        cliente_id: parseInt(form.cliente_id),
+        ruc: form.ruc,
+        nombre_cliente: form.nombre_cliente,
         numero_std: parseInt(form.numero_std),
+        descripcion: form.descripcion,
         cantidad: parseFloat(form.cantidad),
         unidad: form.unidad,
         estado: form.estado
       })
 
       setExito(true)
+
       setForm({
         codigo: '',
-        cliente_id: '',
+        ruc: '',
+        nombre_cliente: '',
         numero_std: '',
+        descripcion: '',
         cantidad: '',
         unidad: 'kg',
         estado: 'Pendiente'
       })
 
+      setClienteExiste(false)
+
       if (onCreada) onCreada()
+
     } catch (err) {
-      const mensaje = err.response?.data?.detail || 'Error al crear la orden.'
+      const mensaje =
+        err.response?.data?.detail || 'Error al crear la orden.'
+
       setError(mensaje)
     } finally {
       setEnviando(false)
@@ -60,10 +104,12 @@ function CrearOrden({ onCreada }) {
       </h2>
 
       <form onSubmit={manejarEnvio} className="space-y-4">
+
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">
             Código
           </label>
+
           <input
             type="text"
             name="codigo"
@@ -77,16 +123,42 @@ function CrearOrden({ onCreada }) {
 
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">
-            ID Cliente
+            RUC
           </label>
+
           <input
-            type="number"
-            name="cliente_id"
-            value={form.cliente_id}
-            onChange={manejarCambio}
+            type="text"
+            name="ruc"
+            value={form.ruc}
+            maxLength={11}
+            onChange={(e) => {
+              manejarCambio(e)
+              buscarCliente(e.target.value)
+            }}
             required
             className="w-full border border-slate-300 rounded px-3 py-2"
-            placeholder="1"
+            placeholder="20100070970"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">
+            Cliente
+          </label>
+
+          <input
+            type="text"
+            name="nombre_cliente"
+            value={form.nombre_cliente}
+            onChange={manejarCambio}
+            disabled={clienteExiste}
+            required={!clienteExiste}
+            className="w-full border border-slate-300 rounded px-3 py-2"
+            placeholder={
+              clienteExiste
+                ? "Cliente encontrado"
+                : "Nombre del cliente"
+            }
           />
         </div>
 
@@ -94,6 +166,7 @@ function CrearOrden({ onCreada }) {
           <label className="block text-sm font-medium text-slate-600 mb-1">
             Número Estándar
           </label>
+
           <input
             type="number"
             name="numero_std"
@@ -104,11 +177,28 @@ function CrearOrden({ onCreada }) {
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">
+            Descripción
+          </label>
+
+          <input
+            type="text"
+            name="descripcion"
+            value={form.descripcion}
+            onChange={manejarCambio}
+            className="w-full border border-slate-300 rounded px-3 py-2"
+            placeholder="Bolsa camiseta blanca 18x30"
+          />
+        </div>
+
         <div className="flex gap-4">
+
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-600 mb-1">
               Cantidad
             </label>
+
             <input
               type="number"
               step="0.01"
@@ -124,6 +214,7 @@ function CrearOrden({ onCreada }) {
             <label className="block text-sm font-medium text-slate-600 mb-1">
               Unidad
             </label>
+
             <select
               name="unidad"
               value={form.unidad}
@@ -135,10 +226,18 @@ function CrearOrden({ onCreada }) {
               <option value="rollos">rollos</option>
             </select>
           </div>
+
         </div>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        {exito && <p className="text-green-600 text-sm">Orden creada correctamente.</p>}
+        {error && (
+          <p className="text-red-600 text-sm">{error}</p>
+        )}
+
+        {exito && (
+          <p className="text-green-600 text-sm">
+            Orden creada correctamente.
+          </p>
+        )}
 
         <button
           type="submit"
@@ -147,6 +246,7 @@ function CrearOrden({ onCreada }) {
         >
           {enviando ? 'Creando...' : 'Crear Orden'}
         </button>
+
       </form>
     </div>
   )

@@ -39,12 +39,27 @@ def crear_orden_produccion(
     db: Session,
     orden: schemas.OrdenProduccionCreate
 ):
-    cliente = db.get(models.Cliente, orden.cliente_id)
+    cliente = (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc == orden.ruc)
+        .first()
+    )
+
     if cliente is None:
-        raise HTTPException(
-            status_code=404,
-            detail="El cliente no existe."
+        if not orden.nombre_cliente:
+            raise HTTPException(
+                status_code=400,
+                detail="Cliente no encontrado. Debe ingresar el nombre."
+            )
+
+        cliente = models.Cliente(
+            ruc=orden.ruc,
+            nombre=orden.nombre_cliente
         )
+
+        db.add(cliente)
+        db.commit()
+        db.refresh(cliente)
 
     orden_existente = (
         db.query(models.OrdenProduccion)
@@ -52,15 +67,15 @@ def crear_orden_produccion(
         .first()
     )
 
-    if orden_existente is not None:
+    if orden_existente:
         raise HTTPException(
             status_code=400,
             detail="Ya existe una Orden de Producción con ese código."
         )
-    
+
     nueva_orden = models.OrdenProduccion(
         codigo=orden.codigo,
-        cliente_id=orden.cliente_id,
+        cliente_id=cliente.id,
         numero_std=orden.numero_std,
         descripcion=orden.descripcion,
         cantidad=orden.cantidad,
@@ -76,7 +91,6 @@ def crear_orden_produccion(
     nueva_orden.cliente = cliente.nombre
 
     return nueva_orden
-
 
 def calcular_estado(proceso: str | None) -> str:
     if proceso is None:
@@ -211,3 +225,13 @@ def eliminar_orden_produccion(db: Session, orden_id: int):
     db.query(models.Movimiento).filter(models.Movimiento.orden_id == orden_id).delete()
     db.delete(orden)
     db.commit()
+    
+def obtener_cliente_por_ruc(
+    db: Session,
+    ruc: str
+):
+    return (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc == ruc)
+        .first()
+    )

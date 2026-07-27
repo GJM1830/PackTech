@@ -16,12 +16,14 @@ class ClienteResponse(BaseModel):
 
 class OrdenProduccionCreate(BaseModel):
     codigo: str
-    cliente_id: int
+    ruc: str
+    nombre_cliente: str | None = None
+
     numero_std: int
     descripcion: str | None = None
     cantidad: float
     unidad: str
-    estado: str | None = "Pendiente"
+    estado: str |None = "Pendiente"
 
 class OrdenProduccionResponse(BaseModel):
     id: int
