@@ -60,15 +60,15 @@ function CrearOrden({ onCreada }) {
 
     try {
       await axios.post('/ordenes-produccion', {
-        codigo: form.codigo,
-        ruc: form.ruc,
-        nombre_cliente: form.nombre_cliente,
-        numero_std: parseInt(form.numero_std),
-        descripcion: form.descripcion,
-        cantidad: parseFloat(form.cantidad),
-        unidad: form.unidad,
-        estado: form.estado
-      })
+      codigo: form.codigo,
+      ruc: form.ruc,
+      nombre_cliente: form.nombre_cliente,
+      numero_std: parseInt(form.numero_std),
+      descripcion: form.descripcion,
+      cantidad: parseFloat(form.cantidad),
+      unidad: form.unidad,
+      estado: form.estado
+    })
 
       setExito(true)
 
@@ -127,14 +127,15 @@ function CrearOrden({ onCreada }) {
           </label>
 
           <input
-            type="text"
-            name="ruc"
-            value={form.ruc}
-            maxLength={11}
-            onChange={(e) => {
-              manejarCambio(e)
-              buscarCliente(e.target.value)
-            }}
+          type="text"
+          name="ruc"
+          value={form.ruc}
+          maxLength={11}
+          onChange={(e) => {
+            manejarCambio(e)
+            buscarCliente(e.target.value)
+          }}
+          className="w-full border rounded px-3 py-2"
             required
             className="w-full border border-slate-300 rounded px-3 py-2"
             placeholder="20100070970"
@@ -142,7 +143,7 @@ function CrearOrden({ onCreada }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">
+          <label className="block text-sm font-medium mb-1">
             Cliente
           </label>
 
@@ -151,14 +152,8 @@ function CrearOrden({ onCreada }) {
             name="nombre_cliente"
             value={form.nombre_cliente}
             onChange={manejarCambio}
-            disabled={clienteExiste}
-            required={!clienteExiste}
-            className="w-full border border-slate-300 rounded px-3 py-2"
-            placeholder={
-              clienteExiste
-                ? "Cliente encontrado"
-                : "Nombre del cliente"
-            }
+            className="w-full border rounded px-3 py-2"
+            placeholder="Se autocompleta si el RUC existe"
           />
         </div>
 
@@ -253,3 +248,25 @@ function CrearOrden({ onCreada }) {
 }
 
 export default CrearOrden
+
+const buscarCliente = async (ruc) => {
+  if (ruc.length !== 11) return
+
+  try {
+    const res = await axios.get(`/clientes/ruc/${ruc}`)
+
+    if (res.data) {
+      setForm(f => ({
+        ...f,
+        ruc,
+        nombre_cliente: res.data.nombre
+      }))
+    }
+  } catch {
+    setForm(f => ({
+      ...f,
+      ruc,
+      nombre_cliente: ''
+    }))
+  }
+}

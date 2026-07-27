@@ -43,3 +43,14 @@ def obtener_cliente(
         )
 
     return cliente
+
+@router.get("/ruc/{ruc}", response_model=schemas.ClienteResponse | None)
+def buscar_cliente_por_ruc(
+    ruc: str,
+    db: Session = Depends(obtener_db)
+):
+    return (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc == ruc)
+        .first()
+    )
