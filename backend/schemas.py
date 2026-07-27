@@ -18,6 +18,7 @@ class OrdenProduccionCreate(BaseModel):
     codigo: str
     cliente_id: int
     numero_std: int
+    descripcion: str | None = None
     cantidad: float
     unidad: str
     estado: str | None = "Pendiente"
@@ -27,6 +28,7 @@ class OrdenProduccionResponse(BaseModel):
     codigo: str
     cliente_id: int
     numero_std: int
+    descripcion: str | None = None
     cantidad: float
     unidad: str
     estado: str | None

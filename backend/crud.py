@@ -57,11 +57,12 @@ def crear_orden_produccion(
             status_code=400,
             detail="Ya existe una Orden de Producción con ese código."
         )
-
+    
     nueva_orden = models.OrdenProduccion(
         codigo=orden.codigo,
         cliente_id=orden.cliente_id,
         numero_std=orden.numero_std,
+        descripcion=orden.descripcion,
         cantidad=orden.cantidad,
         unidad=orden.unidad,
         estado=orden.estado

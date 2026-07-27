@@ -87,6 +87,10 @@ class OrdenProduccion(Base):
         nullable=False
     )
 
+    descripcion: Mapped[str | None] = mapped_column(
+        String(200)
+    )
+    
     cantidad: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
