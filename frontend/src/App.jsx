@@ -7,7 +7,6 @@ import OrdenDetalle from './OrdenDetalle'
 import Clientes from './Clientes'
 import Operarios from './Operarios'
 
-import { useState as useStateLogin } from 'react'
 import Login from './Login'
 
 function Ordenes() {
@@ -180,14 +179,14 @@ function App() {
         <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
-        </nav>
+        
         <button
-  onClick={() => { localStorage.removeItem('packtech_clave'); window.location.reload() }}
-  className="ml-auto text-slate-300 hover:text-white text-sm"
->
-  Salir
-</button>
-
+        onClick={() => { localStorage.removeItem('packtech_clave'); window.location.reload() }}
+        className="ml-auto text-slate-300 hover:text-white text-sm"
+      >
+        Salir
+      </button>
+    </nav>
         <div className="p-8">
           <Routes>
             <Route path="/" element={<Ordenes />} />
