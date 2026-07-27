@@ -345,77 +345,45 @@ Expone los endpoints.
 
 Exactamente (un poco desactualizado):
 
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+from fastapi import FastAPI
 
-from database import Base, engine, SessionLocal
+from fastapi.middleware.cors import CORSMiddleware
 
-import models
+from database import Base, engine
 
-Base.metadata.create_all(bind=engine)
-
-import schemas
-import crud
-
-
-app = FastAPI()
+from routers.ordenes import router as ordenes_router
+from routers.movimientos import router as movimientos_router
+from routers.clientes import router as clientes_router
+from routers.operarios import router as operarios_router
 
 Base.metadata.create_all(bind=engine)
 
+app = FastAPI(
+    title="Sistema de Gestión de Producción",
+    description="API para el registro y consulta del historial de producción de Pack Tech S.A.C.",
+    version="1.0.0"
+)
 
-def obtener_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(ordenes_router)
+app.include_router(movimientos_router)
+app.include_router(clientes_router)
+app.include_router(operarios_router)
+
 
 
 @app.get("/")
 def root():
     return {"mensaje": "PackTech funcionando"}
-
-
-@app.post("/ordenes-produccion", response_model=schemas.OrdenProduccionResponse)
-def crear_orden(
-    orden: schemas.OrdenProduccionCreate,
-    db: Session = Depends(obtener_db)
-):
-    return crud.crear_orden_produccion(db, orden)
-
-
-@app.get("/ordenes-produccion", response_model=list[schemas.OrdenProduccionResponse])
-def listar_ordenes(
-    db: Session = Depends(obtener_db)
-):
-    return crud.obtener_ordenes_produccion(db)
-
-
-@app.post("/movimientos", response_model=schemas.MovimientoResponse)
-def crear_movimiento(
-    movimiento: schemas.MovimientoCreate,
-    db: Session = Depends(obtener_db)
-):
-    return crud.crear_movimiento(db, movimiento)
-
-
-@app.get("/movimientos", response_model=list[schemas.MovimientoResponse])
-def listar_movimientos(
-    db: Session = Depends(obtener_db)
-):
-    return crud.obtener_movimientos(db)
-
-
-@app.get(
-    "/ordenes-produccion/{orden_id}/movimientos",
-    response_model=list[schemas.MovimientoResponse]
-)
-def listar_movimientos_por_orden(
-    orden_id: int,
-    db: Session = Depends(obtener_db)
-):
-    return crud.obtener_movimientos_por_orden(db, orden_id)
-
 
 
 

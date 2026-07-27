@@ -16,6 +16,7 @@ const MAQUINAS_POR_PROCESO = {
 
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
+  const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -38,6 +39,9 @@ function Movimientos() {
     axios.get('https://packtech-production.up.railway.app/movimientos')
       .then((respuesta) => {
         setMovimientos(respuesta.data)
+        axios
+        .get('https://packtech-production.up.railway.app/ordenes-produccion')
+        .then((res) => setOrdenes(res.data))
         setCargando(false)
       })
       .catch((err) => {
@@ -113,16 +117,24 @@ function Movimientos() {
           <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
-                ID Orden
-              </label>
-              <input
-                type="number"
-                name="orden_id"
-                value={form.orden_id}
-                onChange={manejarCambio}
-                required
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              />
+  Orden de Producción
+</label>
+
+<select
+  name="orden_id"
+  value={form.orden_id}
+  onChange={manejarCambio}
+  required
+  className="w-full border border-slate-300 rounded px-3 py-2"
+>
+  <option value="">Seleccione una OP</option>
+
+  {ordenes.map((orden) => (
+    <option key={orden.id} value={orden.id}>
+      {orden.codigo}
+    </option>
+  ))}
+</select>
             </div>
 
             <div className="flex-1">
@@ -303,7 +315,7 @@ function Movimientos() {
               <tbody>
                 {movimientos.map((mov) => (
                   <tr key={mov.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 font-medium text-slate-800">{mov.orden_id}</td>
+                    <td className="px-4 py-3 font-medium text-slate-800">{ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}</td>
                     <td className="px-4 py-3">{mov.proceso}</td>
                     <td className="px-4 py-3">{mov.operario_id}</td>
                     <td className="px-4 py-3">{mov.maquina}</td>
