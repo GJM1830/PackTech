@@ -34,25 +34,27 @@ function Movimientos() {
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
 
-  const cargarMovimientos = () => {
+  const cargarDatos = async () => {
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/movimientos')
-      .then((respuesta) => {
-        setMovimientos(respuesta.data)
-        axios
-        .get('https://packtech-production.up.railway.app/ordenes-produccion')
-        .then((res) => setOrdenes(res.data))
-        setCargando(false)
-      })
-      .catch((err) => {
-        console.error(err)
-        setError('No se pudo conectar con el backend.')
-        setCargando(false)
-      })
+    try {
+      const [movRes, ordRes] = await Promise.all([
+        axios.get('https://packtech-production.up.railway.app/movimientos'),
+        axios.get('https://packtech-production.up.railway.app/ordenes-produccion')
+      ])
+
+      setMovimientos(movRes.data)
+      setOrdenes(ordRes.data)
+      setError(null)
+    } catch (err) {
+      console.error(err)
+      setError('No se pudo conectar con el backend.')
+    } finally {
+      setCargando(false)
+    }
   }
 
   useEffect(() => {
-    cargarMovimientos()
+    cargarDatos()
   }, [])
 
   const manejarCambio = (e) => {
@@ -95,7 +97,7 @@ function Movimientos() {
         observacion: ''
       })
 
-      cargarMovimientos()
+      cargarDatos()
     } catch (err) {
       const mensaje = err.response?.data?.detail || 'Error al registrar el movimiento.'
       setErrorForm(mensaje)
@@ -117,24 +119,22 @@ function Movimientos() {
           <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
-  Orden de Producción
-</label>
-
-<select
-  name="orden_id"
-  value={form.orden_id}
-  onChange={manejarCambio}
-  required
-  className="w-full border border-slate-300 rounded px-3 py-2"
->
-  <option value="">Seleccione una OP</option>
-
-  {ordenes.map((orden) => (
-    <option key={orden.id} value={orden.id}>
-      {orden.codigo}
-    </option>
-  ))}
-</select>
+                Orden de Producción
+              </label>
+              <select
+                name="orden_id"
+                value={form.orden_id}
+                onChange={manejarCambio}
+                required
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              >
+                <option value="">Seleccione una OP</option>
+                {ordenes.map((orden) => (
+                  <option key={orden.id} value={orden.id}>
+                    {orden.codigo}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex-1">
@@ -315,7 +315,9 @@ function Movimientos() {
               <tbody>
                 {movimientos.map((mov) => (
                   <tr key={mov.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 font-medium text-slate-800">{ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}</td>
+                    <td className="px-4 py-3 font-medium text-slate-800">
+                      {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
+                    </td>
                     <td className="px-4 py-3">{mov.proceso}</td>
                     <td className="px-4 py-3">{mov.operario_id}</td>
                     <td className="px-4 py-3">{mov.maquina}</td>
