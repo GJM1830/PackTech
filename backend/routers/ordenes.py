@@ -26,3 +26,12 @@ def listar_ordenes(
     db: Session = Depends(obtener_db)
 ):
     return crud.obtener_ordenes_produccion(db)
+
+@router.delete("/{orden_id}")
+def eliminar_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    crud.eliminar_orden_produccion(db, orden_id)
+    return {"mensaje": "Orden eliminada correctamente."}

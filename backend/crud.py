@@ -197,3 +197,16 @@ def crear_operario(
 
 def obtener_operarios(db: Session):
     return db.query(models.Operario).all()
+
+
+def eliminar_orden_produccion(db: Session, orden_id: int):
+    orden = db.get(models.OrdenProduccion, orden_id)
+    if orden is None:
+        raise HTTPException(
+            status_code=404,
+            detail="La Orden de Producción no existe."
+        )
+
+    db.query(models.Movimiento).filter(models.Movimiento.orden_id == orden_id).delete()
+    db.delete(orden)
+    db.commit()

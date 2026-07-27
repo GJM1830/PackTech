@@ -14,6 +14,7 @@ function Ordenes() {
   const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [pendientesBorrar, setPendientesBorrar] = useState({})
   const navegar = useNavigate()
 
   const cargarOrdenes = () => {
@@ -34,17 +35,61 @@ function Ordenes() {
     cargarOrdenes()
   }, [])
 
+  const marcarParaBorrar = (id) => {
+    const temporizador = setTimeout(async () => {
+      try {
+        await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
+      } catch (err) {
+        alert(err.response?.data?.detail || 'Error al eliminar la orden.')
+        cargarOrdenes()
+      }
+      setPendientesBorrar((actual) => {
+        const copia = { ...actual }
+        delete copia[id]
+        return copia
+      })
+    }, 5000)
+
+    setPendientesBorrar((actual) => ({ ...actual, [id]: temporizador }))
+  }
+
+  const deshacerBorrado = (id) => {
+    clearTimeout(pendientesBorrar[id])
+    setPendientesBorrar((actual) => {
+      const copia = { ...actual }
+      delete copia[id]
+      return copia
+    })
+  }
+
+  const ordenesVisibles = ordenes.filter((o) => !(o.id in pendientesBorrar))
+
   return (
     <div className="space-y-8">
       <div>
-      <h1 className="text-2xl font-bold text-slate-800">Órdenes de Producción</h1>
-      <p className="text-slate-500 text-sm mt-1">Gestiona y da seguimiento a la producción en planta.</p>
-    </div>
+        <h1 className="text-2xl font-bold text-slate-800">Órdenes de Producción</h1>
+        <p className="text-slate-500 text-sm mt-1">Gestiona y da seguimiento a la producción en planta.</p>
+      </div>
 
-<CrearOrden onCreada={cargarOrdenes} />
+      <CrearOrden onCreada={cargarOrdenes} />
+
+      {Object.keys(pendientesBorrar).length > 0 && (
+        <div className="space-y-2">
+          {Object.keys(pendientesBorrar).map((id) => (
+            <div key={id} className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm">
+              <span className="text-amber-800">Orden eliminada en unos segundos...</span>
+              <button
+                onClick={() => deshacerBorrado(id)}
+                className="text-amber-900 font-medium underline"
+              >
+                Deshacer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div>
-
         {cargando && <p className="text-slate-500">Cargando...</p>}
         {error && <p className="text-red-600">{error}</p>}
 
@@ -62,10 +107,11 @@ function Ordenes() {
                   <th className="px-4 py-3">Último Proceso</th>
                   <th className="px-4 py-3">Fecha</th>
                   <th className="px-4 py-3">Hora</th>
+                  <th className="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {ordenes.map((orden) => (
+                {ordenesVisibles.map((orden) => (
                   <tr
                     key={orden.id}
                     onClick={() => navegar(`/ordenes/${orden.id}`)}
@@ -77,14 +123,14 @@ function Ordenes() {
                     <td className="px-4 py-3">{orden.cantidad}</td>
                     <td className="px-4 py-3">{orden.unidad}</td>
                     <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
                         orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
                         orden.estado === 'En proceso' ? 'bg-amber-100 text-amber-700' :
-                                          'bg-slate-100 text-slate-500'
-                                                                      }`}>
+                        'bg-slate-100 text-slate-500'
+                      }`}>
                         {orden.estado}
-                        </span>
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700">
@@ -93,6 +139,17 @@ function Ordenes() {
                     </td>
                     <td className="px-4 py-3">{orden.fecha}</td>
                     <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          marcarParaBorrar(orden.id)
+                        }}
+                        className="text-red-600 hover:text-red-800 text-xs font-medium"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -103,46 +160,5 @@ function Ordenes() {
     </div>
   )
 }
-
-function App() {
-  const [autenticado, setAutenticado] = useState(
-    !!localStorage.getItem('packtech_clave')
-  )
-
-  if (!autenticado) {
-    return <Login onIngresar={() => setAutenticado(true)} />
-  }
-
-  return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-slate-50">
-        <nav className="bg-slate-900 text-white px-4 sm:px-8 py-4 flex flex-wrap gap-3 sm:gap-6 items-center shadow-md">
-          <span className="font-bold text-lg tracking-tight">📦 PackTech</span>
-          <div className="h-5 w-px bg-slate-700" />
-        <Link to="/" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Órdenes</Link>
-        <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
-        <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
-        <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
-        </nav>
-        <button
-  onClick={() => { localStorage.removeItem('packtech_clave'); window.location.reload() }}
-  className="ml-auto text-slate-300 hover:text-white text-sm"
->
-  Salir
-</button>
-
-        <div className="p-8">
-          <Routes>
-            <Route path="/" element={<Ordenes />} />
-            <Route path="/movimientos" element={<Movimientos />} />
-            <Route path="/ordenes/:id" element={<OrdenDetalle />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/operarios" element={<Operarios />} />
-          </Routes>
-        </div>
-      </div>
-    </BrowserRouter>
-  )
-}
-
-export default App
+  
+export default App  
