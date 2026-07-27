@@ -160,5 +160,46 @@ function Ordenes() {
     </div>
   )
 }
-  
+
+function App() {
+  const [autenticado, setAutenticado] = useState(
+    !!localStorage.getItem('packtech_clave')
+  )
+
+  if (!autenticado) {
+    return <Login onIngresar={() => setAutenticado(true)} />
+  }
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-50">
+        <nav className="bg-slate-900 text-white px-4 sm:px-8 py-4 flex flex-wrap gap-3 sm:gap-6 items-center shadow-md">
+          <span className="font-bold text-lg tracking-tight">📦 PackTech</span>
+          <div className="h-5 w-px bg-slate-700" />
+        <Link to="/" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Órdenes</Link>
+        <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
+        <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
+        <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
+        </nav>
+        <button
+  onClick={() => { localStorage.removeItem('packtech_clave'); window.location.reload() }}
+  className="ml-auto text-slate-300 hover:text-white text-sm"
+>
+  Salir
+</button>
+
+        <div className="p-8">
+          <Routes>
+            <Route path="/" element={<Ordenes />} />
+            <Route path="/movimientos" element={<Movimientos />} />
+            <Route path="/ordenes/:id" element={<OrdenDetalle />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/operarios" element={<Operarios />} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
+  )
+}
+
 export default App  
