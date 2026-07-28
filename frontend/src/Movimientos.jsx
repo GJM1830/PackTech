@@ -287,19 +287,19 @@ function Movimientos() {
         </form>
       </div>
 
-      <div>
-        <h2 className="text-xl font-bold text-slate-800 mb-4">
-          Movimientos
-        </h2>
+        <div>
+          <h2 className="text-xl font-bold text-slate-800 mb-4">
+            Movimientos
+          </h2>
 
-        {cargando && <p className="text-slate-500">Cargando...</p>}
-        {error && <p className="text-red-600">{error}</p>}
+          {cargando && <p className="text-slate-500">Cargando...</p>}
+          {error && <p className="text-red-600">{error}</p>}
 
-        {!cargando && !error && (
-          <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
-                <tr>
+          {!cargando && !error && (
+            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                  <tr>
                   <th className="px-4 py-3">Orden</th>
                   <th className="px-4 py-3">Proceso</th>
                   <th className="px-4 py-3">Operario</th>
