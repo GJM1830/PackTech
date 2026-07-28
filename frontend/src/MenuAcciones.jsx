@@ -29,7 +29,7 @@ function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {
       {abierto && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg z-10 overflow-hidden"
+          className="absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden"
         >
           {onEditar && (
             <button
