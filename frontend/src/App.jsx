@@ -6,6 +6,7 @@ import Movimientos from './Movimientos'
 import OrdenDetalle from './OrdenDetalle'
 import Clientes from './Clientes'
 import Operarios from './Operarios'
+import MenuAcciones from './MenuAcciones'
 
 import Login from './Login'
 
@@ -139,16 +140,10 @@ function Ordenes() {
                     <td className="px-4 py-3">{orden.fecha}</td>
                     <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          marcarParaBorrar(orden.id)
-                        }}
-                        className="text-red-600 hover:text-red-800 text-xs font-medium"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
+                    <MenuAcciones
+                      onEliminar={() => marcarParaBorrar(orden.id)}
+                    />
+                  </td>
                   </tr>
                 ))}
               </tbody>
