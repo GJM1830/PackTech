@@ -318,13 +318,6 @@ function Movimientos() {
                   <tr key={mov.id} className="border-t border-slate-100">
                     <td className="px-4 py-3 font-medium text-slate-800">
                       {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
-                      <td className="px-4 py-3">
-                      <MenuAcciones
-                        onEditar={() => console.log('editar', orden.id)}
-                        onDuplicar={() => console.log('duplicar', orden.id)}
-                        onEliminar={() => console.log('eliminar', orden.id)}
-                      />
-                    </td>
                     </td>
                     <td className="px-4 py-3">{mov.proceso}</td>
                     <td className="px-4 py-3">{mov.operario_id}</td>
@@ -336,6 +329,13 @@ function Movimientos() {
                     <td className="px-4 py-3">{mov.observacion}</td>
                     <td className="px-4 py-3">{mov.fecha}</td>
                     <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
+                    <td className="px-4 py-3">
+                      <MenuAcciones
+                        onEditar={() => console.log('editar', orden.id)}
+                        onDuplicar={() => console.log('duplicar', orden.id)}
+                        onEliminar={() => console.log('eliminar', orden.id)}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
