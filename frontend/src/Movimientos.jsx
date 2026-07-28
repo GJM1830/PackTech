@@ -329,7 +329,6 @@ function Movimientos() {
                     <td className="px-4 py-3">{mov.observacion}</td>
                     <td className="px-4 py-3">{mov.fecha}</td>
                     <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
-                    <th className="px-4 py-3">Acciones</th>
                     <td className="px-4 py-3">
                       <MenuAcciones
                         onEditar={() => console.log('editar', mov.id)}
