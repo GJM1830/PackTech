@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
+import MenuAcciones from './MenuAcciones'
 
 function Clientes() {
   const [clientes, setClientes] = useState([])
@@ -30,6 +31,17 @@ function Clientes() {
       setError(err.response?.data?.detail || 'Error al crear el cliente.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  const eliminarCliente = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este cliente?')) return
+
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/clientes/${id}`)
+      cargarClientes()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el cliente.')
     }
   }
 
@@ -84,6 +96,7 @@ function Clientes() {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">RUC</th>
                 <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -92,6 +105,11 @@ function Clientes() {
                   <td className="px-4 py-3">{c.id}</td>
                   <td className="px-4 py-3">{c.ruc}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
+                  <td className="px-4 py-3">
+                    <MenuAcciones
+                      onEliminar={() => eliminarCliente(c.id)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -235,3 +235,11 @@ def obtener_cliente_por_ruc(
         .filter(models.Cliente.ruc == ruc)
         .first()
     )
+
+def eliminar_cliente(db: Session, cliente_id: int):
+    cliente = db.get(models.Cliente, cliente_id)
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="El cliente no existe.")
+
+    db.delete(cliente)
+    db.commit()

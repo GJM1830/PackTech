@@ -54,3 +54,12 @@ def buscar_cliente_por_ruc(
         .filter(models.Cliente.ruc == ruc)
         .first()
     )
+
+@router.delete("/{cliente_id}")
+def eliminar_cliente(
+    cliente_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    crud.eliminar_cliente(db, cliente_id)
+    return {"mensaje": "Cliente eliminado correctamente."}
