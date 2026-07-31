@@ -67,21 +67,6 @@ const guardarEdicion = async () => {
     }
   }
 
-  {editando && (
-  <ModalEditar
-    titulo="Editar Cliente"
-    campos={[
-      { name: 'ruc', label: 'RUC' },
-      { name: 'nombre', label: 'Nombre' }
-    ]}
-    valores={editando}
-    onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
-    onGuardar={guardarEdicion}
-    onCerrar={() => setEditando(null)}
-    guardando={guardando}
-  />
-)}
-
   return (
     <div className="space-y-8">
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
@@ -154,6 +139,21 @@ const guardarEdicion = async () => {
           </table>
         </div>
       </div>
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Cliente"
+          campos={[
+            { name: 'ruc', label: 'RUC' },
+            { name: 'nombre', label: 'Nombre' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
     </div>
   )
 }
