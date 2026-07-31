@@ -259,3 +259,15 @@ def eliminar_movimiento(db: Session, movimiento_id: int):
 
     db.delete(movimiento)
     db.commit()
+
+def editar_cliente(db: Session, cliente_id: int, cliente_nuevo: schemas.ClienteCreate):
+    cliente = db.get(models.Cliente, cliente_id)
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="El cliente no existe.")
+
+    cliente.ruc = cliente_nuevo.ruc
+    cliente.nombre = cliente_nuevo.nombre
+
+    db.commit()
+    db.refresh(cliente)
+    return cliente

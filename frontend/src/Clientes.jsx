@@ -1,13 +1,35 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
 
 function Clientes() {
   const [clientes, setClientes] = useState([])
   const [form, setForm] = useState({ ruc: '', nombre: '' })
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
+  const [editando, setEditando] = useState(null)
+const [guardando, setGuardando] = useState(false)
 
+const abrirEdicion = (cliente) => {
+  setEditando({ id: cliente.id, ruc: cliente.ruc, nombre: cliente.nombre })
+}
+
+const guardarEdicion = async () => {
+  setGuardando(true)
+  try {
+    await axios.put(`https://packtech-production.up.railway.app/clientes/${editando.id}`, {
+      ruc: editando.ruc,
+      nombre: editando.nombre
+    })
+    setEditando(null)
+    cargarClientes()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar el cliente.')
+  } finally {
+    setGuardando(false)
+  }
+}
   const cargarClientes = () => {
     axios.get('https://packtech-production.up.railway.app/clientes')
       .then((res) => setClientes(res.data))
@@ -44,6 +66,21 @@ function Clientes() {
       alert(err.response?.data?.detail || 'Error al eliminar el cliente.')
     }
   }
+
+  {editando && (
+  <ModalEditar
+    titulo="Editar Cliente"
+    campos={[
+      { name: 'ruc', label: 'RUC' },
+      { name: 'nombre', label: 'Nombre' }
+    ]}
+    valores={editando}
+    onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+    onGuardar={guardarEdicion}
+    onCerrar={() => setEditando(null)}
+    guardando={guardando}
+  />
+)}
 
   return (
     <div className="space-y-8">
@@ -96,7 +133,7 @@ function Clientes() {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">RUC</th>
                 <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Acciones</th>
+                <th className="px-4 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody>
@@ -105,8 +142,9 @@ function Clientes() {
                   <td className="px-4 py-3">{c.id}</td>
                   <td className="px-4 py-3">{c.ruc}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-right">
                     <MenuAcciones
+                      onEditar={() => abrirEdicion(c)}
                       onEliminar={() => eliminarCliente(c.id)}
                     />
                   </td>

@@ -104,7 +104,7 @@ function Operarios() {
                   <td className="px-4 py-3">{o.id}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{o.nombre}</td>
                   <td className="px-4 py-3">{o.cargo}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-right">
                     <MenuAcciones
                       onEliminar={() => eliminarOperario(o.id)}
                     />

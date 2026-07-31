@@ -63,3 +63,13 @@ def eliminar_cliente(
 ):
     crud.eliminar_cliente(db, cliente_id)
     return {"mensaje": "Cliente eliminado correctamente."}
+
+
+@router.put("/{cliente_id}", response_model=schemas.ClienteResponse)
+def editar_cliente(
+    cliente_id: int,
+    cliente: schemas.ClienteCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    return crud.editar_cliente(db, cliente_id, cliente)
