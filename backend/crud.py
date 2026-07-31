@@ -251,3 +251,11 @@ def eliminar_operario(db: Session, operario_id: int):
 
     db.delete(operario)
     db.commit()
+
+def eliminar_movimiento(db: Session, movimiento_id: int):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    db.delete(movimiento)
+    db.commit()

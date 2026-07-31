@@ -37,3 +37,12 @@ def listar_movimientos_por_orden(
     db: Session = Depends(obtener_db)
 ):
     return crud.obtener_movimientos_por_orden(db, orden_id)
+
+@router.delete("/movimientos/{movimiento_id}")
+def eliminar_movimiento(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    crud.eliminar_movimiento(db, movimiento_id)
+    return {"mensaje": "Movimiento eliminado correctamente."}

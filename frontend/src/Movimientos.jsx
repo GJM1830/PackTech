@@ -20,7 +20,16 @@ function Movimientos() {
   const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const eliminarMovimiento = async (id) => {
+  if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
 
+  try {
+    await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
+    cargarMovimientos()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
+  }
+}
   const [form, setForm] = useState({
     orden_id: '',
     proceso: '',
@@ -334,7 +343,7 @@ function Movimientos() {
                       <MenuAcciones
                         onEditar={() => console.log('editar', mov.id)}
                         onDuplicar={() => console.log('duplicar', mov.id)}
-                        onEliminar={() => console.log('eliminar', mov.id)}
+                        onEliminar={() => eliminarMovimiento(mov.id)}
                       />
                     </td>
                   </tr>
