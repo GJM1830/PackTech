@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
+import MenuAcciones from './MenuAcciones'
 
 function Operarios() {
   const [operarios, setOperarios] = useState([])
@@ -30,6 +31,17 @@ function Operarios() {
       setError(err.response?.data?.detail || 'Error al crear el operario.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  const eliminarOperario = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este operario?')) return
+
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/operarios/${id}`)
+      cargarOperarios()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el operario.')
     }
   }
 
@@ -83,6 +95,7 @@ function Operarios() {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Cargo</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -91,6 +104,11 @@ function Operarios() {
                   <td className="px-4 py-3">{o.id}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{o.nombre}</td>
                   <td className="px-4 py-3">{o.cargo}</td>
+                  <td className="px-4 py-3">
+                    <MenuAcciones
+                      onEliminar={() => eliminarOperario(o.id)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

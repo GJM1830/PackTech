@@ -243,3 +243,11 @@ def eliminar_cliente(db: Session, cliente_id: int):
 
     db.delete(cliente)
     db.commit()
+
+def eliminar_operario(db: Session, operario_id: int):
+    operario = db.get(models.Operario, operario_id)
+    if operario is None:
+        raise HTTPException(status_code=404, detail="El operario no existe.")
+
+    db.delete(operario)
+    db.commit()

@@ -26,3 +26,12 @@ def listar_operarios(
     db: Session = Depends(obtener_db)
 ):
     return crud.obtener_operarios(db)
+
+@router.delete("/{operario_id}")
+def eliminar_operario(
+    operario_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    crud.eliminar_operario(db, operario_id)
+    return {"mensaje": "Operario eliminado correctamente."}
