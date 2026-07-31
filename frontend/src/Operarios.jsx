@@ -95,7 +95,7 @@ function Operarios() {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Cargo</th>
-                <th className="px-4 py-3">Acciones</th>
+                <th className="px-4 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody>
