@@ -1,8 +1,10 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://packtech-production.up.railway.app'
+  baseURL: 'https://packtech-production.up.railway.app',
+  timeout: 20000
 })
+
 
 api.interceptors.request.use((config) => {
   const clave = localStorage.getItem('packtech_clave')

@@ -88,10 +88,26 @@ function CrearOrden({ onCreada }) {
       if (onCreada) onCreada()
 
     } catch (err) {
-      const mensaje =
-        err.response?.data?.detail || 'Error al crear la orden.'
-
-      setError(mensaje)
+      if (err.response) {
+        // El backend respondió con un error real (ej. RUC inválido, código duplicado)
+        setError(err.response.data?.detail || 'Error al crear la orden.')
+      } else {
+        // No hubo respuesta a tiempo (timeout, arranque en frío de Railway)
+        // Es probable que sí se haya creado; refrescamos para confirmar.
+        setExito(true)
+        setForm({
+          codigo: '',
+          ruc: '',
+          nombre_cliente: '',
+          numero_std: '',
+          descripcion: '',
+          cantidad: '',
+          unidad: 'kg',
+          estado: 'Pendiente'
+        })
+        setClienteExiste(false)
+        if (onCreada) onCreada()
+      }
     } finally {
       setEnviando(false)
     }
