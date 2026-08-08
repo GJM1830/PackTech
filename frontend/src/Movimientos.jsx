@@ -43,6 +43,30 @@ function Movimientos() {
     }
   }
 
+const duplicarMovimiento = (mov) => {
+  const codigoOrden = ordenes.find(o => o.id === mov.orden_id)?.codigo || ''
+  const nombreOp = nombreOperario(mov.operario_id)
+
+  setForm({
+    orden_id: mov.orden_id,
+    proceso: mov.proceso,
+    nombre_operario: nombreOp,
+    maquina: mov.maquina,
+    entrada: mov.entrada,
+    salida: mov.salida,
+    unidad: mov.unidad,
+    merma: mov.merma,
+    observacion: mov.observacion || ''
+  })
+
+  setBusquedaOrden(codigoOrden)
+  setOrdenSeleccionada({ id: mov.orden_id, codigo: codigoOrden })
+  setBusquedaOperario(nombreOp)
+  setOperarioSeleccionado({ nombre: nombreOp })
+
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
   const abrirEdicion = (mov) => {
   setEditando({
     id: mov.id,
@@ -495,7 +519,7 @@ useEffect(() => {
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <MenuAcciones
                       onEditar={() => abrirEdicion(mov)}
-                      onDuplicar={() => console.log('duplicar', mov.id)}
+                      onDuplicar={() => duplicarMovimiento(mov)}
                       onEliminar={() => eliminarMovimiento(mov.id)}
                     />
                   </td>
