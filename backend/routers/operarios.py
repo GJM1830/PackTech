@@ -35,3 +35,12 @@ def eliminar_operario(
 ):
     crud.eliminar_operario(db, operario_id)
     return {"mensaje": "Operario eliminado correctamente."}
+
+@router.put("/{operario_id}", response_model=schemas.OperarioResponse)
+def editar_operario(
+    operario_id: int,
+    operario: schemas.OperarioCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    return crud.editar_operario(db, operario_id, operario)

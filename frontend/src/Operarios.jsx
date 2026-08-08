@@ -1,12 +1,36 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
 
 function Operarios() {
   const [operarios, setOperarios] = useState([])
   const [form, setForm] = useState({ nombre: '', cargo: '' })
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
+
+  const [editando, setEditando] = useState(null)
+const [guardando, setGuardando] = useState(false)
+
+const abrirEdicion = (operario) => {
+  setEditando({ id: operario.id, nombre: operario.nombre, cargo: operario.cargo })
+}
+
+const guardarEdicion = async () => {
+  setGuardando(true)
+  try {
+    await axios.put(`https://packtech-production.up.railway.app/operarios/${editando.id}`, {
+      nombre: editando.nombre,
+      cargo: editando.cargo
+    })
+    setEditando(null)
+    cargarOperarios()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar el operario.')
+  } finally {
+    setGuardando(false)
+  }
+}
 
   const cargarOperarios = () => {
     axios.get('https://packtech-production.up.railway.app/operarios')
@@ -106,6 +130,7 @@ function Operarios() {
                   <td className="px-4 py-3">{o.cargo}</td>
                   <td className="px-4 py-3 text-right">
                     <MenuAcciones
+                      onEditar={() => abrirEdicion(o)}
                       onEliminar={() => eliminarOperario(o.id)}
                     />
                   </td>
@@ -115,6 +140,20 @@ function Operarios() {
           </table>
         </div>
       </div>
+      {editando && (
+      <ModalEditar
+        titulo="Editar Operario"
+        campos={[
+          { name: 'nombre', label: 'Nombre' },
+          { name: 'cargo', label: 'Cargo' }
+        ]}
+        valores={editando}
+        onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+        onGuardar={guardarEdicion}
+        onCerrar={() => setEditando(null)}
+        guardando={guardando}
+      />
+    )}
     </div>
   )
 }

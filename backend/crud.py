@@ -271,3 +271,15 @@ def editar_cliente(db: Session, cliente_id: int, cliente_nuevo: schemas.ClienteC
     db.commit()
     db.refresh(cliente)
     return cliente
+
+def editar_operario(db: Session, operario_id: int, operario_nuevo: schemas.OperarioCreate):
+    operario = db.get(models.Operario, operario_id)
+    if operario is None:
+        raise HTTPException(status_code=404, detail="El operario no existe.")
+
+    operario.nombre = operario_nuevo.nombre
+    operario.cargo = operario_nuevo.cargo
+
+    db.commit()
+    db.refresh(operario)
+    return operario
