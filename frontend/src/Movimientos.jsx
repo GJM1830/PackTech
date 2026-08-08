@@ -19,22 +19,25 @@ const MAQUINAS_POR_PROCESO = {
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
   const [ordenes, setOrdenes] = useState([])
+  const [operarios, setOperarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const eliminarMovimiento = async (id) => {
-  if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
 
-  try {
-    await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
-    cargarMovimientos()
-  } catch (err) {
-    alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
+  const eliminarMovimiento = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
+
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
+      cargarDatos()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
+    }
   }
-}
+
   const [form, setForm] = useState({
     orden_id: '',
     proceso: '',
-    operario_id: '',
+    nombre_operario: '',
     maquina: '',
     entrada: '',
     salida: '',
@@ -49,13 +52,15 @@ function Movimientos() {
   const cargarDatos = async () => {
     setCargando(true)
     try {
-      const [movRes, ordRes] = await Promise.all([
+      const [movRes, ordRes, opRes] = await Promise.all([
         axios.get('https://packtech-production.up.railway.app/movimientos'),
-        axios.get('https://packtech-production.up.railway.app/ordenes-produccion')
+        axios.get('https://packtech-production.up.railway.app/ordenes-produccion'),
+        axios.get('https://packtech-production.up.railway.app/operarios')
       ])
 
       setMovimientos(movRes.data)
       setOrdenes(ordRes.data)
+      setOperarios(opRes.data)
       setError(null)
     } catch (err) {
       console.error(err)
@@ -88,7 +93,7 @@ function Movimientos() {
       await axios.post('https://packtech-production.up.railway.app/movimientos', {
         orden_id: parseInt(form.orden_id),
         proceso: form.proceso,
-        operario_id: parseInt(form.operario_id),
+        nombre_operario: form.nombre_operario.trim(),
         maquina: form.maquina,
         entrada: parseFloat(form.entrada),
         salida: parseFloat(form.salida),
@@ -100,7 +105,7 @@ function Movimientos() {
       setForm({
         orden_id: '',
         proceso: '',
-        operario_id: '',
+        nombre_operario: '',
         maquina: '',
         entrada: '',
         salida: '',
@@ -120,6 +125,8 @@ function Movimientos() {
 
   const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
 
+  const nombreOperario = (id) => operarios.find(o => o.id === id)?.nombre || id
+
   return (
     <div className="space-y-8">
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
@@ -128,7 +135,7 @@ function Movimientos() {
         </h2>
 
         <form onSubmit={manejarEnvio} className="space-y-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Orden de Producción
@@ -151,20 +158,28 @@ function Movimientos() {
 
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
-                ID Operario
+                Operario
               </label>
               <input
-                type="number"
-                name="operario_id"
-                value={form.operario_id}
+                type="text"
+                name="nombre_operario"
+                value={form.nombre_operario}
                 onChange={manejarCambio}
                 required
+                list="lista-operarios"
+                autoComplete="off"
                 className="w-full border border-slate-300 rounded px-3 py-2"
+                placeholder="Escribe o elige un nombre"
               />
+              <datalist id="lista-operarios">
+                {operarios.map((op) => (
+                  <option key={op.id} value={op.nombre} />
+                ))}
+              </datalist>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Proceso
@@ -209,7 +224,7 @@ function Movimientos() {
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Entrada
@@ -336,7 +351,7 @@ function Movimientos() {
                     {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
                   </td>
                   <td className="px-4 py-3">{mov.proceso}</td>
-                  <td className="px-4 py-3">{mov.operario_id}</td>
+                  <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
                   <td className="px-4 py-3">{mov.maquina}</td>
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>

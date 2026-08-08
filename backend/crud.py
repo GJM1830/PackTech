@@ -239,36 +239,27 @@ def eliminar_orden_produccion(
 # MOVIMIENTOS
 # =========================
 
-def crear_movimiento(
-    db: Session,
-    movimiento: schemas.MovimientoCreate
-):
-    orden = db.get(
-        models.OrdenProduccion,
-        movimiento.orden_id
-    )
-
+def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
+    orden = db.get(models.OrdenProduccion, movimiento.orden_id)
     if orden is None:
-        raise HTTPException(
-            status_code=404,
-            detail="La Orden de Producción no existe."
-        )
+        raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
 
-    operario = db.get(
-        models.Operario,
-        movimiento.operario_id
+    operario = (
+        db.query(models.Operario)
+        .filter(models.Operario.nombre.ilike(movimiento.nombre_operario.strip()))
+        .first()
     )
 
     if operario is None:
-        raise HTTPException(
-            status_code=404,
-            detail="El operario no existe."
-        )
+        operario = models.Operario(nombre=movimiento.nombre_operario.strip())
+        db.add(operario)
+        db.commit()
+        db.refresh(operario)
 
     nuevo_movimiento = models.Movimiento(
         orden_id=movimiento.orden_id,
         proceso=movimiento.proceso,
-        operario_id=movimiento.operario_id,
+        operario_id=operario.id,
         maquina=movimiento.maquina,
         entrada=movimiento.entrada,
         salida=movimiento.salida,

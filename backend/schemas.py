@@ -48,7 +48,7 @@ class OrdenProduccionResponse(BaseModel):
 class MovimientoCreate(BaseModel):
     orden_id: int
     proceso: str
-    operario_id: int
+    nombre_operario: str
     maquina: str
     entrada: float
     salida: float
