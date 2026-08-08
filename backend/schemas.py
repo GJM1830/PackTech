@@ -118,3 +118,15 @@ class DetalleMovimientoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+        
+class LoginRequest(BaseModel):
+    clave: str
+
+
+class LoginResponse(BaseModel):
+    rol: str
+    nombre: str | None
+
+    class Config:
+        from_attributes = True

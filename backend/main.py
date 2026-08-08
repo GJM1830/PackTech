@@ -9,6 +9,7 @@ from routers.movimientos import router as movimientos_router
 from routers.clientes import router as clientes_router
 from routers.operarios import router as operarios_router
 from routers.detalles import router as detalles_router
+from routers.auth import router as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -44,6 +45,7 @@ app.include_router(movimientos_router)
 app.include_router(clientes_router)
 app.include_router(operarios_router)
 app.include_router(detalles_router)
+app.include_router(auth_router)
 
 
 

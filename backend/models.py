@@ -228,3 +228,15 @@ class DetalleMovimiento(Base):
     millares: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
+    
+# =========================
+# USUARIOS  
+# =========================
+    
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    clave: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    rol: Mapped[str] = mapped_column(String(20), nullable=False)  # admin, operario, lector
+    nombre: Mapped[str | None] = mapped_column(String(100))

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import crud
 import schemas
 
-from dependencias import obtener_db, verificar_clave
+from dependencias import obtener_db, requiere_rol
 from pydantic import BaseModel  
 
 
@@ -18,7 +18,7 @@ router = APIRouter(
 def crear_orden(
     orden: schemas.OrdenProduccionCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     return crud.crear_orden_produccion(db, orden)
 
@@ -33,7 +33,7 @@ def listar_ordenes(
 def eliminar_orden(
     orden_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("admin"))
 ):
     crud.eliminar_orden_produccion(db, orden_id)
     return {"mensaje": "Orden eliminada correctamente."}
@@ -54,7 +54,7 @@ def actualizar_procesos(
     orden_id: int,
     datos: ProcesosUpdate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     return crud.actualizar_procesos_plan(db, orden_id, datos.procesos_plan)
 

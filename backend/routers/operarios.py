@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from dependencias import obtener_db, verificar_clave
-
+from dependencias import obtener_db, requiere_rol
 
 router = APIRouter(
     prefix="/operarios",
@@ -16,7 +15,7 @@ router = APIRouter(
 def crear_operario(
     operario: schemas.OperarioCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     return crud.crear_operario(db, operario)
 
@@ -31,7 +30,7 @@ def listar_operarios(
 def eliminar_operario(
     operario_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     crud.eliminar_operario(db, operario_id)
     return {"mensaje": "Operario eliminado correctamente."}
@@ -41,7 +40,7 @@ def editar_operario(
     operario_id: int,
     operario: schemas.OperarioCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     return crud.editar_operario(db, operario_id, operario)
 

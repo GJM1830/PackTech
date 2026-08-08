@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from dependencias import obtener_db, verificar_clave
-
+from dependencias import obtener_db, requiere_rol
 
 router = APIRouter(
     prefix="",
@@ -16,7 +15,7 @@ router = APIRouter(
 def crear_movimiento(
     movimiento: schemas.MovimientoCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     return crud.crear_movimiento(db, movimiento)
 
@@ -42,7 +41,7 @@ def listar_movimientos_por_orden(
 def eliminar_movimiento(
     movimiento_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("admin"))
 ):
     crud.eliminar_movimiento(db, movimiento_id)
     return {"mensaje": "Movimiento eliminado correctamente."}
@@ -51,7 +50,7 @@ def eliminar_movimiento(
 def eliminar_detalle(
     detalle_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     crud.eliminar_detalle_movimiento(db, detalle_id)
     return {"mensaje": "Detalle eliminado correctamente."}

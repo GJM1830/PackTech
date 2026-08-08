@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from dependencias import obtener_db, verificar_clave
-
+from dependencias import obtener_db, requiere_rol
 
 router = APIRouter(
     prefix="/movimientos/{movimiento_id}/detalles",
@@ -17,7 +16,7 @@ def crear_detalle(
     movimiento_id: int,
     detalle: schemas.DetalleMovimientoCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(verificar_clave)
+    _: None = Depends(requiere_rol("operario"))
 ):
     return crud.crear_detalle_movimiento(db, movimiento_id, detalle)
 
