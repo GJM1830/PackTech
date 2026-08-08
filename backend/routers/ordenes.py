@@ -58,4 +58,11 @@ def actualizar_procesos(
 ):
     return crud.actualizar_procesos_plan(db, orden_id, datos.procesos_plan)
 
-
+@router.put("/{orden_id}", response_model=schemas.OrdenProduccionResponse)
+def editar_orden(
+    orden_id: int,
+    orden: schemas.OrdenProduccionCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("admin"))
+):
+    return crud.editar_orden_produccion(db, orden_id, orden)
