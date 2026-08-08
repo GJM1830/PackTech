@@ -298,75 +298,74 @@ function Movimientos() {
         </form>
       </div>
 
-        <div>
-          <h2 className="text-xl font-bold text-slate-800 mb-4">
-            Movimientos
-          </h2>
+    <div>
+      <h2 className="text-xl font-bold text-slate-800 mb-4">
+        Movimientos
+      </h2>
 
-          {cargando && <p className="text-slate-500">Cargando...</p>}
-          {error && <p className="text-red-600">{error}</p>}
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
 
-          {!cargando && !error && (
-            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
-              <table className="min-w-full text-sm text-left">
-                <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
-                  <tr>
-                  <th className="px-4 py-3">Orden</th>
-                  <th className="px-4 py-3">Proceso</th>
-                  <th className="px-4 py-3">Operario</th>
-                  <th className="px-4 py-3">Máquina</th>
-                  <th className="px-4 py-3">Entrada</th>
-                  <th className="px-4 py-3">Salida</th>
-                  <th className="px-4 py-3">Unidad</th>
-                  <th className="px-4 py-3">Merma</th>
-                  <th className="px-4 py-3">Observación</th>
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Hora</th>
-                  <th className="px-4 py-3 w-12"></th>
+      {!cargando && !error && (
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-3">Orden</th>
+                <th className="px-4 py-3">Proceso</th>
+                <th className="px-4 py-3">Operario</th>
+                <th className="px-4 py-3">Máquina</th>
+                <th className="px-4 py-3">Entrada</th>
+                <th className="px-4 py-3">Salida</th>
+                <th className="px-4 py-3">Unidad</th>
+                <th className="px-4 py-3">Merma</th>
+                <th className="px-4 py-3">Observación</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Hora</th>
+                <th className="px-4 py-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {movimientos.map((mov) => (
+                <tr
+                  key={mov.id}
+                  onClick={() => setMovimientoAbierto(mov)}
+                  className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                >
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
+                  </td>
+                  <td className="px-4 py-3">{mov.proceso}</td>
+                  <td className="px-4 py-3">{mov.operario_id}</td>
+                  <td className="px-4 py-3">{mov.maquina}</td>
+                  <td className="px-4 py-3">{mov.entrada}</td>
+                  <td className="px-4 py-3">{mov.salida}</td>
+                  <td className="px-4 py-3">{mov.unidad}</td>
+                  <td className="px-4 py-3">{mov.merma}</td>
+                  <td className="px-4 py-3">{mov.observacion}</td>
+                  <td className="px-4 py-3">{mov.fecha}</td>
+                  <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <MenuAcciones
+                      onDuplicar={() => console.log('duplicar', mov.id)}
+                      onEliminar={() => eliminarMovimiento(mov.id)}
+                    />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {movimientos.map((mov) => (
-                  <tr key={mov.id} className="border-t border-slate-100">
-                    <tr
-                      key={mov.id}
-                      onClick={() => setMovimientoAbierto(mov)}
-                      className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
-                    ></tr>
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
-                    </td>
-                    <td className="px-4 py-3">{mov.proceso}</td>
-                    <td className="px-4 py-3">{mov.operario_id}</td>
-                    <td className="px-4 py-3">{mov.maquina}</td>
-                    <td className="px-4 py-3">{mov.entrada}</td>
-                    <td className="px-4 py-3">{mov.salida}</td>
-                    <td className="px-4 py-3">{mov.unidad}</td>
-                    <td className="px-4 py-3">{mov.merma}</td>
-                    <td className="px-4 py-3">{mov.observacion}</td>
-                    <td className="px-4 py-3">{mov.fecha}</td>
-                    <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
-                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <MenuAcciones
-                        onEditar={() => abrirEdicion(mov)}
-                        onDuplicar={() => console.log('duplicar', mov.id)}
-                        onEliminar={() => eliminarMovimiento(mov.id)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-      {movimientoAbierto && (
-        <DetalleMovimiento
-          movimiento={movimientoAbierto}
-          orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
-          onCerrar={() => setMovimientoAbierto(null)}
-        />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+    </div>
+
+    {movimientoAbierto && (
+      <DetalleMovimiento
+        movimiento={movimientoAbierto}
+        orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
+        onCerrar={() => setMovimientoAbierto(null)}
+      />
+    )}
     </div>
   )
 }
