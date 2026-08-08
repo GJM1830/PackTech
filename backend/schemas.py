@@ -18,12 +18,12 @@ class OrdenProduccionCreate(BaseModel):
     codigo: str
     ruc: str
     nombre_cliente: str | None = None
-
     numero_std: int
     descripcion: str | None = None
     cantidad: float
     unidad: str
     estado: str |None = "Pendiente"
+    procesos_plan: str | None = None
 
 class OrdenProduccionResponse(BaseModel):
     id: int
@@ -39,6 +39,7 @@ class OrdenProduccionResponse(BaseModel):
     ruc: str
     cliente: str
     ultimo_proceso: str
+    procesos_plan: str | None = None
 
     class Config:
         from_attributes = True

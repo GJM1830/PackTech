@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 
 import crud
 import schemas
+
 from dependencias import obtener_db, verificar_clave
+from pydantic import BaseModel  
 
 
 router = APIRouter(
@@ -35,3 +37,16 @@ def eliminar_orden(
 ):
     crud.eliminar_orden_produccion(db, orden_id)
     return {"mensaje": "Orden eliminada correctamente."}
+
+class ProcesosUpdate(BaseModel):
+    procesos_plan: str
+
+
+@router.put("/{orden_id}/procesos", response_model=schemas.OrdenProduccionResponse)
+def actualizar_procesos(
+    orden_id: int,
+    datos: ProcesosUpdate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    return crud.actualizar_procesos_plan(db, orden_id, datos.procesos_plan)

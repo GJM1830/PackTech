@@ -1,8 +1,17 @@
+# =========================
+# IMPORTACIONES
+# =========================
+
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 import models
 import schemas
+
+
+# =========================
+# CLIENTES
+# =========================
 
 def crear_cliente(
     db: Session,
@@ -34,6 +43,57 @@ def crear_cliente(
 
 def obtener_clientes(db: Session):
     return db.query(models.Cliente).all()
+
+
+def obtener_cliente_por_ruc(
+    db: Session,
+    ruc: str
+):
+    return (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc == ruc)
+        .first()
+    )
+
+
+def eliminar_cliente(db: Session, cliente_id: int):
+    cliente = db.get(models.Cliente, cliente_id)
+
+    if cliente is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El cliente no existe."
+        )
+
+    db.delete(cliente)
+    db.commit()
+
+
+def editar_cliente(
+    db: Session,
+    cliente_id: int,
+    cliente_nuevo: schemas.ClienteCreate
+):
+    cliente = db.get(models.Cliente, cliente_id)
+
+    if cliente is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El cliente no existe."
+        )
+
+    cliente.ruc = cliente_nuevo.ruc
+    cliente.nombre = cliente_nuevo.nombre
+
+    db.commit()
+    db.refresh(cliente)
+
+    return cliente
+
+
+# =========================
+# ÓRDENES DE PRODUCCIÓN
+# =========================
 
 def crear_orden_produccion(
     db: Session,
@@ -92,15 +152,42 @@ def crear_orden_produccion(
 
     return nueva_orden
 
+
 def calcular_estado(proceso: str | None) -> str:
     if proceso is None:
         return "Pendiente"
+
     if proceso == "Despacho":
         return "Terminado"
+
     if proceso == "Almacén":
         return "En almacén"
+
     return "En proceso"
 
+def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
+    orden = db.get(models.OrdenProduccion, orden_id)
+    if orden is None:
+        raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
+
+    orden.procesos_plan = procesos
+    db.commit()
+    db.refresh(orden)
+
+    orden.ruc = orden.cliente_obj.ruc
+    orden.cliente = orden.cliente_obj.nombre
+
+    ultimo_movimiento = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden.id)
+        .order_by(models.Movimiento.id.desc())
+        .first()
+    )
+    proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+    orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+    orden.estado = calcular_estado(proceso_actual)
+
+    return orden
 
 def obtener_ordenes_produccion(db: Session):
     ordenes = db.query(models.OrdenProduccion).all()
@@ -116,25 +203,62 @@ def obtener_ordenes_produccion(db: Session):
             .first()
         )
 
-        proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+        proceso_actual = (
+            ultimo_movimiento.proceso
+            if ultimo_movimiento
+            else None
+        )
+
         orden.ultimo_proceso = proceso_actual or "Sin iniciar"
         orden.estado = calcular_estado(proceso_actual)
 
     return ordenes
 
 
-def crear_movimiento(
+def eliminar_orden_produccion(
     db: Session,
-    movimiento: schemas.MovimientoCreate
+    orden_id: int
 ):
-    orden = db.get(models.OrdenProduccion, movimiento.orden_id)
+    orden = db.get(models.OrdenProduccion, orden_id)
+
     if orden is None:
         raise HTTPException(
             status_code=404,
             detail="La Orden de Producción no existe."
         )
 
-    operario = db.get(models.Operario, movimiento.operario_id)
+    db.query(models.Movimiento).filter(
+        models.Movimiento.orden_id == orden_id
+    ).delete()
+
+    db.delete(orden)
+    db.commit()
+
+
+# =========================
+# MOVIMIENTOS
+# =========================
+
+def crear_movimiento(
+    db: Session,
+    movimiento: schemas.MovimientoCreate
+):
+    orden = db.get(
+        models.OrdenProduccion,
+        movimiento.orden_id
+    )
+
+    if orden is None:
+        raise HTTPException(
+            status_code=404,
+            detail="La Orden de Producción no existe."
+        )
+
+    operario = db.get(
+        models.Operario,
+        movimiento.operario_id
+    )
+
     if operario is None:
         raise HTTPException(
             status_code=404,
@@ -174,6 +298,30 @@ def obtener_movimientos_por_orden(
         .all()
     )
 
+
+def eliminar_movimiento(
+    db: Session,
+    movimiento_id: int
+):
+    movimiento = db.get(
+        models.Movimiento,
+        movimiento_id
+    )
+
+    if movimiento is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El movimiento no existe."
+        )
+
+    db.delete(movimiento)
+    db.commit()
+
+
+# =========================
+# PRODUCTOS
+# =========================
+
 def crear_producto(
     db: Session,
     producto: schemas.ProductoCreate
@@ -193,6 +341,10 @@ def crear_producto(
 def obtener_productos(db: Session):
     return db.query(models.Producto).all()
 
+
+# =========================
+# OPERARIOS
+# =========================
 
 def crear_operario(
     db: Session,
@@ -214,80 +366,69 @@ def obtener_operarios(db: Session):
     return db.query(models.Operario).all()
 
 
-def eliminar_orden_produccion(db: Session, orden_id: int):
-    orden = db.get(models.OrdenProduccion, orden_id)
-    if orden is None:
-        raise HTTPException(
-            status_code=404,
-            detail="La Orden de Producción no existe."
-        )
-
-    db.query(models.Movimiento).filter(models.Movimiento.orden_id == orden_id).delete()
-    db.delete(orden)
-    db.commit()
-    
-def obtener_cliente_por_ruc(
+def eliminar_operario(
     db: Session,
-    ruc: str
+    operario_id: int
 ):
-    return (
-        db.query(models.Cliente)
-        .filter(models.Cliente.ruc == ruc)
-        .first()
+    operario = db.get(
+        models.Operario,
+        operario_id
     )
 
-def eliminar_cliente(db: Session, cliente_id: int):
-    cliente = db.get(models.Cliente, cliente_id)
-    if cliente is None:
-        raise HTTPException(status_code=404, detail="El cliente no existe.")
-
-    db.delete(cliente)
-    db.commit()
-
-def eliminar_operario(db: Session, operario_id: int):
-    operario = db.get(models.Operario, operario_id)
     if operario is None:
-        raise HTTPException(status_code=404, detail="El operario no existe.")
+        raise HTTPException(
+            status_code=404,
+            detail="El operario no existe."
+        )
 
     db.delete(operario)
     db.commit()
 
-def eliminar_movimiento(db: Session, movimiento_id: int):
-    movimiento = db.get(models.Movimiento, movimiento_id)
-    if movimiento is None:
-        raise HTTPException(status_code=404, detail="El movimiento no existe.")
 
-    db.delete(movimiento)
-    db.commit()
+def editar_operario(
+    db: Session,
+    operario_id: int,
+    operario_nuevo: schemas.OperarioCreate
+):
+    operario = db.get(
+        models.Operario,
+        operario_id
+    )
 
-def editar_cliente(db: Session, cliente_id: int, cliente_nuevo: schemas.ClienteCreate):
-    cliente = db.get(models.Cliente, cliente_id)
-    if cliente is None:
-        raise HTTPException(status_code=404, detail="El cliente no existe.")
-
-    cliente.ruc = cliente_nuevo.ruc
-    cliente.nombre = cliente_nuevo.nombre
-
-    db.commit()
-    db.refresh(cliente)
-    return cliente
-
-def editar_operario(db: Session, operario_id: int, operario_nuevo: schemas.OperarioCreate):
-    operario = db.get(models.Operario, operario_id)
     if operario is None:
-        raise HTTPException(status_code=404, detail="El operario no existe.")
+        raise HTTPException(
+            status_code=404,
+            detail="El operario no existe."
+        )
 
     operario.nombre = operario_nuevo.nombre
     operario.cargo = operario_nuevo.cargo
 
     db.commit()
     db.refresh(operario)
+
     return operario
 
-def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.DetalleMovimientoCreate):
-    movimiento = db.get(models.Movimiento, movimiento_id)
+
+# =========================
+# DETALLES DE MOVIMIENTO
+# =========================
+
+def crear_detalle_movimiento(
+    db: Session,
+    movimiento_id: int,
+    detalle: schemas.DetalleMovimientoCreate
+):
+    movimiento = db.get(
+        models.Movimiento,
+        movimiento_id
+    )
+
     if movimiento is None:
-        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+        raise HTTPException(
+            status_code=404,
+            detail="El movimiento no existe."
+        )
 
     nuevo = models.DetalleMovimiento(
         movimiento_id=movimiento_id,
@@ -296,24 +437,42 @@ def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.D
         peso=detalle.peso,
         millares=detalle.millares
     )
+
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
     return nuevo
 
 
-def obtener_detalles_movimiento(db: Session, movimiento_id: int):
+def obtener_detalles_movimiento(
+    db: Session,
+    movimiento_id: int
+):
     return (
         db.query(models.DetalleMovimiento)
-        .filter(models.DetalleMovimiento.movimiento_id == movimiento_id)
+        .filter(
+            models.DetalleMovimiento.movimiento_id == movimiento_id
+        )
         .order_by(models.DetalleMovimiento.numero)
         .all()
     )
 
 
-def eliminar_detalle_movimiento(db: Session, detalle_id: int):
-    detalle = db.get(models.DetalleMovimiento, detalle_id)
+def eliminar_detalle_movimiento(
+    db: Session,
+    detalle_id: int
+):
+    detalle = db.get(
+        models.DetalleMovimiento,
+        detalle_id
+    )
+
     if detalle is None:
-        raise HTTPException(status_code=404, detail="El detalle no existe.")
+        raise HTTPException(
+            status_code=404,
+            detail="El detalle no existe."
+        )
+
     db.delete(detalle)
     db.commit()

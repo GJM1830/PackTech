@@ -84,6 +84,8 @@ class Operario(Base):
 
 class OrdenProduccion(Base):
     __tablename__ = "ordenes_produccion"
+    
+    procesos_plan: Mapped[str | None] = mapped_column(Text)
 
     id: Mapped[int] = mapped_column(
         Integer,
