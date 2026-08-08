@@ -116,6 +116,8 @@ function Movimientos() {
         merma: '',
         observacion: ''
       })
+      setBusquedaOrden('')
+      setOrdenSeleccionada(null)
 
       cargarDatos()
     } catch (err) {
