@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from './api'
 
-function CrearOrden({ onCreada }) {
+function CrearOrden({ onCreada, duplicarDesde }) {
   const [form, setForm] = useState({
     codigo: '',
     ruc: '',
@@ -26,6 +26,22 @@ function CrearOrden({ onCreada }) {
       [e.target.name]: e.target.value
     })
   }
+
+useEffect(() => {
+  if (duplicarDesde) {
+    setForm({
+      codigo: '',
+      ruc: duplicarDesde.ruc,
+      nombre_cliente: duplicarDesde.cliente,
+      numero_std: duplicarDesde.numero_std,
+      descripcion: duplicarDesde.descripcion || '',
+      cantidad: duplicarDesde.cantidad,
+      unidad: duplicarDesde.unidad,
+      estado: 'Pendiente'
+    })
+    setClienteSeleccionado({ ruc: duplicarDesde.ruc, nombre: duplicarDesde.cliente })
+  }
+}, [duplicarDesde])
 
   useEffect(() => {
     if (form.ruc.trim().length < 4 || clienteSeleccionado) {

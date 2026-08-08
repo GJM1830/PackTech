@@ -19,6 +19,7 @@ function Ordenes() {
   const navegar = useNavigate()
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [duplicarDesde, setDuplicarDesde] = useState(null)
 
   const cargarOrdenes = () => {
     setCargando(true)
@@ -56,6 +57,10 @@ function Ordenes() {
     setPendientesBorrar((actual) => ({ ...actual, [id]: temporizador }))
   }
 
+  const duplicarOrden = (orden) => {
+  setDuplicarDesde({ ...orden, timestamp: Date.now() })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const abrirEdicion = (orden) => {
   setEditando({
@@ -112,7 +117,7 @@ const guardarEdicion = async () => {
         <p className="text-slate-500 text-sm mt-1">Gestiona y da seguimiento a la producción en planta.</p>
       </div>
 
-      <CrearOrden onCreada={cargarOrdenes} />
+      <CrearOrden onCreada={cargarOrdenes} duplicarDesde={duplicarDesde} />
 
       {Object.keys(pendientesBorrar).length > 0 && (
         <div className="space-y-2">
@@ -179,6 +184,7 @@ const guardarEdicion = async () => {
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <MenuAcciones
                         onEditar={() => abrirEdicion(orden)}
+                        onDuplicar={() => duplicarOrden(orden)}
                         onEliminar={() => marcarParaBorrar(orden.id)}
                       />
                     </td>
