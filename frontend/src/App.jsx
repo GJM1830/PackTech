@@ -9,6 +9,7 @@ import Operarios from './Operarios'
 import MenuAcciones from './MenuAcciones'
 
 import Login from './Login'
+import ModalEditar from './ModalEditar'
 
 function Ordenes() {
   const [ordenes, setOrdenes] = useState([])
@@ -16,6 +17,8 @@ function Ordenes() {
   const [error, setError] = useState(null)
   const [pendientesBorrar, setPendientesBorrar] = useState({})
   const navegar = useNavigate()
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
 
   const cargarOrdenes = () => {
     setCargando(true)
@@ -52,6 +55,44 @@ function Ordenes() {
 
     setPendientesBorrar((actual) => ({ ...actual, [id]: temporizador }))
   }
+
+
+  const abrirEdicion = (orden) => {
+  setEditando({
+    id: orden.id,
+    codigo: orden.codigo,
+    ruc: orden.ruc,
+    nombre_cliente: orden.cliente,
+    numero_std: orden.numero_std,
+    descripcion: orden.descripcion || '',
+    cantidad: orden.cantidad,
+    unidad: orden.unidad,
+    estado: orden.estado
+  })
+}
+
+const guardarEdicion = async () => {
+  setGuardando(true)
+  try {
+    await axios.put(`https://packtech-production.up.railway.app/ordenes-produccion/${editando.id}`, {
+      codigo: editando.codigo,
+      ruc: editando.ruc,
+      nombre_cliente: editando.nombre_cliente,
+      numero_std: parseInt(editando.numero_std),
+      descripcion: editando.descripcion,
+      cantidad: parseFloat(editando.cantidad),
+      unidad: editando.unidad,
+      estado: editando.estado
+    })
+
+    setEditando(null)
+    cargarOrdenes()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar la orden.')
+  } finally {
+    setGuardando(false)
+  }
+}
 
   const deshacerBorrado = (id) => {
     clearTimeout(pendientesBorrar[id])
@@ -137,6 +178,7 @@ function Ordenes() {
                     <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <MenuAcciones
+                        onEditar={() => abrirEdicion(orden)}
                         onEliminar={() => marcarParaBorrar(orden.id)}
                       />
                     </td>
@@ -147,6 +189,27 @@ function Ordenes() {
           </div>
         )}
       </div>
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Orden de Producción"
+          campos={[
+            { name: 'codigo', label: 'N° Pedido' },
+            { name: 'ruc', label: 'RUC del Cliente' },
+            { name: 'nombre_cliente', label: 'Nombre del Cliente' },
+            { name: 'numero_std', label: 'Número Estándar', type: 'number' },
+            { name: 'descripcion', label: 'Producto' },
+            { name: 'cantidad', label: 'Cantidad', type: 'number' },
+            { name: 'unidad', label: 'Unidad' },
+            { name: 'estado', label: 'Estado' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
     </div>
   )
 }
