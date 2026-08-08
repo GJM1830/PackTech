@@ -73,3 +73,10 @@ def editar_cliente(
     _: None = Depends(verificar_clave)
 ):
     return crud.editar_cliente(db, cliente_id, cliente)
+
+@router.get("/buscar", response_model=list[schemas.ClienteResponse])
+def buscar_clientes(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_clientes(db, q)

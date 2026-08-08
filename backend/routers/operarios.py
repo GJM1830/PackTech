@@ -44,3 +44,10 @@ def editar_operario(
     _: None = Depends(verificar_clave)
 ):
     return crud.editar_operario(db, operario_id, operario)
+
+@router.get("/buscar", response_model=list[schemas.OperarioResponse])
+def buscar_operarios(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_operarios(db, q)

@@ -152,6 +152,14 @@ def crear_orden_produccion(
 
     return nueva_orden
 
+def buscar_clientes(db: Session, q: str):
+    return (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc.ilike(f"%{q}%"))
+        .order_by(models.Cliente.ruc)
+        .limit(10)
+        .all()
+    )
 
 def calcular_estado(proceso: str | None) -> str:
     if proceso is None:
@@ -278,6 +286,15 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
 def obtener_movimientos(db: Session):
     return db.query(models.Movimiento).all()
 
+
+def buscar_operarios(db: Session, q: str):
+    return (
+        db.query(models.Operario)
+        .filter(models.Operario.nombre.ilike(f"%{q}%"))
+        .order_by(models.Operario.nombre)
+        .limit(10)
+        .all()
+    )
 
 def obtener_movimientos_por_orden(
     db: Session,
