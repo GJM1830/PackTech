@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from './api'
 
 function CrearOrden({ onCreada }) {
@@ -13,10 +13,12 @@ function CrearOrden({ onCreada }) {
     estado: 'Pendiente'
   })
 
-  const [clienteExiste, setClienteExiste] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const [exito, setExito] = useState(false)
+
+  const [sugerenciasClientes, setSugerenciasClientes] = useState([])
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
 
   const manejarCambio = (e) => {
     setForm({
@@ -25,32 +27,20 @@ function CrearOrden({ onCreada }) {
     })
   }
 
-  const buscarCliente = async (ruc) => {
-    if (ruc.length !== 11) {
-      setClienteExiste(false)
+  useEffect(() => {
+    if (form.ruc.trim().length < 4 || clienteSeleccionado) {
+      setSugerenciasClientes([])
       return
     }
 
-    try {
-      const res = await axios.get(`/clientes/${ruc}`)
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/clientes/buscar?q=${form.ruc}`)
+        .then((res) => setSugerenciasClientes(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
 
-      setForm((prev) => ({
-        ...prev,
-        ruc,
-        nombre_cliente: res.data.nombre
-      }))
-
-      setClienteExiste(true)
-    } catch {
-      setClienteExiste(false)
-
-      setForm((prev) => ({
-        ...prev,
-        ruc,
-        nombre_cliente: ''
-      }))
-    }
-  }
+    return () => clearTimeout(temporizador)
+  }, [form.ruc, clienteSeleccionado])
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
@@ -60,15 +50,15 @@ function CrearOrden({ onCreada }) {
 
     try {
       await axios.post('/ordenes-produccion', {
-      codigo: form.codigo,
-      ruc: form.ruc,
-      nombre_cliente: form.nombre_cliente,
-      numero_std: parseInt(form.numero_std),
-      descripcion: form.descripcion,
-      cantidad: parseFloat(form.cantidad),
-      unidad: form.unidad,
-      estado: form.estado
-    })
+        codigo: form.codigo,
+        ruc: form.ruc,
+        nombre_cliente: form.nombre_cliente,
+        numero_std: parseInt(form.numero_std),
+        descripcion: form.descripcion,
+        cantidad: parseFloat(form.cantidad),
+        unidad: form.unidad,
+        estado: form.estado
+      })
 
       setExito(true)
 
@@ -83,17 +73,14 @@ function CrearOrden({ onCreada }) {
         estado: 'Pendiente'
       })
 
-      setClienteExiste(false)
+      setClienteSeleccionado(null)
 
       if (onCreada) onCreada()
 
     } catch (err) {
       if (err.response) {
-        // El backend respondió con un error real (ej. RUC inválido, código duplicado)
         setError(err.response.data?.detail || 'Error al crear la orden.')
       } else {
-        // No hubo respuesta a tiempo (timeout, arranque en frío de Railway)
-        // Es probable que sí se haya creado; refrescamos para confirmar.
         setExito(true)
         setForm({
           codigo: '',
@@ -105,7 +92,7 @@ function CrearOrden({ onCreada }) {
           unidad: 'kg',
           estado: 'Pendiente'
         })
-        setClienteExiste(false)
+        setClienteSeleccionado(null)
         if (onCreada) onCreada()
       }
     } finally {
@@ -137,25 +124,45 @@ function CrearOrden({ onCreada }) {
           />
         </div>
 
-        <div>
+        <div className="relative">
           <label className="block text-sm font-medium text-slate-600 mb-1">
             RUC
           </label>
 
           <input
-          type="text"
-          name="ruc"
-          value={form.ruc}
-          maxLength={11}
-          onChange={(e) => {
-            manejarCambio(e)
-            buscarCliente(e.target.value)
-          }}
-          className="w-full border rounded px-3 py-2"
+            type="text"
+            name="ruc"
+            value={form.ruc}
+            maxLength={11}
+            onChange={(e) => {
+              manejarCambio(e)
+              setClienteSeleccionado(null)
+            }}
             required
+            autoComplete="off"
             className="w-full border border-slate-300 rounded px-3 py-2"
             placeholder="20100070970"
           />
+
+          {sugerenciasClientes.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {sugerenciasClientes.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setClienteSeleccionado(c)
+                    setForm({ ...form, ruc: c.ruc, nombre_cliente: c.nombre })
+                    setSugerenciasClientes([])
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                >
+                  <span className="font-medium text-slate-800">{c.ruc}</span>
+                  <span className="text-slate-400"> · {c.nombre}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
@@ -169,7 +176,7 @@ function CrearOrden({ onCreada }) {
             value={form.nombre_cliente}
             onChange={manejarCambio}
             className="w-full border rounded px-3 py-2"
-            placeholder="Se autocompleta si el RUC existe"
+            placeholder="Se autocompleta si el RUC existe, o escríbelo si es nuevo"
           />
         </div>
 
@@ -264,25 +271,3 @@ function CrearOrden({ onCreada }) {
 }
 
 export default CrearOrden
-
-const buscarCliente = async (ruc) => {
-  if (ruc.length !== 11) return
-
-  try {
-    const res = await axios.get(`/clientes/ruc/${ruc}`)
-
-    if (res.data) {
-      setForm(f => ({
-        ...f,
-        ruc,
-        nombre_cliente: res.data.nombre
-      }))
-    }
-  } catch {
-    setForm(f => ({
-      ...f,
-      ruc,
-      nombre_cliente: ''
-    }))
-  }
-}

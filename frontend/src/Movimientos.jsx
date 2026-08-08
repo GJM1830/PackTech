@@ -25,6 +25,9 @@ function Movimientos() {
   const [busquedaOrden, setBusquedaOrden] = useState('')
   const [sugerenciasOrdenes, setSugerenciasOrdenes] = useState([])
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
+  const [busquedaOperario, setBusquedaOperario] = useState('')
+  const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
+  const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
 
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
@@ -91,6 +94,8 @@ function Movimientos() {
     e.preventDefault()
     setEnviando(true)
     setErrorForm(null)
+    setBusquedaOperario('')
+    setOperarioSeleccionado(null)
 
     try {
       await axios.post('https://packtech-production.up.railway.app/movimientos', {
@@ -138,6 +143,8 @@ function Movimientos() {
     return
   }
 
+  
+
   const temporizador = setTimeout(() => {
     axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
       .then((res) => setSugerenciasOrdenes(res.data))
@@ -146,6 +153,21 @@ function Movimientos() {
 
   return () => clearTimeout(temporizador)
 }, [busquedaOrden, ordenSeleccionada])
+
+useEffect(() => {
+  if (busquedaOperario.trim().length < 2 || operarioSeleccionado) {
+    setSugerenciasOperarios([])
+    return
+  }
+
+  const temporizador = setTimeout(() => {
+    axios.get(`https://packtech-production.up.railway.app/operarios/buscar?q=${busquedaOperario}`)
+      .then((res) => setSugerenciasOperarios(res.data))
+      .catch((err) => console.error(err))
+  }, 300)
+
+  return () => clearTimeout(temporizador)
+}, [busquedaOperario, operarioSeleccionado])
 
   return (
     <div className="space-y-8">
@@ -196,27 +218,45 @@ function Movimientos() {
               )}
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Operario
               </label>
               <input
                 type="text"
-                name="nombre_operario"
-                value={form.nombre_operario}
-                onChange={manejarCambio}
+                value={busquedaOperario}
+                onChange={(e) => {
+                  setBusquedaOperario(e.target.value)
+                  setOperarioSeleccionado(null)
+                  setForm({ ...form, nombre_operario: e.target.value })
+                }}
                 required
-                list="lista-operarios"
                 autoComplete="off"
                 className="w-full border border-slate-300 rounded px-3 py-2"
-                placeholder="Escribe o elige un nombre"
+                placeholder="Escribe un nombre"
               />
-              <datalist id="lista-operarios">
-                {operarios.map((op) => (
-                  <option key={op.id} value={op.nombre} />
-                ))}
-              </datalist>
-            </div>
+
+              {sugerenciasOperarios.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {sugerenciasOperarios.map((op) => (
+                    <button
+                      key={op.id}
+                      type="button"
+                      onClick={() => {
+                        setOperarioSeleccionado(op)
+                        setBusquedaOperario(op.nombre)
+                        setForm({ ...form, nombre_operario: op.nombre })
+                        setSugerenciasOperarios([])
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-medium text-slate-800">{op.nombre}</span>
+                      {op.cargo && <span className="text-slate-400"> · {op.cargo}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+</div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
