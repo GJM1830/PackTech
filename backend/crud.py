@@ -302,7 +302,24 @@ def buscar_ordenes(db: Session, q: str):
         orden.ruc = orden.cliente_obj.ruc
         orden.cliente = orden.cliente_obj.nombre
 
+        ultimo_movimiento = (
+            db.query(models.Movimiento)
+            .filter(models.Movimiento.orden_id == orden.id)
+            .order_by(models.Movimiento.id.desc())
+            .first()
+        )
+
+        proceso_actual = (
+            ultimo_movimiento.proceso
+            if ultimo_movimiento
+            else None
+        )
+
+        orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+        orden.estado = calcular_estado(proceso_actual)
+
     return resultados
+
 
 def eliminar_movimiento(
     db: Session,
