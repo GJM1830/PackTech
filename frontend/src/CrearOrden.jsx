@@ -107,7 +107,7 @@ function CrearOrden({ onCreada }) {
 
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">
-            Código
+            Número de Pedido
           </label>
 
           <input
