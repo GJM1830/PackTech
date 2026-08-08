@@ -4,21 +4,31 @@ import axios from './api'
 
 function OrdenDetalle() {
   const { id } = useParams()
+  const [orden, setOrden] = useState(null)
   const [movimientos, setMovimientos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`)
-      .then((respuesta) => {
-        setMovimientos(respuesta.data)
+    const cargar = async () => {
+      try {
+        const [ordenesRes, movRes] = await Promise.all([
+          axios.get('https://packtech-production.up.railway.app/ordenes-produccion'),
+          axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`)
+        ])
+
+        const ordenEncontrada = ordenesRes.data.find(o => o.id === parseInt(id))
+        setOrden(ordenEncontrada)
+        setMovimientos(movRes.data)
         setCargando(false)
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error(err)
         setError('No se pudo cargar el historial.')
         setCargando(false)
-      })
+      }
+    }
+
+    cargar()
   }, [id])
 
   return (
@@ -27,9 +37,30 @@ function OrdenDetalle() {
         ← Volver a Órdenes
       </Link>
 
-      <h2 className="text-xl font-bold text-slate-800">
-        Historial de la Orden #{id}
-      </h2>
+      <div>
+        <h2 className="text-xl font-bold text-slate-800">
+          {orden ? `${orden.codigo} · ${orden.cliente}` : `Orden #${id}`}
+        </h2>
+        {orden?.descripcion && (
+          <p className="text-slate-500 text-sm mt-1">{orden.descripcion}</p>
+        )}
+      </div>
+
+      {orden && (
+        <div className="flex gap-3">
+          <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+            orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
+            orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
+            orden.estado === 'En proceso' ? 'bg-amber-100 text-amber-700' :
+            'bg-slate-100 text-slate-500'
+          }`}>
+            Estado: {orden.estado}
+          </span>
+          <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            Último proceso: {orden.ultimo_proceso}
+          </span>
+        </div>
+      )}
 
       {cargando && <p className="text-slate-500">Cargando...</p>}
       {error && <p className="text-red-600">{error}</p>}

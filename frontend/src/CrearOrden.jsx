@@ -190,7 +190,7 @@ function CrearOrden({ onCreada }) {
 
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">
-            Descripción
+            Producto / Descripción
           </label>
 
           <input

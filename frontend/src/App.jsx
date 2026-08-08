@@ -97,19 +97,19 @@ function Ordenes() {
           <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
             <table className="min-w-full text-sm text-left">
               <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3">Código</th>
-                  <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">N° Std</th>
-                  <th className="px-4 py-3">Cantidad</th>
-                  <th className="px-4 py-3">Unidad</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Último Proceso</th>
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Hora</th>
-                  <th className="px-4 py-3 text-right"></th>
-                </tr>
-              </thead>
+              <tr>
+                <th className="px-4 py-3">N° Pedido</th>
+                <th className="px-4 py-3">Cliente</th>
+                <th className="px-4 py-3">N° Std</th>
+                <th className="px-4 py-3">Producto</th>
+                <th className="px-4 py-3">Cantidad</th>
+                <th className="px-4 py-3">Unidad</th>
+                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Hora</th>
+                <th className="px-4 py-3 text-right"></th>
+              </tr>
+            </thead>
               <tbody>
                 {ordenesVisibles.map((orden) => (
                   <tr
@@ -120,6 +120,7 @@ function Ordenes() {
                     <td className="px-4 py-3 font-medium text-slate-800">{orden.codigo}</td>
                     <td className="px-4 py-3">{orden.cliente}</td>
                     <td className="px-4 py-3">{orden.numero_std}</td>
+                    <td className="px-4 py-3">{orden.descripcion}</td>
                     <td className="px-4 py-3">{orden.cantidad}</td>
                     <td className="px-4 py-3">{orden.unidad}</td>
                     <td className="px-4 py-3">
@@ -132,18 +133,13 @@ function Ordenes() {
                         {orden.estado}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                        {orden.ultimo_proceso}
-                      </span>
-                    </td>
                     <td className="px-4 py-3">{orden.fecha}</td>
                     <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
-                    <td className="px-4 py-3">
-                    <MenuAcciones
-                      onEliminar={() => marcarParaBorrar(orden.id)}
-                    />
-                  </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <MenuAcciones
+                        onEliminar={() => marcarParaBorrar(orden.id)}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
