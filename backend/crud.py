@@ -283,3 +283,37 @@ def editar_operario(db: Session, operario_id: int, operario_nuevo: schemas.Opera
     db.commit()
     db.refresh(operario)
     return operario
+
+def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.DetalleMovimientoCreate):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    nuevo = models.DetalleMovimiento(
+        movimiento_id=movimiento_id,
+        tipo=detalle.tipo,
+        numero=detalle.numero,
+        peso=detalle.peso,
+        millares=detalle.millares
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return nuevo
+
+
+def obtener_detalles_movimiento(db: Session, movimiento_id: int):
+    return (
+        db.query(models.DetalleMovimiento)
+        .filter(models.DetalleMovimiento.movimiento_id == movimiento_id)
+        .order_by(models.DetalleMovimiento.numero)
+        .all()
+    )
+
+
+def eliminar_detalle_movimiento(db: Session, detalle_id: int):
+    detalle = db.get(models.DetalleMovimiento, detalle_id)
+    if detalle is None:
+        raise HTTPException(status_code=404, detail="El detalle no existe.")
+    db.delete(detalle)
+    db.commit()

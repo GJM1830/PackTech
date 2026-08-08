@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
+import DetalleMovimiento from './DetalleMovimiento'
 
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
@@ -43,6 +44,7 @@ function Movimientos() {
   })
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
+  const [movimientoAbierto, setMovimientoAbierto] = useState(null)
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -326,6 +328,11 @@ function Movimientos() {
               <tbody>
                 {movimientos.map((mov) => (
                   <tr key={mov.id} className="border-t border-slate-100">
+                    <tr
+                      key={mov.id}
+                      onClick={() => setMovimientoAbierto(mov)}
+                      className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                    ></tr>
                     <td className="px-4 py-3 font-medium text-slate-800">
                       {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
                     </td>
@@ -339,9 +346,9 @@ function Movimientos() {
                     <td className="px-4 py-3">{mov.observacion}</td>
                     <td className="px-4 py-3">{mov.fecha}</td>
                     <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <MenuAcciones
-                        onEditar={() => console.log('editar', mov.id)}
+                        onEditar={() => abrirEdicion(mov)}
                         onDuplicar={() => console.log('duplicar', mov.id)}
                         onEliminar={() => eliminarMovimiento(mov.id)}
                       />
@@ -353,6 +360,13 @@ function Movimientos() {
           </div>
         )}
       </div>
+      {movimientoAbierto && (
+        <DetalleMovimiento
+          movimiento={movimientoAbierto}
+          orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
+          onCerrar={() => setMovimientoAbierto(null)}
+        />
+      )}
     </div>
   )
 }

@@ -46,3 +46,12 @@ def eliminar_movimiento(
 ):
     crud.eliminar_movimiento(db, movimiento_id)
     return {"mensaje": "Movimiento eliminado correctamente."}
+
+@router.delete("/detalles/{detalle_id}")
+def eliminar_detalle(
+    detalle_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(verificar_clave)
+):
+    crud.eliminar_detalle_movimiento(db, detalle_id)
+    return {"mensaje": "Detalle eliminado correctamente."}

@@ -99,3 +99,21 @@ class OperarioResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class DetalleMovimientoCreate(BaseModel):
+    tipo: str
+    numero: int
+    peso: float
+    millares: float
+
+
+class DetalleMovimientoResponse(BaseModel):
+    id: int
+    movimiento_id: int
+    tipo: str
+    numero: int
+    peso: float
+    millares: float
+
+    class Config:
+        from_attributes = True

@@ -1,12 +1,18 @@
+# =========================
+# IMPORTACIONES
+# =========================
+
 from datetime import datetime, date, time
 
 from sqlalchemy import DateTime, Date, Time, Integer, String, Numeric, Text, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+# =========================
+# CLIENTES
+# =========================
 
 class Cliente(Base):
     __tablename__ = "clientes"
@@ -28,6 +34,10 @@ class Cliente(Base):
     )
 
 
+# =========================
+# PRODUCTOS
+# =========================
+
 class Producto(Base):
     __tablename__ = "productos"
 
@@ -46,6 +56,10 @@ class Producto(Base):
     )
 
 
+# =========================
+# OPERARIOS
+# =========================
+
 class Operario(Base):
     __tablename__ = "operarios"
 
@@ -63,6 +77,10 @@ class Operario(Base):
         String(100)
     )
 
+
+# =========================
+# ÓRDENES DE PRODUCCIÓN
+# =========================
 
 class OrdenProduccion(Base):
     __tablename__ = "ordenes_produccion"
@@ -90,7 +108,7 @@ class OrdenProduccion(Base):
     descripcion: Mapped[str | None] = mapped_column(
         String(200)
     )
-    
+
     cantidad: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
@@ -116,6 +134,10 @@ class OrdenProduccion(Base):
 
     cliente_obj: Mapped["Cliente"] = relationship("Cliente")
 
+
+# =========================
+# MOVIMIENTOS
+# =========================
 
 class Movimiento(Base):
     __tablename__ = "movimientos"
@@ -170,4 +192,37 @@ class Movimiento(Base):
     hora: Mapped[time] = mapped_column(
         Time,
         default=datetime.utcnow().time
+    )
+
+
+# =========================
+# DETALLES DE MOVIMIENTO
+# =========================
+
+class DetalleMovimiento(Base):
+    __tablename__ = "detalles_movimiento"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    movimiento_id: Mapped[int] = mapped_column(
+        ForeignKey("movimientos.id")
+    )
+
+    tipo: Mapped[str] = mapped_column(
+        String(20)
+    )  # "bobina" o "fardo"
+
+    numero: Mapped[int] = mapped_column(
+        Integer
+    )
+
+    peso: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    millares: Mapped[float] = mapped_column(
+        Numeric(10, 2)
     )
