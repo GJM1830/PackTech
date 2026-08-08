@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
 import DetalleMovimiento from './DetalleMovimiento'
 
 const MAQUINAS_POR_PROCESO = {
@@ -28,6 +29,8 @@ function Movimientos() {
   const [busquedaOperario, setBusquedaOperario] = useState('')
   const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
   const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
 
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
@@ -39,6 +42,55 @@ function Movimientos() {
       alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
     }
   }
+
+  const abrirEdicion = (mov) => {
+  setEditando({
+    id: mov.id,
+    orden_id: ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id,
+    proceso: mov.proceso,
+    nombre_operario: nombreOperario(mov.operario_id),
+    maquina: mov.maquina,
+    entrada: mov.entrada,
+    salida: mov.salida,
+    unidad: mov.unidad,
+    merma: mov.merma,
+    observacion: mov.observacion || ''
+  })
+}
+
+  const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+    const ordenEncontrada = ordenes.find(
+      o => o.codigo.toLowerCase() === String(editando.orden_id).toLowerCase()
+    )
+
+    if (!ordenEncontrada) {
+      alert('No se encontró ninguna Orden con ese código.')
+      setGuardando(false)
+      return
+    }
+
+    await axios.put(`https://packtech-production.up.railway.app/movimientos/${editando.id}`, {
+      orden_id: ordenEncontrada.id,
+      proceso: editando.proceso,
+      nombre_operario: editando.nombre_operario,
+      maquina: editando.maquina,
+      entrada: parseFloat(editando.entrada),
+      salida: parseFloat(editando.salida),
+      unidad: editando.unidad,
+      merma: parseFloat(editando.merma),
+      observacion: editando.observacion || null
+    })
+
+    setEditando(null)
+    cargarDatos()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar el movimiento.')
+  } finally {
+    setGuardando(false)
+  }
+}
 
   const [form, setForm] = useState({
     orden_id: '',
@@ -442,6 +494,7 @@ useEffect(() => {
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <MenuAcciones
+                      onEditar={() => abrirEdicion(mov)}
                       onDuplicar={() => console.log('duplicar', mov.id)}
                       onEliminar={() => eliminarMovimiento(mov.id)}
                     />
@@ -459,6 +512,28 @@ useEffect(() => {
         movimiento={movimientoAbierto}
         orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
         onCerrar={() => setMovimientoAbierto(null)}
+      />
+    )}
+
+    {editando && (
+      <ModalEditar
+        titulo="Editar Movimiento"
+        campos={[
+          { name: 'orden_id', label: 'Código de Orden' },
+          { name: 'proceso', label: 'Proceso' },
+          { name: 'nombre_operario', label: 'Operario' },
+          { name: 'maquina', label: 'Máquina' },
+          { name: 'entrada', label: 'Entrada', type: 'number' },
+          { name: 'salida', label: 'Salida', type: 'number' },
+          { name: 'unidad', label: 'Unidad' },
+          { name: 'merma', label: 'Merma', type: 'number' },
+          { name: 'observacion', label: 'Observación' }
+        ]}
+        valores={editando}
+        onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+        onGuardar={guardarEdicion}
+        onCerrar={() => setEditando(null)}
+        guardando={guardando}
       />
     )}
     </div>
