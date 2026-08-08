@@ -22,6 +22,9 @@ function Movimientos() {
   const [operarios, setOperarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [busquedaOrden, setBusquedaOrden] = useState('')
+  const [sugerenciasOrdenes, setSugerenciasOrdenes] = useState([])
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
 
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
@@ -126,6 +129,21 @@ function Movimientos() {
   const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
 
   const nombreOperario = (id) => operarios.find(o => o.id === id)?.nombre || id
+  
+  useEffect(() => {
+  if (busquedaOrden.trim().length < 2 || ordenSeleccionada) {
+    setSugerenciasOrdenes([])
+    return
+  }
+
+  const temporizador = setTimeout(() => {
+    axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
+      .then((res) => setSugerenciasOrdenes(res.data))
+      .catch((err) => console.error(err))
+  }, 300)
+
+  return () => clearTimeout(temporizador)
+}, [busquedaOrden, ordenSeleccionada])
 
   return (
     <div className="space-y-8">
@@ -136,24 +154,44 @@ function Movimientos() {
 
         <form onSubmit={manejarEnvio} className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 Orden de Producción
               </label>
-              <select
-                name="orden_id"
-                value={form.orden_id}
-                onChange={manejarCambio}
+              <input
+                type="text"
+                value={busquedaOrden}
+                onChange={(e) => {
+                  setBusquedaOrden(e.target.value)
+                  setOrdenSeleccionada(null)
+                  setForm({ ...form, orden_id: '' })
+                }}
                 required
+                autoComplete="off"
                 className="w-full border border-slate-300 rounded px-3 py-2"
-              >
-                <option value="">Seleccione una OP</option>
-                {ordenes.map((orden) => (
-                  <option key={orden.id} value={orden.id}>
-                    {orden.codigo}
-                  </option>
-                ))}
-              </select>
+                placeholder="Escribe el código (ej. OP-001)"
+              />
+
+              {sugerenciasOrdenes.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {sugerenciasOrdenes.map((orden) => (
+                    <button
+                      key={orden.id}
+                      type="button"
+                      onClick={() => {
+                        setOrdenSeleccionada(orden)
+                        setBusquedaOrden(orden.codigo)
+                        setForm({ ...form, orden_id: orden.id })
+                        setSugerenciasOrdenes([])
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-medium text-slate-800">{orden.codigo}</span>
+                      <span className="text-slate-400"> · {orden.cliente}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex-1">

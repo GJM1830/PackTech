@@ -289,6 +289,20 @@ def obtener_movimientos_por_orden(
         .all()
     )
 
+def buscar_ordenes(db: Session, q: str):
+    resultados = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.codigo.ilike(f"%{q}%"))
+        .order_by(models.OrdenProduccion.id.desc())
+        .limit(10)
+        .all()
+    )
+
+    for orden in resultados:
+        orden.ruc = orden.cliente_obj.ruc
+        orden.cliente = orden.cliente_obj.nombre
+
+    return resultados
 
 def eliminar_movimiento(
     db: Session,

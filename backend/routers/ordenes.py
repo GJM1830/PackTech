@@ -50,3 +50,11 @@ def actualizar_procesos(
     _: None = Depends(verificar_clave)
 ):
     return crud.actualizar_procesos_plan(db, orden_id, datos.procesos_plan)
+
+
+@router.get("/buscar", response_model=list[schemas.OrdenProduccionResponse])
+def buscar_ordenes(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_ordenes(db, q)
