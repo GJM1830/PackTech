@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import crud
 import schemas
+import models
 from dependencias import obtener_db, verificar_clave
 
 
@@ -27,22 +28,14 @@ def listar_clientes(
 ):
     return crud.obtener_clientes(db)
 
-@router.get("/{ruc}", response_model=schemas.ClienteResponse)
-def obtener_cliente(
-    ruc: str,
+
+@router.get("/buscar", response_model=list[schemas.ClienteResponse])
+def buscar_clientes(
+    q: str,
     db: Session = Depends(obtener_db)
 ):
-    cliente = crud.obtener_cliente_por_ruc(db, ruc)
+    return crud.buscar_clientes(db, q)
 
-    if cliente is None:
-        from fastapi import HTTPException
-
-        raise HTTPException(
-            status_code=404,
-            detail="Cliente no encontrado."
-        )
-
-    return cliente
 
 @router.get("/ruc/{ruc}", response_model=schemas.ClienteResponse | None)
 def buscar_cliente_por_ruc(
@@ -54,6 +47,23 @@ def buscar_cliente_por_ruc(
         .filter(models.Cliente.ruc == ruc)
         .first()
     )
+
+
+@router.get("/{ruc}", response_model=schemas.ClienteResponse)
+def obtener_cliente(
+    ruc: str,
+    db: Session = Depends(obtener_db)
+):
+    cliente = crud.obtener_cliente_por_ruc(db, ruc)
+
+    if cliente is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Cliente no encontrado."
+        )
+
+    return cliente
+
 
 @router.delete("/{cliente_id}")
 def eliminar_cliente(
@@ -73,10 +83,3 @@ def editar_cliente(
     _: None = Depends(verificar_clave)
 ):
     return crud.editar_cliente(db, cliente_id, cliente)
-
-@router.get("/buscar", response_model=list[schemas.ClienteResponse])
-def buscar_clientes(
-    q: str,
-    db: Session = Depends(obtener_db)
-):
-    return crud.buscar_clientes(db, q)
