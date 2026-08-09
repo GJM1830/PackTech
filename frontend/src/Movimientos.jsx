@@ -157,14 +157,29 @@ const duplicarMovimiento = (mov) => {
   }, [])
 
   const manejarCambio = (e) => {
-    const { name, value } = e.target
+  const { name, value } = e.target
 
-    if (name === 'proceso') {
-      setForm({ ...form, proceso: value, maquina: '' })
-    } else {
-      setForm({ ...form, [name]: value })
-    }
+  if (name === 'proceso') {
+    setForm({ ...form, proceso: value, maquina: '' })
+    return
   }
+
+  if (name === 'entrada' || name === 'salida') {
+    const nuevoForm = { ...form, [name]: value }
+
+    const entrada = parseFloat(name === 'entrada' ? value : form.entrada)
+    const salida = parseFloat(name === 'salida' ? value : form.salida)
+
+    if (!isNaN(entrada) && !isNaN(salida)) {
+      nuevoForm.merma = (entrada - salida).toFixed(2)
+    }
+
+    setForm(nuevoForm)
+    return
+  }
+
+  setForm({ ...form, [name]: value })
+}
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
@@ -420,9 +435,8 @@ useEffect(() => {
                 step="0.01"
                 name="merma"
                 value={form.merma}
-                onChange={manejarCambio}
-                required
-                className="w-full border border-slate-300 rounded px-3 py-2"
+                readOnly
+                className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
               />
             </div>
 
