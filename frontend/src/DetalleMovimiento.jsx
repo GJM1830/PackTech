@@ -55,7 +55,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const eliminarDetalle = async (id) => {
     if (!confirm('¿Eliminar este registro?')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/movimientos/detalles/${id}`)
+      await axios.delete(`https://packtech-production.up.railway.app/detalles/${id}`)
       cargarDetalles()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar.')
