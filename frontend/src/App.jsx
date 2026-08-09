@@ -62,6 +62,12 @@ function Ordenes() {
     setPendientesBorrar((actual) => ({ ...actual, [id]: temporizador }))
   }
 
+  const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+  }
+
   const duplicarOrden = (orden) => {
   setDuplicarDesde({ ...orden, timestamp: Date.now() })
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -243,7 +249,7 @@ const guardarEdicion = async () => {
                         {orden.estado}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{orden.fecha}</td>
+                    <td className="px-4 py-3">{formatearFecha(orden.fecha)}</td>
                     <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <MenuAcciones

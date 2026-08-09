@@ -8,6 +8,15 @@ from fastapi import HTTPException
 import models
 import schemas
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+ZONA_LIMA = ZoneInfo("America/Lima")
+
+
+def ahora_lima():
+    return datetime.now(ZONA_LIMA)
+
 
 # =========================
 # CLIENTES
@@ -133,6 +142,8 @@ def crear_orden_produccion(
             detail="Ya existe una Orden de Producción con ese código."
         )
 
+    ahora = ahora_lima()
+
     nueva_orden = models.OrdenProduccion(
         codigo=orden.codigo,
         cliente_id=cliente.id,
@@ -140,7 +151,9 @@ def crear_orden_produccion(
         descripcion=orden.descripcion,
         cantidad=orden.cantidad,
         unidad=orden.unidad,
-        estado=orden.estado
+        estado=orden.estado,
+        fecha=ahora.date(),
+        hora=ahora.time()
     )
 
     db.add(nueva_orden)
@@ -268,6 +281,8 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         db.commit()
         db.refresh(operario)
 
+    ahora = ahora_lima()
+
     nuevo_movimiento = models.Movimiento(
         orden_id=movimiento.orden_id,
         proceso=movimiento.proceso,
@@ -277,7 +292,9 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         salida=movimiento.salida,
         unidad=movimiento.unidad,
         merma=movimiento.merma,
-        observacion=movimiento.observacion
+        observacion=movimiento.observacion,
+        fecha=ahora.date(),
+        hora=ahora.time()
     )
 
     db.add(nuevo_movimiento)
