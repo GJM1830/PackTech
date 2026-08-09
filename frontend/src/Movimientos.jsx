@@ -496,7 +496,7 @@ useEffect(() => {
               value={form.observacion}
               onChange={manejarCambio}
               className="w-full border border-slate-300 rounded px-3 py-2"
-              placeholder="sin novedad"
+              placeholder="Fallo de máquina / Cambio de bobina / Otro"
             />
           </div>
 
