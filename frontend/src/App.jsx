@@ -135,10 +135,6 @@ const guardarEdicion = async () => {
 
   return (
   <div className="space-y-8">
-    <div>
-      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Movimientos</h1>
-      <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
-    </div>
       <div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Órdenes de Producción</h1>
         <p className="text-slate-500 text-sm mt-1">Crea, filtra y da seguimiento a cada orden en planta.</p>

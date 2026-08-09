@@ -290,7 +290,11 @@ useEffect(() => {
 
 
   return (
-    <div className="space-y-8">
+  <div className="space-y-8">
+    <div>
+      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Movimientos</h1>
+      <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
+    </div>
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">
           Registrar Movimiento
