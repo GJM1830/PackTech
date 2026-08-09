@@ -9,27 +9,29 @@ function Clientes() {
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [editando, setEditando] = useState(null)
-const [guardando, setGuardando] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [filtro, setFiltro] = useState('')
 
-const abrirEdicion = (cliente) => {
-  setEditando({ id: cliente.id, ruc: cliente.ruc, nombre: cliente.nombre })
-}
-
-const guardarEdicion = async () => {
-  setGuardando(true)
-  try {
-    await axios.put(`https://packtech-production.up.railway.app/clientes/${editando.id}`, {
-      ruc: editando.ruc,
-      nombre: editando.nombre
-    })
-    setEditando(null)
-    cargarClientes()
-  } catch (err) {
-    alert(err.response?.data?.detail || 'Error al editar el cliente.')
-  } finally {
-    setGuardando(false)
+  const abrirEdicion = (cliente) => {
+    setEditando({ id: cliente.id, ruc: cliente.ruc, nombre: cliente.nombre })
   }
-}
+
+  const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+      await axios.put(`https://packtech-production.up.railway.app/clientes/${editando.id}`, {
+        ruc: editando.ruc,
+        nombre: editando.nombre
+      })
+      setEditando(null)
+      cargarClientes()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al editar el cliente.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   const cargarClientes = () => {
     axios.get('https://packtech-production.up.railway.app/clientes')
       .then((res) => setClientes(res.data))
@@ -66,6 +68,11 @@ const guardarEdicion = async () => {
       alert(err.response?.data?.detail || 'Error al eliminar el cliente.')
     }
   }
+
+  const clientesFiltrados = clientes.filter((c) =>
+    c.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+    c.ruc.includes(filtro)
+  )
 
   return (
     <div className="space-y-8">
@@ -111,6 +118,15 @@ const guardarEdicion = async () => {
 
       <div>
         <h2 className="text-xl font-bold text-slate-800 mb-4">Clientes</h2>
+
+        <input
+          type="text"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por nombre o RUC..."
+          className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-64 mb-4"
+        />
+
         <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
           <table className="min-w-full text-sm text-left">
             <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
@@ -122,7 +138,7 @@ const guardarEdicion = async () => {
               </tr>
             </thead>
             <tbody>
-              {clientes.map((c) => (
+              {clientesFiltrados.map((c) => (
                 <tr key={c.id} className="border-t border-slate-100">
                   <td className="px-4 py-3">{c.id}</td>
                   <td className="px-4 py-3">{c.ruc}</td>

@@ -222,7 +222,7 @@ useEffect(() => {
             value={form.descripcion}
             onChange={manejarCambio}
             className="w-full border border-slate-300 rounded px-3 py-2"
-            placeholder="Bolsa camiseta blanca 18x30"
+            placeholder="Hielo PackTech / Bolsa camiseta blanca 18x30 "
           />
         </div>
 
