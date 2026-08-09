@@ -82,6 +82,12 @@ const duplicarMovimiento = (mov) => {
   })
 }
 
+  const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+  }
+
   const guardarEdicion = async () => {
     setGuardando(true)
     try {
@@ -528,7 +534,7 @@ useEffect(() => {
                   <td className="px-4 py-3">{mov.unidad}</td>
                   <td className="px-4 py-3">{mov.merma}</td>
                   <td className="px-4 py-3">{mov.observacion}</td>
-                  <td className="px-4 py-3">{mov.fecha}</td>
+                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <MenuAcciones
