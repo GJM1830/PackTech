@@ -75,7 +75,11 @@ function Clientes() {
   )
 
   return (
-    <div className="space-y-8">
+  <div className="space-y-8">
+    <div>
+      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clientes</h1>
+      <p className="text-slate-500 text-sm mt-1">Administra los clientes registrados en el sistema.</p>
+    </div>
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">Nuevo Cliente</h2>
 
@@ -117,7 +121,6 @@ function Clientes() {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Clientes</h2>
 
         <input
           type="text"

@@ -517,9 +517,6 @@ useEffect(() => {
       </div>
 
     <div>
-      <h2 className="text-xl font-bold text-slate-800 mb-4">
-        Movimientos
-      </h2>
 
       {cargando && <p className="text-slate-500">Cargando...</p>}
       {error && <p className="text-red-600">{error}</p>}
