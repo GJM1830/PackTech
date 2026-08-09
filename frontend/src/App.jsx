@@ -24,6 +24,7 @@ function Ordenes() {
   const [filtroEstado, setFiltroEstado] = useState(null)
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
+  const [filtroCodigo, setFiltroCodigo] = useState('')
 
   const cargarOrdenes = () => {
     setCargando(true)
@@ -118,6 +119,7 @@ const guardarEdicion = async () => {
   const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
 
   const ordenesFiltradas = ordenesVisibles.filter((orden) => {
+    if (filtroCodigo && !orden.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
     if (filtroCliente && orden.cliente !== filtroCliente) return false
     if (filtroEstado && orden.estado !== filtroEstado) return false
     if (fechaDesde && orden.fecha < fechaDesde) return false
@@ -157,6 +159,13 @@ const guardarEdicion = async () => {
       {!cargando && !error && (
         <>
           <div className="flex flex-wrap items-center gap-2 mb-4">
+            <input
+              type="text"
+              value={filtroCodigo}
+              onChange={(e) => setFiltroCodigo(e.target.value)}
+              placeholder="Buscar N° Pedido..."
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+            />
             <FiltroDesplegable
               etiqueta="Cliente"
               opciones={clientesUnicos}
@@ -185,9 +194,9 @@ const guardarEdicion = async () => {
                 className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
               />
             </div>
-            {(filtroCliente || filtroEstado || fechaDesde || fechaHasta) && (
+            {(filtroCodigo || filtroCliente || filtroEstado || fechaDesde || fechaHasta) && (
               <button
-                onClick={() => { setFiltroCliente(null); setFiltroEstado(null); setFechaDesde(''); setFechaHasta('') }}
+                onClick={() => { setFiltroCodigo(''); setFiltroCliente(null); setFiltroEstado(null); setFechaDesde(''); setFechaHasta('') }}
                 className="text-sm text-slate-400 hover:text-slate-700 underline"
               >
                 Limpiar filtros
