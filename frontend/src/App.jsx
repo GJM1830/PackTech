@@ -243,7 +243,7 @@ const guardarEdicion = async () => {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
                         orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
-                        orden.estado === 'En proceso' ? 'bg-amber-100 text-amber-700' :
+                        orden.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                         'bg-slate-100 text-slate-500'
                       }`}>
                         {orden.estado}
