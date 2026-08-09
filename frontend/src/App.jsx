@@ -7,7 +7,7 @@ import OrdenDetalle from './OrdenDetalle'
 import Clientes from './Clientes'
 import Operarios from './Operarios'
 import MenuAcciones from './MenuAcciones'
-
+import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
 import ModalEditar from './ModalEditar'
 
@@ -20,6 +20,10 @@ function Ordenes() {
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [duplicarDesde, setDuplicarDesde] = useState(null)
+  const [filtroCliente, setFiltroCliente] = useState(null)
+  const [filtroEstado, setFiltroEstado] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
 
   const cargarOrdenes = () => {
     setCargando(true)
@@ -110,6 +114,17 @@ const guardarEdicion = async () => {
 
   const ordenesVisibles = ordenes.filter((o) => !(o.id in pendientesBorrar))
 
+  const clientesUnicos = [...new Set(ordenes.map(o => o.cliente))].sort()
+  const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
+
+  const ordenesFiltradas = ordenesVisibles.filter((orden) => {
+    if (filtroCliente && orden.cliente !== filtroCliente) return false
+    if (filtroEstado && orden.estado !== filtroEstado) return false
+    if (fechaDesde && orden.fecha < fechaDesde) return false
+    if (fechaHasta && orden.fecha > fechaHasta) return false
+    return true
+  })
+
   return (
     <div className="space-y-8">
       <div>
@@ -136,10 +151,50 @@ const guardarEdicion = async () => {
       )}
 
       <div>
-        {cargando && <p className="text-slate-500">Cargando...</p>}
-        {error && <p className="text-red-600">{error}</p>}
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
 
-        {!cargando && !error && (
+      {!cargando && !error && (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <FiltroDesplegable
+              etiqueta="Cliente"
+              opciones={clientesUnicos}
+              seleccionado={filtroCliente}
+              onSeleccionar={setFiltroCliente}
+            />
+            <FiltroDesplegable
+              etiqueta="Estado"
+              opciones={estadosUnicos}
+              seleccionado={filtroEstado}
+              onSeleccionar={setFiltroEstado}
+            />
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <span>Desde</span>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+              />
+              <span>hasta</span>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+              />
+            </div>
+            {(filtroCliente || filtroEstado || fechaDesde || fechaHasta) && (
+              <button
+                onClick={() => { setFiltroCliente(null); setFiltroEstado(null); setFechaDesde(''); setFechaHasta('') }}
+                className="text-sm text-slate-400 hover:text-slate-700 underline"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+
           <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
             <table className="min-w-full text-sm text-left">
               <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
@@ -157,7 +212,7 @@ const guardarEdicion = async () => {
               </tr>
             </thead>
               <tbody>
-                {ordenesVisibles.map((orden) => (
+                {ordenesFiltradas.map((orden) => (
                   <tr
                     key={orden.id}
                     onClick={() => navegar(`/ordenes/${orden.id}`)}
@@ -192,9 +247,10 @@ const guardarEdicion = async () => {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </div>
+            </div>
+        </>
+      )}
+    </div>
 
       {editando && (
         <ModalEditar
