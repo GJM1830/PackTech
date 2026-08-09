@@ -3,6 +3,7 @@ import axios from './api'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import DetalleMovimiento from './DetalleMovimiento'
+import FiltroDesplegable from './FiltroDesplegable'
 
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
@@ -31,6 +32,12 @@ function Movimientos() {
   const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [filtroCodigo, setFiltroCodigo] = useState('')
+  const [filtroProceso, setFiltroProceso] = useState(null)
+  const [filtroOperario, setFiltroOperario] = useState(null)
+  const [filtroMaquina, setFiltroMaquina] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
 
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
@@ -266,6 +273,22 @@ useEffect(() => {
   return () => clearTimeout(temporizador)
 }, [busquedaOperario, operarioSeleccionado])
 
+  const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
+  const operariosUnicos = [...new Set(movimientos.map(m => nombreOperario(m.operario_id)))].sort()
+  const maquinasUnicas = [...new Set(movimientos.map(m => m.maquina))].sort()
+
+  const movimientosFiltrados = movimientos.filter((mov) => {
+    const codigo = ordenes.find(o => o.id === mov.orden_id)?.codigo || String(mov.orden_id)
+    if (filtroCodigo && !codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
+    if (filtroProceso && mov.proceso !== filtroProceso) return false
+    if (filtroOperario && nombreOperario(mov.operario_id) !== filtroOperario) return false
+    if (filtroMaquina && mov.maquina !== filtroMaquina) return false
+    if (fechaDesde && mov.fecha < fechaDesde) return false
+    if (fechaHasta && mov.fecha > fechaHasta) return false
+    return true
+  })
+
+
   return (
     <div className="space-y-8">
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
@@ -498,11 +521,71 @@ useEffect(() => {
       {error && <p className="text-red-600">{error}</p>}
 
       {!cargando && !error && (
-        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+  <>
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      <input
+        type="text"
+        value={filtroCodigo}
+        onChange={(e) => setFiltroCodigo(e.target.value)}
+        placeholder="Buscar N° Pedido..."
+        className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+      />
+      <FiltroDesplegable
+        etiqueta="Proceso"
+        opciones={procesosUnicos}
+        seleccionado={filtroProceso}
+        onSeleccionar={setFiltroProceso}
+      />
+      <FiltroDesplegable
+        etiqueta="Operario"
+        opciones={operariosUnicos}
+        seleccionado={filtroOperario}
+        onSeleccionar={setFiltroOperario}
+      />
+      <FiltroDesplegable
+        etiqueta="Máquina"
+        opciones={maquinasUnicas}
+        seleccionado={filtroMaquina}
+        onSeleccionar={setFiltroMaquina}
+      />
+      <div className="flex items-center gap-1.5 text-sm text-slate-500">
+        <span>Desde</span>
+        <input
+          type="date"
+          value={fechaDesde}
+          onChange={(e) => setFechaDesde(e.target.value)}
+          className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+        />
+        <span>hasta</span>
+        <input
+          type="date"
+          value={fechaHasta}
+          onChange={(e) => setFechaHasta(e.target.value)}
+          className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+        />
+      </div>
+      {(filtroCodigo || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
+        <button
+          onClick={() => {
+            setFiltroCodigo('')
+            setFiltroProceso(null)
+            setFiltroOperario(null)
+            setFiltroMaquina(null)
+            setFechaDesde('')
+            setFechaHasta('')
+          }}
+          className="text-sm text-slate-400 hover:text-slate-700 underline"
+        >
+          Limpiar filtros
+        </button>
+      )}
+    </div>
+
+    <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
           <table className="min-w-full text-sm text-left">
             <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
               <tr>
-                <th className="px-4 py-3">Orden</th>
+                <th className="px-4 py-3">N° Pedido</th>
                 <th className="px-4 py-3">Proceso</th>
                 <th className="px-4 py-3">Operario</th>
                 <th className="px-4 py-3">Máquina</th>
@@ -517,7 +600,7 @@ useEffect(() => {
               </tr>
             </thead>
             <tbody>
-              {movimientos.map((mov) => (
+              {movimientosFiltrados.map((mov) => (
                 <tr
                   key={mov.id}
                   onClick={() => setMovimientoAbierto(mov)}
@@ -547,8 +630,9 @@ useEffect(() => {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+          </div>
+      </>
+    )}
     </div>
 
     {movimientoAbierto && (
