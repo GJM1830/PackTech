@@ -241,7 +241,12 @@ function App() {
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
         
         <button
-        onClick={() => { localStorage.removeItem('packtech_clave'); window.location.reload() }}
+        onClick={() => {
+          localStorage.removeItem('packtech_clave')
+          localStorage.removeItem('packtech_rol')
+          localStorage.removeItem('packtech_nombre')
+          window.location.reload()
+        }}
         className="ml-auto text-slate-300 hover:text-white text-sm"
       >
         Salir

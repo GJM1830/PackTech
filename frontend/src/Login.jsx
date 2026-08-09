@@ -1,13 +1,29 @@
 import { useState } from 'react'
+import axios from 'axios'
 
 function Login({ onIngresar }) {
   const [clave, setClave] = useState('')
-  const [error, setError] = useState(false)
+  const [error, setError] = useState(null)
+  const [verificando, setVerificando] = useState(false)
 
-  const manejarEnvio = (e) => {
+  const manejarEnvio = async (e) => {
     e.preventDefault()
-    localStorage.setItem('packtech_clave', clave)
-    onIngresar(clave)
+    setVerificando(true)
+    setError(null)
+
+    try {
+      const res = await axios.post('https://packtech-production.up.railway.app/login', { clave })
+
+      localStorage.setItem('packtech_clave', clave)
+      localStorage.setItem('packtech_rol', res.data.rol)
+      localStorage.setItem('packtech_nombre', res.data.nombre || '')
+
+      onIngresar()
+    } catch (err) {
+      setError('Clave incorrecta, intenta de nuevo.')
+    } finally {
+      setVerificando(false)
+    }
   }
 
   return (
@@ -28,14 +44,15 @@ function Login({ onIngresar }) {
           />
 
           {error && (
-            <p className="text-red-600 text-sm">Clave incorrecta, intenta de nuevo.</p>
+            <p className="text-red-600 text-sm">{error}</p>
           )}
 
           <button
             type="submit"
-            className="w-full bg-slate-900 text-white rounded-lg py-2.5 font-medium hover:bg-slate-800 transition-all"
+            disabled={verificando}
+            className="w-full bg-slate-900 text-white rounded-lg py-2.5 font-medium hover:bg-slate-800 transition-all disabled:opacity-50"
           >
-            Ingresar
+            {verificando ? 'Verificando...' : 'Ingresar'}
           </button>
         </form>
       </div>
