@@ -198,7 +198,11 @@ def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     return orden
 
 def obtener_ordenes_produccion(db: Session):
-    ordenes = db.query(models.OrdenProduccion).all()
+    ordenes = (
+        db.query(models.OrdenProduccion)
+        .order_by(models.OrdenProduccion.id.desc())
+        .all()
+    )
 
     for orden in ordenes:
         orden.ruc = orden.cliente_obj.ruc
