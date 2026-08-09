@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from './api'
+import DetalleMovimiento from './DetalleMovimiento'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
@@ -13,6 +14,7 @@ function OrdenDetalle() {
   const [editandoPlan, setEditandoPlan] = useState(false)
   const [seleccionados, setSeleccionados] = useState([])
   const [guardando, setGuardando] = useState(false)
+  const [movimientoAbierto, setMovimientoAbierto] = useState(null)
 
   const cargar = async () => {
     try {
@@ -170,7 +172,11 @@ function OrdenDetalle() {
             </thead>
             <tbody>
               {movimientos.map((mov) => (
-                <tr key={mov.id} className="border-t border-slate-100">
+                <tr
+                  key={mov.id}
+                  onClick={() => setMovimientoAbierto(mov)}
+                  className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                >
                   <td className="px-4 py-3 font-medium text-slate-800">{mov.proceso}</td>
                   <td className="px-4 py-3">{mov.operario_id}</td>
                   <td className="px-4 py-3">{mov.maquina}</td>
@@ -223,6 +229,14 @@ function OrdenDetalle() {
             </div>
           </div>
         </div>
+      )}
+
+      {movimientoAbierto && (
+        <DetalleMovimiento
+          movimiento={movimientoAbierto}
+          orden={orden}
+          onCerrar={() => setMovimientoAbierto(null)}
+        />
       )}
     </div>
   )
