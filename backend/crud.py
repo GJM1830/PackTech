@@ -305,7 +305,11 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
 
 
 def obtener_movimientos(db: Session):
-    return db.query(models.Movimiento).all()
+    return (
+        db.query(models.Movimiento)
+        .order_by(models.Movimiento.id.desc())
+        .all()
+    )
 
 
 def buscar_operarios(db: Session, q: str):
@@ -317,13 +321,11 @@ def buscar_operarios(db: Session, q: str):
         .all()
     )
 
-def obtener_movimientos_por_orden(
-    db: Session,
-    orden_id: int
-):
+def obtener_movimientos_por_orden(db: Session, orden_id: int):
     return (
         db.query(models.Movimiento)
         .filter(models.Movimiento.orden_id == orden_id)
+        .order_by(models.Movimiento.id.desc())
         .all()
     )
 
