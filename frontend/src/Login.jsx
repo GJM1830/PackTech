@@ -50,7 +50,7 @@ function Login({ onIngresar }) {
           <button
             type="submit"
             disabled={verificando}
-            className="w-full bg-slate-900 text-white rounded-lg py-2.5 font-medium hover:bg-slate-800 transition-all disabled:opacity-50"
+            className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 transition-all disabled:opacity-50"
           >
             {verificando ? 'Verificando...' : 'Ingresar'}
           </button>
