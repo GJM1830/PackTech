@@ -81,7 +81,7 @@ function Clientes() {
       <p className="text-slate-500 text-sm mt-1">Administra los clientes registrados en el sistema.</p>
     </div>
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Nuevo Cliente</h2>
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Cliente</h2>
 
         <form onSubmit={crearCliente} className="space-y-4">
           <div>

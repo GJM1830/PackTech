@@ -119,7 +119,7 @@ useEffect(() => {
   return (
     <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-bold text-slate-800 mb-4">
-        Nueva Orden de Producción
+        Registrar Orden de Producción
       </h2>
 
       <form onSubmit={manejarEnvio} className="space-y-4">

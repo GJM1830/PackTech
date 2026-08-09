@@ -82,7 +82,7 @@ function Operarios() {
       <p className="text-slate-500 text-sm mt-1">Administra el personal de planta registrado en el sistema.</p>
     </div>
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Nuevo Operario</h2>
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Operario</h2>
 
         <form onSubmit={crearOperario} className="space-y-4">
           <div>
