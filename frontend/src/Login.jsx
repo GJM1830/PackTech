@@ -29,8 +29,8 @@ function Login({ onIngresar }) {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-sm w-full bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-        <h1 className="text-xl font-bold text-slate-800 mb-1">📦 PackTech</h1>
-        <p className="text-slate-500 text-sm mb-6">Ingresa la clave de acceso</p>
+        <h1 className="text-2xl font-bold text-slate-900 mb-1 tracking-tight">PackTech</h1>
+        <p className="text-slate-500 text-sm mb-6">Sistema de Gestión de Producción</p>
 
         <form onSubmit={manejarEnvio} className="space-y-4">
           <input
