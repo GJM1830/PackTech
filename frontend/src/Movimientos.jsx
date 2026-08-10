@@ -301,7 +301,7 @@ useEffect(() => {
   return (
   <div className="space-y-8">
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Movimientos</h1>
+      <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Movimientos</h1>
       <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
     </div>
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
@@ -325,7 +325,7 @@ useEffect(() => {
                 }}
                 required
                 autoComplete="off"
-                className="w-full border border-slate-300 rounded px-3 py-2"
+                className="w-full border-slate-200 rounded px-3 py-2"
                 placeholder="Escribe el código (ej. OP-001)"
               />
 
@@ -601,7 +601,7 @@ useEffect(() => {
 
     <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
           <table className="min-w-full text-sm text-left">
-            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+            <thead className="bg-slate-50 text-slate-600 uppercase text-xs">
               <tr>
                 <th className="px-4 py-3">N° Pedido</th>
                 <th className="px-4 py-3">Cliente</th>
@@ -621,7 +621,7 @@ useEffect(() => {
                 <tr
                   key={mov.id}
                   onClick={() => setMovimientoAbierto(mov)}
-                  className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                  className="border-t border-slate-100 cursor-pointer hover:bg-blue-50/50"
                 >
                   <td className="px-4 py-3 font-medium text-slate-800">
                     {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
