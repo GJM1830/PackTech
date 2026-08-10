@@ -5,6 +5,12 @@ import ModalEditar from './ModalEditar'
 import DetalleMovimiento from './DetalleMovimiento'
 import FiltroDesplegable from './FiltroDesplegable'
 
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
   'Laminado': ['Laminadora-01', 'Laminadora-02'],
@@ -618,7 +624,7 @@ useEffect(() => {
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>
-                  <td className="px-4 py-3">{mov.fecha}</td>
+                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <MenuAcciones

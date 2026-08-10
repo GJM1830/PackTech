@@ -5,6 +5,12 @@ import DetalleMovimiento from './DetalleMovimiento'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
 function OrdenDetalle() {
   const { id } = useParams()
   const [orden, setOrden] = useState(null)
@@ -185,7 +191,7 @@ function OrdenDetalle() {
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>
-                  <td className="px-4 py-3">{mov.fecha}</td>
+                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                 </tr>
               ))}
