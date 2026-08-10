@@ -222,7 +222,7 @@ function OrdenDetalle() {
               <button
                 onClick={guardarPlan}
                 disabled={guardando}
-                className="flex-1 bg-slate-900 text-white rounded-lg py-2 font-medium hover:bg-slate-800 disabled:opacity-50"
+                className="flex-1 bg-green-600 text-white rounded-lg py-2 font-medium hover:bg-green-700 disabled:opacity-50"
               >
                 {guardando ? 'Guardando...' : 'Guardar'}
               </button>

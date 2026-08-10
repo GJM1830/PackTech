@@ -145,11 +145,11 @@ const guardarEdicion = async () => {
       {Object.keys(pendientesBorrar).length > 0 && (
         <div className="space-y-2">
           {Object.keys(pendientesBorrar).map((id) => (
-            <div key={id} className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm">
-              <span className="text-amber-800">Orden eliminada en unos segundos...</span>
+            <div key={id} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm">
+              <span className="text-green-800">Orden eliminada en unos segundos...</span>
               <button
                 onClick={() => deshacerBorrado(id)}
-                className="text-amber-900 font-medium underline"
+                className="text-green-700 font-medium underline hover:text-green-800"
               >
                 Deshacer
               </button>

@@ -147,7 +147,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
             <button
               type="submit"
               disabled={enviando}
-              className="bg-slate-900 text-white rounded-lg px-5 py-2 font-medium hover:bg-slate-800 disabled:opacity-50 whitespace-nowrap"
+              className="bg-green-600 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
             >
               {enviando ? 'Agregando...' : `+ ${etiqueta}`}
             </button>
