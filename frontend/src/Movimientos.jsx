@@ -518,7 +518,7 @@ useEffect(() => {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-green-600 text-white rounded-lg py-2.5 font-medium hover:bg-green-700 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {enviando ? 'Registrando...' : 'Registrar Movimiento'}
           </button>

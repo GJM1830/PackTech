@@ -30,7 +30,7 @@ function ModalEditar({ titulo, campos, valores, onCambio, onGuardar, onCerrar, g
           <button
             onClick={onGuardar}
             disabled={guardando}
-            className="flex-1 bg-green-600 text-white rounded-lg py-2 font-medium hover:bg-green-700 disabled:opacity-50"
+            className="flex-1 bg-green-700 text-white rounded-lg py-2 font-medium hover:bg-green-800 disabled:opacity-50"
           >
             {guardando ? 'Guardando...' : 'Guardar'}
           </button>
