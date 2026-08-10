@@ -159,13 +159,11 @@ function OrdenDetalle() {
             <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
               <tr>
                 <th className="px-4 py-3">Proceso</th>
-                <th className="px-4 py-3">Operario</th>
                 <th className="px-4 py-3">Máquina</th>
+                <th className="px-4 py-3">Operario</th>
                 <th className="px-4 py-3">Entrada</th>
                 <th className="px-4 py-3">Salida</th>
                 <th className="px-4 py-3">Unidad</th>
-                <th className="px-4 py-3">Merma</th>
-                <th className="px-4 py-3">Observación</th>
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Hora</th>
               </tr>
@@ -178,13 +176,11 @@ function OrdenDetalle() {
                   className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
                 >
                   <td className="px-4 py-3 font-medium text-slate-800">{mov.proceso}</td>
-                  <td className="px-4 py-3">{mov.operario_id}</td>
                   <td className="px-4 py-3">{mov.maquina}</td>
+                  <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>
-                  <td className="px-4 py-3">{mov.merma}</td>
-                  <td className="px-4 py-3">{mov.observacion}</td>
                   <td className="px-4 py-3">{mov.fecha}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                 </tr>
