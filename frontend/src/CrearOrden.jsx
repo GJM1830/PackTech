@@ -27,21 +27,25 @@ function CrearOrden({ onCreada, duplicarDesde }) {
     })
   }
 
-useEffect(() => {
-  if (duplicarDesde) {
-    setForm({
-      codigo: '',
-      ruc: duplicarDesde.ruc,
-      nombre_cliente: duplicarDesde.cliente,
-      numero_std: duplicarDesde.numero_std,
-      descripcion: duplicarDesde.descripcion || '',
-      cantidad: duplicarDesde.cantidad,
-      unidad: duplicarDesde.unidad,
-      estado: 'Pendiente'
-    })
-    setClienteSeleccionado({ ruc: duplicarDesde.ruc, nombre: duplicarDesde.cliente })
-  }
-}, [duplicarDesde])
+  useEffect(() => {
+    if (duplicarDesde) {
+      setForm({
+        codigo: '',
+        ruc: duplicarDesde.ruc,
+        nombre_cliente: duplicarDesde.cliente,
+        numero_std: duplicarDesde.numero_std,
+        descripcion: duplicarDesde.descripcion || '',
+        cantidad: duplicarDesde.cantidad,
+        unidad: duplicarDesde.unidad,
+        estado: 'Pendiente'
+      })
+
+      setClienteSeleccionado({
+        ruc: duplicarDesde.ruc,
+        nombre: duplicarDesde.cliente
+      })
+    }
+  }, [duplicarDesde])
 
   useEffect(() => {
     if (form.ruc.trim().length < 4 || clienteSeleccionado) {
@@ -50,7 +54,9 @@ useEffect(() => {
     }
 
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/clientes/buscar?q=${form.ruc}`)
+      axios.get(
+        `https://packtech-production.up.railway.app/clientes/buscar?q=${form.ruc}`
+      )
         .then((res) => setSugerenciasClientes(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -98,6 +104,7 @@ useEffect(() => {
         setError(err.response.data?.detail || 'Error al crear la orden.')
       } else {
         setExito(true)
+
         setForm({
           codigo: '',
           ruc: '',
@@ -108,7 +115,9 @@ useEffect(() => {
           unidad: 'kg',
           estado: 'Pendiente'
         })
+
         setClienteSeleccionado(null)
+
         if (onCreada) onCreada()
       }
     } finally {
@@ -116,16 +125,25 @@ useEffect(() => {
     }
   }
 
-  return (
-    <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-      <h2 className="text-xl font-bold text-slate-800 mb-5">
-        Registrar Orden de Producción
-      </h2>
+  const estiloInput =
+    "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
 
-      <form onSubmit={manejarEnvio} className="space-y-4">
+  return (
+    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-slate-800">
+          Registrar Orden de Producción
+        </h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Ingresa los datos necesarios para registrar una nueva orden.
+        </p>
+      </div>
+
+      <form onSubmit={manejarEnvio} className="space-y-5">
 
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
             Número de Pedido
           </label>
 
@@ -135,13 +153,13 @@ useEffect(() => {
             value={form.codigo}
             onChange={manejarCambio}
             required
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
+            className={estiloInput}
             placeholder="OP-002"
           />
         </div>
 
         <div className="relative">
-          <label className="block text-sm font-medium text-slate-600 mb-1">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
             RUC
           </label>
 
@@ -156,33 +174,44 @@ useEffect(() => {
             }}
             required
             autoComplete="off"
-            className="w-full border border-slate-300 rounded px-3 py-2"
+            className={estiloInput}
             placeholder="20100070970"
           />
 
           {sugerenciasClientes.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+
               {sugerenciasClientes.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => {
                     setClienteSeleccionado(c)
-                    setForm({ ...form, ruc: c.ruc, nombre_cliente: c.nombre })
+                    setForm({
+                      ...form,
+                      ruc: c.ruc,
+                      nombre_cliente: c.nombre
+                    })
                     setSugerenciasClientes([])
                   }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-300 last:border-0"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0 transition"
                 >
-                  <span className="font-medium text-slate-800">{c.ruc}</span>
-                  <span className="text-slate-400"> · {c.nombre}</span>
+                  <span className="font-medium text-slate-800">
+                    {c.ruc}
+                  </span>
+
+                  <span className="text-slate-500">
+                    {' · '}{c.nombre}
+                  </span>
                 </button>
               ))}
+
             </div>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
             Cliente
           </label>
 
@@ -191,13 +220,13 @@ useEffect(() => {
             name="nombre_cliente"
             value={form.nombre_cliente}
             onChange={manejarCambio}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
+            className={estiloInput}
             placeholder="Se autocompleta si el RUC existe, o escríbelo si es nuevo"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
             Número Estándar
           </label>
 
@@ -207,12 +236,12 @@ useEffect(() => {
             value={form.numero_std}
             onChange={manejarCambio}
             required
-            className="w-full border border-slate-300 rounded px-3 py-2"
+            className={estiloInput}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
             Producto / Descripción
           </label>
 
@@ -221,15 +250,15 @@ useEffect(() => {
             name="descripcion"
             value={form.descripcion}
             onChange={manejarCambio}
-            className="w-full border border-slate-300 rounded px-3 py-2"
-            placeholder="Hielo PackTech / Bolsa camiseta blanca 18x30 "
+            className={estiloInput}
+            placeholder="Hielo PackTech / Bolsa camiseta blanca 18x30"
           />
         </div>
 
         <div className="flex gap-4">
 
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-600 mb-1">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
               Cantidad
             </label>
 
@@ -240,12 +269,12 @@ useEffect(() => {
               value={form.cantidad}
               onChange={manejarCambio}
               required
-              className="w-full border border-slate-300 rounded px-3 py-2"
+              className={estiloInput}
             />
           </div>
 
           <div className="w-32">
-            <label className="block text-sm font-medium text-slate-600 mb-1">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
               Unidad
             </label>
 
@@ -253,7 +282,7 @@ useEffect(() => {
               name="unidad"
               value={form.unidad}
               onChange={manejarCambio}
-              className="w-full border border-slate-300 rounded px-3 py-2"
+              className={estiloInput}
             >
               <option value="kg">kg</option>
               <option value="unidades">unidades</option>
@@ -264,21 +293,23 @@ useEffect(() => {
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm">{error}</p>
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2.5 text-sm">
+            {error}
+          </div>
         )}
 
         {exito && (
-          <p className="text-green-600 text-sm">
+          <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2.5 text-sm font-medium">
             Orden creada correctamente.
-          </p>
+          </div>
         )}
 
         <button
           type="submit"
           disabled={enviando}
-          className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 active:scale-[0.98] transition-all disabled:opacity-50"
+          className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {enviando ? 'Creando...' : 'Registrar Orden'}
+          {enviando ? 'Registrando...' : 'Registrar Orden'}
         </button>
 
       </form>
