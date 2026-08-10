@@ -170,7 +170,7 @@ const guardarEdicion = async () => {
               value={filtroCodigo}
               onChange={(e) => setFiltroCodigo(e.target.value)}
               placeholder="Buscar N° Pedido..."
-              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
             />
             <FiltroDesplegable
               etiqueta="Cliente"
