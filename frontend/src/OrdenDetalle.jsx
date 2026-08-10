@@ -9,6 +9,7 @@ function OrdenDetalle() {
   const { id } = useParams()
   const [orden, setOrden] = useState(null)
   const [movimientos, setMovimientos] = useState([])
+  const [operarios, setOperarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [editandoPlan, setEditandoPlan] = useState(false)
@@ -18,14 +19,16 @@ function OrdenDetalle() {
 
   const cargar = async () => {
     try {
-      const [ordenesRes, movRes] = await Promise.all([
+      const [ordenesRes, movRes, opRes] = await Promise.all([
         axios.get('https://packtech-production.up.railway.app/ordenes-produccion'),
-        axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`)
+        axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`),
+        axios.get('https://packtech-production.up.railway.app/operarios')
       ])
 
       const ordenEncontrada = ordenesRes.data.find(o => o.id === parseInt(id))
       setOrden(ordenEncontrada)
       setMovimientos(movRes.data)
+      setOperarios(opRes.data)
       setCargando(false)
     } catch (err) {
       console.error(err)
@@ -37,6 +40,8 @@ function OrdenDetalle() {
   useEffect(() => {
     cargar()
   }, [id])
+
+  const nombreOperario = (opId) => operarios.find(o => o.id === opId)?.nombre || opId
 
   const abrirPlanificador = () => {
     const actuales = orden?.procesos_plan ? orden.procesos_plan.split(',') : []
@@ -92,7 +97,7 @@ function OrdenDetalle() {
           <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${
             orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
             orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
-            orden.estado === 'En proceso' ? 'bg-amber-100 text-amber-700' :
+            orden.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
             'bg-slate-100 text-slate-500'
           }`}>
             Estado: {orden.estado}
@@ -125,13 +130,12 @@ function OrdenDetalle() {
               const completado = procesosCompletados.has(proceso)
               const esActual = !completado && orden?.ultimo_proceso !== 'Sin iniciar' &&
                 procesosPlan.findIndex(p => !procesosCompletados.has(p)) === i
-              const pendiente = !completado && !esActual
 
               return (
                 <div key={proceso} className="flex items-center gap-2">
                   <div className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                     completado ? 'bg-green-100 text-green-700 border-green-200' :
-                    esActual ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                    esActual ? 'bg-blue-50 text-blue-700 border-blue-300' :
                     'bg-slate-50 text-slate-400 border-slate-200'
                   }`}>
                     {completado ? '✓ ' : esActual ? '● ' : ''}{proceso}
