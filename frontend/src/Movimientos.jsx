@@ -325,7 +325,7 @@ useEffect(() => {
                 }}
                 required
                 autoComplete="off"
-                className="w-full border border-slate-300 rounded px-3 py-2"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
                 placeholder="Escribe el código (ej. OP-001)"
               />
 
@@ -341,7 +341,7 @@ useEffect(() => {
                         setForm({ ...form, orden_id: orden.id })
                         setSugerenciasOrdenes([])
                       }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0 transition-colors"
                     >
                       <span className="font-medium text-slate-800">{orden.codigo}</span>
                       <span className="text-slate-400"> · {orden.cliente}</span>
@@ -518,7 +518,7 @@ useEffect(() => {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full bg-green-600 text-white rounded-lg py-2.5 font-medium hover:bg-green-700 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {enviando ? 'Registrando...' : 'Registrar Movimiento'}
           </button>
