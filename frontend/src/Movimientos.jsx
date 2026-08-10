@@ -44,6 +44,7 @@ function Movimientos() {
   const [filtroMaquina, setFiltroMaquina] = useState(null)
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
+  const [filtroCliente, setFiltroCliente] = useState('')
 
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
@@ -285,7 +286,9 @@ useEffect(() => {
 
   const movimientosFiltrados = movimientos.filter((mov) => {
     const codigo = ordenes.find(o => o.id === mov.orden_id)?.codigo || String(mov.orden_id)
+    const cliente = ordenes.find(o => o.id === mov.orden_id)?.cliente || ''
     if (filtroCodigo && !codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
+    if (filtroCliente && !cliente.toLowerCase().includes(filtroCliente.toLowerCase())) return false
     if (filtroProceso && mov.proceso !== filtroProceso) return false
     if (filtroOperario && nombreOperario(mov.operario_id) !== filtroOperario) return false
     if (filtroMaquina && mov.maquina !== filtroMaquina) return false
@@ -537,6 +540,13 @@ useEffect(() => {
         placeholder="Buscar N° Pedido..."
         className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
       />
+      <input
+        type="text"
+        value={filtroCliente}
+        onChange={(e) => setFiltroCliente(e.target.value)}
+        placeholder="Buscar Cliente..."
+        className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+      />
       <FiltroDesplegable
         etiqueta="Proceso"
         opciones={procesosUnicos}
@@ -571,16 +581,17 @@ useEffect(() => {
           className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
         />
       </div>
-      {(filtroCodigo || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
-        <button
-          onClick={() => {
-            setFiltroCodigo('')
-            setFiltroProceso(null)
-            setFiltroOperario(null)
-            setFiltroMaquina(null)
-            setFechaDesde('')
-            setFechaHasta('')
-          }}
+      {(filtroCodigo || filtroCliente || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
+      <button
+        onClick={() => {
+          setFiltroCodigo('')
+          setFiltroCliente('')
+          setFiltroProceso(null)
+          setFiltroOperario(null)
+          setFiltroMaquina(null)
+          setFechaDesde('')
+          setFechaHasta('')
+        }}
           className="text-sm text-slate-400 hover:text-slate-700 underline"
         >
           Limpiar filtros
@@ -624,7 +635,7 @@ useEffect(() => {
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>
-                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
+                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>  
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <MenuAcciones
