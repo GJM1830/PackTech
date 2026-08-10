@@ -117,7 +117,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm border border-slate-300 p-6">
+    <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm border border-slate-100 p-6">
       <h2 className="text-xl font-bold text-slate-800 mb-5">
         Registrar Orden de Producción
       </h2>
