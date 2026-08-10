@@ -72,16 +72,39 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-slate-800">Detalle del Movimiento</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              {orden?.cliente || 'Cliente desconocido'} · N° Std {orden?.numero_std ?? '-'} · {movimiento.proceso}
-            </p>
-          </div>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-700 text-xl leading-none">
-            ×
-          </button>
-        </div>
+  <div>
+    <h3 className="text-lg font-bold text-slate-800">Detalle del Movimiento</h3>
+    <p className="text-sm text-slate-500 mt-1">
+      {orden?.cliente || 'Cliente desconocido'} · N° Std {orden?.numero_std ?? '-'} · {movimiento.proceso}
+    </p>
+  </div>
+  <button onClick={onCerrar} className="text-slate-400 hover:text-slate-700 text-xl leading-none">
+    ×
+  </button>
+</div>
+
+<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+  <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+    <p className="text-xs text-slate-400 uppercase tracking-wide">Entrada</p>
+    <p className="text-sm font-semibold text-slate-800">{movimiento.entrada} {movimiento.unidad}</p>
+  </div>
+  <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+    <p className="text-xs text-slate-400 uppercase tracking-wide">Salida declarada</p>
+    <p className="text-sm font-semibold text-slate-800">{movimiento.salida} {movimiento.unidad}</p>
+  </div>
+  <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+    <p className="text-xs text-blue-500 uppercase tracking-wide">Merma teórica</p>
+    <p className="text-sm font-semibold text-blue-800">
+      {(movimiento.entrada - movimiento.salida).toFixed(2)} {movimiento.unidad}
+    </p>
+  </div>
+  <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 col-span-2 sm:col-span-1">
+    <p className="text-xs text-slate-400 uppercase tracking-wide">Observación</p>
+    <p className="text-sm font-medium text-slate-700 truncate">
+      {movimiento.observacion?.trim() ? movimiento.observacion : 'Sin observación'}
+    </p>
+  </div>
+</div>
 
         {detalles.length === 0 && (
           <div className="mb-4">
@@ -175,11 +198,39 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
         )}
 
         {detalles.length > 0 && (
-          <div className="mt-4 bg-slate-800 text-white rounded-lg px-4 py-3 flex justify-between text-sm font-medium">
+        <>
+            <div className="mt-4 bg-slate-800 text-white rounded-lg px-4 py-3 flex flex-wrap justify-between gap-2 text-sm font-medium">
             <span>Total: {detalles.length} {etiquetaPlural.toLowerCase()}</span>
             <span>Peso: {totalPeso.toFixed(2)} kg</span>
             <span>Millares: {totalMillares.toFixed(2)}</span>
-          </div>
+            </div>
+
+            {(() => {
+            const diferencia = totalPeso - Number(movimiento.salida)
+            const porcentaje = movimiento.salida > 0 ? (diferencia / movimiento.salida) * 100 : 0
+            const esAlarmante = Math.abs(porcentaje) > 5
+
+            return (
+                <div className={`mt-3 rounded-lg px-4 py-3 text-sm font-medium border ${
+                esAlarmante
+                    ? 'bg-red-50 border-red-200 text-red-700'
+                    : 'bg-green-50 border-green-200 text-green-700'
+                }`}>
+                <div className="flex justify-between items-center">
+                    <span>Diferencia vs. salida declarada</span>
+                    <span className="font-bold">
+                    {diferencia > 0 ? '+' : ''}{diferencia.toFixed(2)} kg ({porcentaje.toFixed(1)}%)
+                    </span>
+                </div>
+                {esAlarmante && (
+                    <p className="text-xs mt-1 text-red-600">
+                    La diferencia supera el 5% — revisar el registro de {etiquetaPlural.toLowerCase()} o la salida declarada.
+                    </p>
+                )}
+                </div>
+            )
+            })()}
+        </>
         )}
       </div>
     </div>

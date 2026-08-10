@@ -587,14 +587,13 @@ useEffect(() => {
             <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
               <tr>
                 <th className="px-4 py-3">N° Pedido</th>
+                <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Proceso</th>
-                <th className="px-4 py-3">Operario</th>
                 <th className="px-4 py-3">Máquina</th>
+                <th className="px-4 py-3">Operario</th>
                 <th className="px-4 py-3">Entrada</th>
                 <th className="px-4 py-3">Salida</th>
                 <th className="px-4 py-3">Unidad</th>
-                <th className="px-4 py-3">Merma</th>
-                <th className="px-4 py-3">Observación</th>
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Hora</th>
                 <th className="px-4 py-3 text-right"></th>
@@ -610,15 +609,16 @@ useEffect(() => {
                   <td className="px-4 py-3 font-medium text-slate-800">
                     {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
                   </td>
+                  <td className="px-4 py-3">
+                    {ordenes.find(o => o.id === mov.orden_id)?.cliente || '—'}
+                  </td>
                   <td className="px-4 py-3">{mov.proceso}</td>
-                  <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
                   <td className="px-4 py-3">{mov.maquina}</td>
+                  <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>
-                  <td className="px-4 py-3">{mov.merma}</td>
-                  <td className="px-4 py-3">{mov.observacion}</td>
-                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
+                  <td className="px-4 py-3">{mov.fecha}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <MenuAcciones
