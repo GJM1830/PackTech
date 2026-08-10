@@ -135,9 +135,6 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         <h2 className="text-xl font-bold text-slate-800">
           Registrar Orden de Producción
         </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Ingresa los datos necesarios para registrar una nueva orden.
-        </p>
       </div>
 
       <form onSubmit={manejarEnvio} className="space-y-5">
