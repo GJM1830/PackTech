@@ -117,7 +117,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm border border-slate-300 p-6">
       <h2 className="text-xl font-bold text-slate-800 mb-5">
         Registrar Orden de Producción
       </h2>
@@ -135,7 +135,7 @@ useEffect(() => {
             value={form.codigo}
             onChange={manejarCambio}
             required
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
             placeholder="OP-002"
           />
         </div>
@@ -161,7 +161,7 @@ useEffect(() => {
           />
 
           {sugerenciasClientes.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
               {sugerenciasClientes.map((c) => (
                 <button
                   key={c.id}
@@ -171,7 +171,7 @@ useEffect(() => {
                     setForm({ ...form, ruc: c.ruc, nombre_cliente: c.nombre })
                     setSugerenciasClientes([])
                   }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-300 last:border-0"
                 >
                   <span className="font-medium text-slate-800">{c.ruc}</span>
                   <span className="text-slate-400"> · {c.nombre}</span>
@@ -191,7 +191,7 @@ useEffect(() => {
             name="nombre_cliente"
             value={form.nombre_cliente}
             onChange={manejarCambio}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
             placeholder="Se autocompleta si el RUC existe, o escríbelo si es nuevo"
           />
         </div>

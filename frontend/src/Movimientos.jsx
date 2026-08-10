@@ -325,7 +325,7 @@ useEffect(() => {
                 }}
                 required
                 autoComplete="off"
-                className="w-full border-slate-200 rounded px-3 py-2"
+                className="w-full border-slate-300 rounded px-3 py-2"
                 placeholder="Escribe el código (ej. OP-001)"
               />
 
