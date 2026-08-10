@@ -127,14 +127,14 @@ function Clientes() {
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
           placeholder="Buscar por nombre o RUC..."
-          className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-64 mb-4"
+          className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm w-64 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
         />
 
-        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
           <table className="min-w-full text-sm text-left">
-            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
               <tr>
-                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">ID</th> 
                 <th className="px-4 py-3">RUC</th>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3 text-right"></th>
@@ -142,7 +142,7 @@ function Clientes() {
             </thead>
             <tbody>
               {clientesFiltrados.map((c) => (
-                <tr key={c.id} className="border-t border-slate-100">
+                <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">{c.id}</td>
                   <td className="px-4 py-3">{c.ruc}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
