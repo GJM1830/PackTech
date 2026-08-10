@@ -21,7 +21,7 @@ function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {
           e.stopPropagation()
           setAbierto(!abierto)
         }}
-        className="text-slate-400 hover:text-slate-700 px-2 py-1 rounded hover:bg-slate-100"
+        className="text-slate-400 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
       >
         ⋮
       </button>
@@ -34,7 +34,7 @@ function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {
           {onEditar && (
             <button
               onClick={() => { setAbierto(false); onEditar() }}
-              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700"
             >
               Editar
             </button>
@@ -42,7 +42,7 @@ function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {
           {onDuplicar && (
             <button
               onClick={() => { setAbierto(false); onDuplicar() }}
-              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700"
             >
               Duplicar
             </button>
