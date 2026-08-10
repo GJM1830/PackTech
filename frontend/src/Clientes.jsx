@@ -113,7 +113,7 @@ function Clientes() {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full bg-green-600 text-white rounded-lg py-2.5 font-medium hover:bg-green-700 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {enviando ? 'Creando...' : 'Registrar Cliente'}
           </button>
