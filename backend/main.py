@@ -10,6 +10,7 @@ from routers.clientes import router as clientes_router
 from routers.operarios import router as operarios_router
 from routers.detalles import router as detalles_router
 from routers.auth import router as auth_router
+from routers.tipos_merma import router as tipos_merma_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -46,7 +47,7 @@ app.include_router(clientes_router)
 app.include_router(operarios_router)
 app.include_router(detalles_router)
 app.include_router(auth_router)
-
+app.include_router(tipos_merma_router)
 
 
 @app.get("/")

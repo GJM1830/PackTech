@@ -50,10 +50,11 @@ class MovimientoCreate(BaseModel):
     proceso: str
     nombre_operario: str
     maquina: str
-    entrada: float
-    salida: float
+    entrada: float = 0
+    salida: float = 0
     unidad: str
-    merma: float
+    merma_real: float | None = None
+    tipo_merma: str | None = None
     observacion: str | None = None
 
 
@@ -67,6 +68,8 @@ class MovimientoResponse(BaseModel):
     salida: float
     unidad: str
     merma: float
+    merma_real: float | None
+    tipo_merma: str | None
     observacion: str | None
     fecha: date
     hora: time
@@ -103,18 +106,32 @@ class OperarioResponse(BaseModel):
         
 class DetalleMovimientoCreate(BaseModel):
     tipo: str
+    lado: str = "salida"
     numero: int
-    peso: float
-    millares: float
+    peso_bruto: float
+    peso_tuco: float | None = 0
+    millares: float | None = None
 
 
 class DetalleMovimientoResponse(BaseModel):
     id: int
     movimiento_id: int
     tipo: str
+    lado: str
     numero: int
-    peso: float
-    millares: float
+    peso_bruto: float
+    peso_tuco: float | None
+    peso_neto: float
+    millares: float | None
+
+    class Config:
+        from_attributes = True
+
+
+class TipoMermaResponse(BaseModel):
+    id: int
+    proceso: str
+    nombre: str
 
     class Config:
         from_attributes = True

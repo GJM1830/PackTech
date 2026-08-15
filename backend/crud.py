@@ -274,12 +274,14 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         .filter(models.Operario.nombre.ilike(movimiento.nombre_operario.strip()))
         .first()
     )
-
     if operario is None:
         operario = models.Operario(nombre=movimiento.nombre_operario.strip())
         db.add(operario)
         db.commit()
         db.refresh(operario)
+
+    if movimiento.tipo_merma and movimiento.tipo_merma.strip():
+        crear_tipo_merma_si_no_existe(db, movimiento.proceso, movimiento.tipo_merma.strip())
 
     ahora = ahora_lima()
 
@@ -291,7 +293,9 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         entrada=movimiento.entrada,
         salida=movimiento.salida,
         unidad=movimiento.unidad,
-        merma=movimiento.merma,
+        merma=movimiento.entrada - movimiento.salida,
+        merma_real=movimiento.merma_real,
+        tipo_merma=movimiento.tipo_merma,
         observacion=movimiento.observacion,
         fecha=ahora.date(),
         hora=ahora.time()
@@ -302,6 +306,29 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     db.refresh(nuevo_movimiento)
 
     return nuevo_movimiento
+
+def actualizar_totales_movimiento(db: Session, movimiento_id: int):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        return
+
+    detalles = (
+        db.query(models.DetalleMovimiento)
+        .filter(models.DetalleMovimiento.movimiento_id == movimiento_id)
+        .all()
+    )
+
+    entrada_total = sum(d.peso_neto for d in detalles if d.lado == "entrada")
+    salida_total = sum(d.peso_neto for d in detalles if d.lado == "salida")
+
+    if entrada_total > 0:
+        movimiento.entrada = entrada_total
+    if salida_total > 0:
+        movimiento.salida = salida_total
+
+    movimiento.merma = movimiento.entrada - movimiento.salida
+
+    db.commit()
 
 
 def obtener_movimientos(db: Session):
@@ -476,33 +503,29 @@ def editar_operario(
 # DETALLES DE MOVIMIENTO
 # =========================
 
-def crear_detalle_movimiento(
-    db: Session,
-    movimiento_id: int,
-    detalle: schemas.DetalleMovimientoCreate
-):
-    movimiento = db.get(
-        models.Movimiento,
-        movimiento_id
-    )
-
+def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.DetalleMovimientoCreate):
+    movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
-        raise HTTPException(
-            status_code=404,
-            detail="El movimiento no existe."
-        )
+        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    peso_tuco = detalle.peso_tuco or 0
+    peso_neto = detalle.peso_bruto - peso_tuco
 
     nuevo = models.DetalleMovimiento(
         movimiento_id=movimiento_id,
         tipo=detalle.tipo,
+        lado=detalle.lado,
         numero=detalle.numero,
-        peso=detalle.peso,
-        millares=detalle.millares
+        peso_bruto=detalle.peso_bruto,
+        peso_tuco=peso_tuco,
+        peso_neto=peso_neto,
+        millares=detalle.millares if detalle.tipo == "fardo" else None
     )
-
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
+    actualizar_totales_movimiento(db, movimiento_id)
 
     return nuevo
 
@@ -521,20 +544,36 @@ def obtener_detalles_movimiento(
     )
 
 
-def eliminar_detalle_movimiento(
-    db: Session,
-    detalle_id: int
-):
-    detalle = db.get(
-        models.DetalleMovimiento,
-        detalle_id
-    )
-
+def eliminar_detalle_movimiento(db: Session, detalle_id: int):
+    detalle = db.get(models.DetalleMovimiento, detalle_id)
     if detalle is None:
-        raise HTTPException(
-            status_code=404,
-            detail="El detalle no existe."
-        )
+        raise HTTPException(status_code=404, detail="El detalle no existe.")
 
+    movimiento_id = detalle.movimiento_id
     db.delete(detalle)
     db.commit()
+
+    actualizar_totales_movimiento(db, movimiento_id)
+    
+def buscar_tipos_merma(db: Session, proceso: str, q: str):
+    return (
+        db.query(models.TipoMerma)
+        .filter(models.TipoMerma.proceso == proceso)
+        .filter(models.TipoMerma.nombre.ilike(f"%{q}%"))
+        .order_by(models.TipoMerma.nombre)
+        .limit(10)
+        .all()
+    )
+
+
+def crear_tipo_merma_si_no_existe(db: Session, proceso: str, nombre: str):
+    existente = (
+        db.query(models.TipoMerma)
+        .filter(models.TipoMerma.proceso == proceso)
+        .filter(models.TipoMerma.nombre.ilike(nombre))
+        .first()
+    )
+    if existente is None:
+        nuevo = models.TipoMerma(proceso=proceso, nombre=nombre)
+        db.add(nuevo)
+        db.commit()
