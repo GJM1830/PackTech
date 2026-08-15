@@ -181,6 +181,14 @@ class Movimiento(Base):
     merma: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
+    
+    merma_real: Mapped[float | None] = mapped_column(
+        Numeric(10, 2)
+    )
+    
+    tipo_merma: Mapped[str | None] = mapped_column(
+        String(100)
+    )
 
     observacion: Mapped[str | None] = mapped_column(
         Text
@@ -200,6 +208,13 @@ class Movimiento(Base):
 # =========================
 # DETALLES DE MOVIMIENTO
 # =========================
+
+class TipoMerma(Base):
+    __tablename__ = "tipos_merma"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proceso: Mapped[str] = mapped_column(String(50))
+    nombre: Mapped[str] = mapped_column(String(100))
 
 class DetalleMovimiento(Base):
     __tablename__ = "detalles_movimiento"
@@ -224,6 +239,11 @@ class DetalleMovimiento(Base):
     peso: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
+    
+    lado: Mapped[str] = mapped_column(String(10), default="salida")  # "entrada" o "salida"
+    peso_bruto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    peso_tuco: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    peso_neto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
 
     millares: Mapped[float] = mapped_column(
         Numeric(10, 2)
@@ -240,3 +260,5 @@ class Usuario(Base):
     clave: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     rol: Mapped[str] = mapped_column(String(20), nullable=False)  # admin, operario, lector
     nombre: Mapped[str | None] = mapped_column(String(100))
+    
+    

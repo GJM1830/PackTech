@@ -24,6 +24,8 @@ const MAQUINAS_POR_PROCESO = {
   'Despacho': ['Almacén']
 }
 
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión']
+
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
   const [ordenes, setOrdenes] = useState([])
@@ -46,95 +48,7 @@ function Movimientos() {
   const [fechaHasta, setFechaHasta] = useState('')
   const [filtroCliente, setFiltroCliente] = useState('')
 
-  const eliminarMovimiento = async (id) => {
-    if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
-
-    try {
-      await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
-      cargarDatos()
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
-    }
-  }
-
-const duplicarMovimiento = (mov) => {
-  const codigoOrden = ordenes.find(o => o.id === mov.orden_id)?.codigo || ''
-  const nombreOp = nombreOperario(mov.operario_id)
-
-  setForm({
-    orden_id: mov.orden_id,
-    proceso: mov.proceso,
-    nombre_operario: nombreOp,
-    maquina: mov.maquina,
-    entrada: mov.entrada,
-    salida: mov.salida,
-    unidad: mov.unidad,
-    merma: mov.merma,
-    observacion: mov.observacion || ''
-  })
-
-  setBusquedaOrden(codigoOrden)
-  setOrdenSeleccionada({ id: mov.orden_id, codigo: codigoOrden })
-  setBusquedaOperario(nombreOp)
-  setOperarioSeleccionado({ nombre: nombreOp })
-
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-  const abrirEdicion = (mov) => {
-  setEditando({
-    id: mov.id,
-    orden_id: ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id,
-    proceso: mov.proceso,
-    nombre_operario: nombreOperario(mov.operario_id),
-    maquina: mov.maquina,
-    entrada: mov.entrada,
-    salida: mov.salida,
-    unidad: mov.unidad,
-    merma: mov.merma,
-    observacion: mov.observacion || ''
-  })
-}
-
-  const formatearFecha = (fecha) => {
-  if (!fecha) return ''
-  const [anio, mes, dia] = fecha.split('-')
-  return `${dia}/${mes}/${anio.slice(2)}`
-  }
-
-  const guardarEdicion = async () => {
-    setGuardando(true)
-    try {
-    const ordenEncontrada = ordenes.find(
-      o => o.codigo.toLowerCase() === String(editando.orden_id).toLowerCase()
-    )
-
-    if (!ordenEncontrada) {
-      alert('No se encontró ninguna Orden con ese código.')
-      setGuardando(false)
-      return
-    }
-
-    await axios.put(`https://packtech-production.up.railway.app/movimientos/${editando.id}`, {
-      orden_id: ordenEncontrada.id,
-      proceso: editando.proceso,
-      nombre_operario: editando.nombre_operario,
-      maquina: editando.maquina,
-      entrada: parseFloat(editando.entrada),
-      salida: parseFloat(editando.salida),
-      unidad: editando.unidad,
-      merma: parseFloat(editando.merma),
-      observacion: editando.observacion || null
-    })
-
-    setEditando(null)
-    cargarDatos()
-  } catch (err) {
-    alert(err.response?.data?.detail || 'Error al editar el movimiento.')
-  } finally {
-    setGuardando(false)
-  }
-}
+  const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
 
   const [form, setForm] = useState({
     orden_id: '',
@@ -144,12 +58,15 @@ const duplicarMovimiento = (mov) => {
     entrada: '',
     salida: '',
     unidad: 'kg',
-    merma: '',
+    merma_real: '',
+    tipo_merma: '',
     observacion: ''
   })
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
+
+  const esProcesoEspecial = PROCESOS_ESPECIALES.includes(form.proceso)
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -176,50 +93,127 @@ const duplicarMovimiento = (mov) => {
     cargarDatos()
   }, [])
 
-  const manejarCambio = (e) => {
-  const { name, value } = e.target
+  const nombreOperario = (id) => operarios.find(o => o.id === id)?.nombre || id
 
-  if (name === 'proceso') {
-    setForm({ ...form, proceso: value, maquina: '' })
-    return
+  const eliminarMovimiento = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
+      cargarDatos()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
+    }
   }
 
-  if (name === 'entrada' || name === 'salida') {
-    const nuevoForm = { ...form, [name]: value }
+  const duplicarMovimiento = (mov) => {
+    const codigoOrden = ordenes.find(o => o.id === mov.orden_id)?.codigo || ''
+    const nombreOp = nombreOperario(mov.operario_id)
 
-    const entrada = parseFloat(name === 'entrada' ? value : form.entrada)
-    const salida = parseFloat(name === 'salida' ? value : form.salida)
+    setForm({
+      orden_id: mov.orden_id,
+      proceso: mov.proceso,
+      nombre_operario: nombreOp,
+      maquina: mov.maquina,
+      entrada: mov.entrada,
+      salida: mov.salida,
+      unidad: mov.unidad,
+      merma_real: mov.merma_real ?? '',
+      tipo_merma: mov.tipo_merma || '',
+      observacion: mov.observacion || ''
+    })
 
-    if (!isNaN(entrada) && !isNaN(salida)) {
-      nuevoForm.merma = (entrada - salida).toFixed(2)
+    setBusquedaOrden(codigoOrden)
+    setOrdenSeleccionada({ id: mov.orden_id, codigo: codigoOrden })
+    setBusquedaOperario(nombreOp)
+    setOperarioSeleccionado({ nombre: nombreOp })
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const abrirEdicion = (mov) => {
+    setEditando({
+      id: mov.id,
+      orden_id: ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id,
+      proceso: mov.proceso,
+      nombre_operario: nombreOperario(mov.operario_id),
+      maquina: mov.maquina,
+      entrada: mov.entrada,
+      salida: mov.salida,
+      unidad: mov.unidad,
+      merma_real: mov.merma_real ?? '',
+      tipo_merma: mov.tipo_merma || '',
+      observacion: mov.observacion || ''
+    })
+  }
+
+  const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+      const ordenEncontrada = ordenes.find(
+        o => o.codigo.toLowerCase() === String(editando.orden_id).toLowerCase()
+      )
+
+      if (!ordenEncontrada) {
+        alert('No se encontró ninguna Orden con ese código.')
+        setGuardando(false)
+        return
+      }
+
+      await axios.put(`https://packtech-production.up.railway.app/movimientos/${editando.id}`, {
+        orden_id: ordenEncontrada.id,
+        proceso: editando.proceso,
+        nombre_operario: editando.nombre_operario,
+        maquina: editando.maquina,
+        entrada: parseFloat(editando.entrada) || 0,
+        salida: parseFloat(editando.salida) || 0,
+        unidad: editando.unidad,
+        merma_real: editando.merma_real !== '' ? parseFloat(editando.merma_real) : null,
+        tipo_merma: editando.tipo_merma || null,
+        observacion: editando.observacion || null
+      })
+
+      setEditando(null)
+      cargarDatos()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al editar el movimiento.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const manejarCambio = (e) => {
+    const { name, value } = e.target
+
+    if (name === 'proceso') {
+      setForm({ ...form, proceso: value, maquina: '', entrada: '', salida: '', tipo_merma: '' })
+      return
     }
 
-    setForm(nuevoForm)
-    return
+    setForm({ ...form, [name]: value })
   }
-
-  setForm({ ...form, [name]: value })
-}
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
     setEnviando(true)
     setErrorForm(null)
-    setBusquedaOperario('')
-    setOperarioSeleccionado(null)
+
+    const payload = {
+      orden_id: parseInt(form.orden_id),
+      proceso: form.proceso,
+      nombre_operario: form.nombre_operario.trim(),
+      maquina: form.maquina,
+      entrada: esProcesoEspecial
+        ? (form.proceso === 'Extrusión' ? parseFloat(form.entrada) || 0 : 0)
+        : parseFloat(form.entrada) || 0,
+      salida: esProcesoEspecial ? 0 : (parseFloat(form.salida) || 0),
+      unidad: form.unidad,
+      merma_real: form.merma_real !== '' ? parseFloat(form.merma_real) : null,
+      tipo_merma: form.tipo_merma?.trim() || null,
+      observacion: form.observacion || null
+    }
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/movimientos', {
-        orden_id: parseInt(form.orden_id),
-        proceso: form.proceso,
-        nombre_operario: form.nombre_operario.trim(),
-        maquina: form.maquina,
-        entrada: parseFloat(form.entrada),
-        salida: parseFloat(form.salida),
-        unidad: form.unidad,
-        merma: parseFloat(form.merma),
-        observacion: form.observacion || null
-      })
+      const respuesta = await axios.post('https://packtech-production.up.railway.app/movimientos', payload)
 
       setForm({
         orden_id: '',
@@ -229,13 +223,20 @@ const duplicarMovimiento = (mov) => {
         entrada: '',
         salida: '',
         unidad: 'kg',
-        merma: '',
+        merma_real: '',
+        tipo_merma: '',
         observacion: ''
       })
       setBusquedaOrden('')
       setOrdenSeleccionada(null)
+      setBusquedaOperario('')
+      setOperarioSeleccionado(null)
 
       cargarDatos()
+
+      if (esProcesoEspecial) {
+        setMovimientoAbierto(respuesta.data)
+      }
     } catch (err) {
       const mensaje = err.response?.data?.detail || 'Error al registrar el movimiento.'
       setErrorForm(mensaje)
@@ -246,39 +247,44 @@ const duplicarMovimiento = (mov) => {
 
   const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
 
-  const nombreOperario = (id) => operarios.find(o => o.id === id)?.nombre || id
-  
   useEffect(() => {
-  if (busquedaOrden.trim().length < 2 || ordenSeleccionada) {
-    setSugerenciasOrdenes([])
-    return
-  }
+    if (busquedaOrden.trim().length < 2 || ordenSeleccionada) {
+      setSugerenciasOrdenes([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
+        .then((res) => setSugerenciasOrdenes(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [busquedaOrden, ordenSeleccionada])
 
-  
+  useEffect(() => {
+    if (busquedaOperario.trim().length < 2 || operarioSeleccionado) {
+      setSugerenciasOperarios([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/operarios/buscar?q=${busquedaOperario}`)
+        .then((res) => setSugerenciasOperarios(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [busquedaOperario, operarioSeleccionado])
 
-  const temporizador = setTimeout(() => {
-    axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
-      .then((res) => setSugerenciasOrdenes(res.data))
-      .catch((err) => console.error(err))
-  }, 300)
-
-  return () => clearTimeout(temporizador)
-}, [busquedaOrden, ordenSeleccionada])
-
-useEffect(() => {
-  if (busquedaOperario.trim().length < 2 || operarioSeleccionado) {
-    setSugerenciasOperarios([])
-    return
-  }
-
-  const temporizador = setTimeout(() => {
-    axios.get(`https://packtech-production.up.railway.app/operarios/buscar?q=${busquedaOperario}`)
-      .then((res) => setSugerenciasOperarios(res.data))
-      .catch((err) => console.error(err))
-  }, 300)
-
-  return () => clearTimeout(temporizador)
-}, [busquedaOperario, operarioSeleccionado])
+  useEffect(() => {
+    if (!esProcesoEspecial || form.tipo_merma.trim().length < 2) {
+      setSugerenciasTipoMerma([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${encodeURIComponent(form.proceso)}&q=${form.tipo_merma}`)
+        .then((res) => setSugerenciasTipoMerma(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [form.tipo_merma, form.proceso, esProcesoEspecial])
 
   const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
   const operariosUnicos = [...new Set(movimientos.map(m => nombreOperario(m.operario_id)))].sort()
@@ -297,13 +303,13 @@ useEffect(() => {
     return true
   })
 
-
   return (
-  <div className="space-y-8">
-    <div>
-      <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Movimientos</h1>
-      <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
-    </div>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Movimientos</h1>
+        <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
+      </div>
+
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">
           Registrar Movimiento
@@ -328,7 +334,6 @@ useEffect(() => {
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
                 placeholder="Escribe el código (ej. OP-001)"
               />
-
               {sugerenciasOrdenes.length > 0 && (
                 <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {sugerenciasOrdenes.map((orden) => (
@@ -368,7 +373,6 @@ useEffect(() => {
                 className="w-full border border-slate-300 rounded px-3 py-2"
                 placeholder="Escribe un nombre"
               />
-
               {sugerenciasOperarios.length > 0 && (
                 <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {sugerenciasOperarios.map((op) => (
@@ -389,7 +393,7 @@ useEffect(() => {
                   ))}
                 </div>
               )}
-</div>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
@@ -437,67 +441,145 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Entrada
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                name="entrada"
-                value={form.entrada}
-                onChange={manejarCambio}
-                required
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              />
-            </div>
+          {esProcesoEspecial ? (
+            <>
+              {form.proceso === 'Extrusión' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Entrada (kg, sacos)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="entrada"
+                    value={form.entrada}
+                    onChange={manejarCambio}
+                    required
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                  />
+                </div>
+              )}
 
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Salida
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                name="salida"
-                value={form.salida}
-                onChange={manejarCambio}
-                required
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              />
-            </div>
+              {form.proceso === 'Impresión' && (
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  La entrada y salida se calculan a partir de las bobinas que registres en el siguiente paso.
+                </p>
+              )}
 
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Merma
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                name="merma"
-                value={form.merma}
-                readOnly
-                className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
-              />
-            </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Merma real (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="merma_real"
+                    value={form.merma_real}
+                    onChange={manejarCambio}
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                    placeholder="Opcional"
+                  />
+                </div>
 
-            <div className="w-28">
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Unidad
-              </label>
-              <select
-                name="unidad"
-                value={form.unidad}
-                onChange={manejarCambio}
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              >
-                <option value="kg">kg</option>
-                <option value="unidades">unidades</option>
-                <option value="rollos">rollos</option>
-              </select>
+                <div className="flex-1 relative">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Tipo de merma
+                  </label>
+                  <input
+                    type="text"
+                    name="tipo_merma"
+                    value={form.tipo_merma}
+                    onChange={manejarCambio}
+                    autoComplete="off"
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                    placeholder="Ej. Purga, Rebaba..."
+                  />
+                  {sugerenciasTipoMerma.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                      {sugerenciasTipoMerma.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, tipo_merma: t.nombre })
+                            setSugerenciasTipoMerma([])
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                        >
+                          {t.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Entrada
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="entrada"
+                  value={form.entrada}
+                  onChange={manejarCambio}
+                  required
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Salida
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="salida"
+                  value={form.salida}
+                  onChange={manejarCambio}
+                  required
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Faltante/Sobrante
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={
+                    form.entrada !== '' && form.salida !== ''
+                      ? (parseFloat(form.entrada) - parseFloat(form.salida)).toFixed(2)
+                      : ''
+                  }
+                  className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
+                />
+              </div>
+
+              <div className="w-28">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Unidad
+                </label>
+                <select
+                  name="unidad"
+                  value={form.unidad}
+                  onChange={manejarCambio}
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                >
+                  <option value="kg">kg</option>
+                  <option value="unidades">unidades</option>
+                  <option value="rollos">rollos</option>
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">
@@ -520,168 +602,168 @@ useEffect(() => {
             disabled={enviando}
             className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50"
           >
-            {enviando ? 'Registrando...' : 'Registrar Movimiento'}
+            {enviando ? 'Guardando...' : esProcesoEspecial ? 'Continuar a Bobinas' : 'Registrar Movimiento'}
           </button>
         </form>
       </div>
 
-    <div>
+      <div>
+        {cargando && <p className="text-slate-500">Cargando...</p>}
+        {error && <p className="text-red-600">{error}</p>}
 
-      {cargando && <p className="text-slate-500">Cargando...</p>}
-      {error && <p className="text-red-600">{error}</p>}
-
-      {!cargando && !error && (
-  <>
-    <div className="flex flex-wrap items-center gap-2 mb-4">
-      <input
-        type="text"
-        value={filtroCodigo}
-        onChange={(e) => setFiltroCodigo(e.target.value)}
-        placeholder="Buscar N° Pedido..."
-        className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
-      />
-      <input
-        type="text"
-        value={filtroCliente}
-        onChange={(e) => setFiltroCliente(e.target.value)}
-        placeholder="Buscar Cliente..."
-        className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
-      />
-      <FiltroDesplegable
-        etiqueta="Proceso"
-        opciones={procesosUnicos}
-        seleccionado={filtroProceso}
-        onSeleccionar={setFiltroProceso}
-      />
-      <FiltroDesplegable
-        etiqueta="Operario"
-        opciones={operariosUnicos}
-        seleccionado={filtroOperario}
-        onSeleccionar={setFiltroOperario}
-      />
-      <FiltroDesplegable
-        etiqueta="Máquina"
-        opciones={maquinasUnicas}
-        seleccionado={filtroMaquina}
-        onSeleccionar={setFiltroMaquina}
-      />
-      <div className="flex items-center gap-1.5 text-sm text-slate-500">
-        <span>Desde</span>
-        <input
-          type="date"
-          value={fechaDesde}
-          onChange={(e) => setFechaDesde(e.target.value)}
-          className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
-        />
-        <span>hasta</span>
-        <input
-          type="date"
-          value={fechaHasta}
-          onChange={(e) => setFechaHasta(e.target.value)}
-          className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
-        />
-      </div>
-      {(filtroCodigo || filtroCliente || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
-      <button
-        onClick={() => {
-          setFiltroCodigo('')
-          setFiltroCliente('')
-          setFiltroProceso(null)
-          setFiltroOperario(null)
-          setFiltroMaquina(null)
-          setFechaDesde('')
-          setFechaHasta('')
-        }}
-          className="text-sm text-slate-400 hover:text-slate-700 underline"
-        >
-          Limpiar filtros
-        </button>
-      )}
-    </div>
-
-    <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-600 uppercase text-xs">
-              <tr>
-                <th className="px-4 py-3">N° Pedido</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Proceso</th>
-                <th className="px-4 py-3">Máquina</th>
-                <th className="px-4 py-3">Operario</th>
-                <th className="px-4 py-3">Entrada</th>
-                <th className="px-4 py-3">Salida</th>
-                <th className="px-4 py-3">Unidad</th>
-                <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3">Hora</th>
-                <th className="px-4 py-3 text-right"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {movimientosFiltrados.map((mov) => (
-                <tr
-                  key={mov.id}
-                  onClick={() => setMovimientoAbierto(mov)}
-                  className="border-t border-slate-100 cursor-pointer hover:bg-blue-50/50"
+        {!cargando && !error && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <input
+                type="text"
+                value={filtroCodigo}
+                onChange={(e) => setFiltroCodigo(e.target.value)}
+                placeholder="Buscar N° Pedido..."
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+              />
+              <input
+                type="text"
+                value={filtroCliente}
+                onChange={(e) => setFiltroCliente(e.target.value)}
+                placeholder="Buscar Cliente..."
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+              />
+              <FiltroDesplegable
+                etiqueta="Proceso"
+                opciones={procesosUnicos}
+                seleccionado={filtroProceso}
+                onSeleccionar={setFiltroProceso}
+              />
+              <FiltroDesplegable
+                etiqueta="Operario"
+                opciones={operariosUnicos}
+                seleccionado={filtroOperario}
+                onSeleccionar={setFiltroOperario}
+              />
+              <FiltroDesplegable
+                etiqueta="Máquina"
+                opciones={maquinasUnicas}
+                seleccionado={filtroMaquina}
+                onSeleccionar={setFiltroMaquina}
+              />
+              <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                <span>Desde</span>
+                <input
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+                />
+                <span>hasta</span>
+                <input
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+                />
+              </div>
+              {(filtroCodigo || filtroCliente || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
+                <button
+                  onClick={() => {
+                    setFiltroCodigo('')
+                    setFiltroCliente('')
+                    setFiltroProceso(null)
+                    setFiltroOperario(null)
+                    setFiltroMaquina(null)
+                    setFechaDesde('')
+                    setFechaHasta('')
+                  }}
+                  className="text-sm text-slate-400 hover:text-slate-700 underline"
                 >
-                  <td className="px-4 py-3 font-medium text-slate-800">
-                    {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
-                  </td>
-                  <td className="px-4 py-3">
-                    {ordenes.find(o => o.id === mov.orden_id)?.cliente || '—'}
-                  </td>
-                  <td className="px-4 py-3">{mov.proceso}</td>
-                  <td className="px-4 py-3">{mov.maquina}</td>
-                  <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
-                  <td className="px-4 py-3">{mov.entrada}</td>
-                  <td className="px-4 py-3">{mov.salida}</td>
-                  <td className="px-4 py-3">{mov.unidad}</td>
-                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>  
-                  <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <MenuAcciones
-                      onEditar={() => abrirEdicion(mov)}
-                      onDuplicar={() => duplicarMovimiento(mov)}
-                      onEliminar={() => eliminarMovimiento(mov.id)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-      </>
-    )}
-    </div>
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
 
-    {movimientoAbierto && (
-      <DetalleMovimiento
-        movimiento={movimientoAbierto}
-        orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
-        onCerrar={() => setMovimientoAbierto(null)}
-      />
-    )}
+            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-600 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3">N° Pedido</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Proceso</th>
+                    <th className="px-4 py-3">Máquina</th>
+                    <th className="px-4 py-3">Operario</th>
+                    <th className="px-4 py-3">Entrada</th>
+                    <th className="px-4 py-3">Salida</th>
+                    <th className="px-4 py-3">Unidad</th>
+                    <th className="px-4 py-3">Fecha</th>
+                    <th className="px-4 py-3">Hora</th>
+                    <th className="px-4 py-3 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimientosFiltrados.map((mov) => (
+                    <tr
+                      key={mov.id}
+                      onClick={() => setMovimientoAbierto(mov)}
+                      className="border-t border-slate-100 cursor-pointer hover:bg-blue-50/50"
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-800">
+                        {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
+                      </td>
+                      <td className="px-4 py-3">
+                        {ordenes.find(o => o.id === mov.orden_id)?.cliente || '—'}
+                      </td>
+                      <td className="px-4 py-3">{mov.proceso}</td>
+                      <td className="px-4 py-3">{mov.maquina}</td>
+                      <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
+                      <td className="px-4 py-3">{mov.entrada}</td>
+                      <td className="px-4 py-3">{mov.salida}</td>
+                      <td className="px-4 py-3">{mov.unidad}</td>
+                      <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
+                      <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <MenuAcciones
+                          onEditar={() => abrirEdicion(mov)}
+                          onDuplicar={() => duplicarMovimiento(mov)}
+                          onEliminar={() => eliminarMovimiento(mov.id)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
 
-    {editando && (
-      <ModalEditar
-        titulo="Editar Movimiento"
-        campos={[
-          { name: 'orden_id', label: 'Código de Orden' },
-          { name: 'proceso', label: 'Proceso' },
-          { name: 'nombre_operario', label: 'Operario' },
-          { name: 'maquina', label: 'Máquina' },
-          { name: 'entrada', label: 'Entrada', type: 'number' },
-          { name: 'salida', label: 'Salida', type: 'number' },
-          { name: 'unidad', label: 'Unidad' },
-          { name: 'merma', label: 'Merma', type: 'number' },
-          { name: 'observacion', label: 'Observación' }
-        ]}
-        valores={editando}
-        onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
-        onGuardar={guardarEdicion}
-        onCerrar={() => setEditando(null)}
-        guardando={guardando}
-      />
-    )}
+      {movimientoAbierto && (
+        <DetalleMovimiento
+          movimiento={movimientoAbierto}
+          orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
+          onCerrar={() => { setMovimientoAbierto(null); cargarDatos() }}
+        />
+      )}
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Movimiento"
+          campos={[
+            { name: 'orden_id', label: 'Código de Orden' },
+            { name: 'proceso', label: 'Proceso' },
+            { name: 'nombre_operario', label: 'Operario' },
+            { name: 'maquina', label: 'Máquina' },
+            { name: 'entrada', label: 'Entrada', type: 'number' },
+            { name: 'salida', label: 'Salida', type: 'number' },
+            { name: 'unidad', label: 'Unidad' },
+            { name: 'merma_real', label: 'Merma real', type: 'number' },
+            { name: 'tipo_merma', label: 'Tipo de merma' },
+            { name: 'observacion', label: 'Observación' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
     </div>
   )
 }
