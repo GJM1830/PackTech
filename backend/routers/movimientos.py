@@ -54,3 +54,30 @@ def eliminar_detalle(
 ):
     crud.eliminar_detalle_movimiento(db, detalle_id)
     return {"mensaje": "Detalle eliminado correctamente."}
+
+@router.post("/movimientos/{movimiento_id}/mermas", response_model=schemas.DetalleMermaResponse)
+def crear_detalle_merma(
+    movimiento_id: int,
+    detalle: schemas.DetalleMermaCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.crear_detalle_merma(db, movimiento_id, detalle)
+
+
+@router.get("/movimientos/{movimiento_id}/mermas", response_model=list[schemas.DetalleMermaResponse])
+def listar_detalles_merma(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_detalles_merma(db, movimiento_id)
+
+
+@router.delete("/mermas/{detalle_id}")
+def eliminar_detalle_merma(
+    detalle_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    crud.eliminar_detalle_merma(db, detalle_id)
+    return {"mensaje": "Detalle de merma eliminado correctamente."}

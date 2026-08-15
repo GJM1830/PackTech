@@ -498,6 +498,63 @@ def editar_operario(
 
     return operario
 
+def crear_detalle_merma(db: Session, movimiento_id: int, detalle: schemas.DetalleMermaCreate):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    if detalle.tipo_merma and detalle.tipo_merma.strip():
+        crear_tipo_merma_si_no_existe(db, movimiento.proceso, detalle.tipo_merma.strip())
+
+    nuevo = models.DetalleMerma(
+        movimiento_id=movimiento_id,
+        peso=detalle.peso,
+        tipo_merma=detalle.tipo_merma
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+
+    actualizar_merma_real(db, movimiento_id)
+
+    return nuevo
+
+
+def obtener_detalles_merma(db: Session, movimiento_id: int):
+    return (
+        db.query(models.DetalleMerma)
+        .filter(models.DetalleMerma.movimiento_id == movimiento_id)
+        .all()
+    )
+
+
+def eliminar_detalle_merma(db: Session, detalle_id: int):
+    detalle = db.get(models.DetalleMerma, detalle_id)
+    if detalle is None:
+        raise HTTPException(status_code=404, detail="El detalle de merma no existe.")
+
+    movimiento_id = detalle.movimiento_id
+    db.delete(detalle)
+    db.commit()
+
+    actualizar_merma_real(db, movimiento_id)
+
+
+def actualizar_merma_real(db: Session, movimiento_id: int):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        return
+
+    detalles = (
+        db.query(models.DetalleMerma)
+        .filter(models.DetalleMerma.movimiento_id == movimiento_id)
+        .all()
+    )
+
+    if detalles:
+        movimiento.merma_real = sum(d.peso for d in detalles)
+        db.commit()
+
 
 # =========================
 # DETALLES DE MOVIMIENTO

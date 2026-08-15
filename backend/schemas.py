@@ -147,3 +147,17 @@ class LoginResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class DetalleMermaCreate(BaseModel):
+    peso: float
+    tipo_merma: str | None = None
+
+
+class DetalleMermaResponse(BaseModel):
+    id: int
+    movimiento_id: int
+    peso: float
+    tipo_merma: str | None
+
+    class Config:
+        from_attributes = True
