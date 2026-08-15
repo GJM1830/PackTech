@@ -19,3 +19,10 @@ def buscar_tipos_merma(
     db: Session = Depends(obtener_db)
 ):
     return crud.buscar_tipos_merma(db, proceso, q)
+
+@router.get("/materiales/buscar", response_model=list[schemas.TipoMaterialResponse])
+def buscar_tipos_material(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_tipos_material(db, q)

@@ -55,6 +55,7 @@ class MovimientoCreate(BaseModel):
     unidad: str
     merma_real: float | None = None
     tipo_merma: str | None = None
+    tipo_laminado: str | None = None
     observacion: str | None = None
 
 
@@ -70,6 +71,7 @@ class MovimientoResponse(BaseModel):
     merma: float
     merma_real: float | None
     tipo_merma: str | None
+    tipo_laminado: str | None = None
     observacion: str | None
     fecha: date
     hora: time
@@ -111,6 +113,7 @@ class DetalleMovimientoCreate(BaseModel):
     peso_bruto: float
     peso_tuco: float | None = 0
     millares: float | None = None
+    tipo_material: str | None = None
 
 
 class DetalleMovimientoResponse(BaseModel):
@@ -123,10 +126,17 @@ class DetalleMovimientoResponse(BaseModel):
     peso_tuco: float | None
     peso_neto: float
     millares: float | None
+    tipo_material: str | None = None
 
     class Config:
         from_attributes = True
 
+class TipoMaterialResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
 
 class TipoMermaResponse(BaseModel):
     id: int

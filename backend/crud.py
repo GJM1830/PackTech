@@ -165,6 +165,7 @@ def crear_orden_produccion(
 
     return nueva_orden
 
+
 def buscar_clientes(db: Session, q: str):
     return (
         db.query(models.Cliente)
@@ -173,6 +174,7 @@ def buscar_clientes(db: Session, q: str):
         .limit(10)
         .all()
     )
+
 
 def calcular_estado(proceso: str | None) -> str:
     if proceso is None:
@@ -185,6 +187,7 @@ def calcular_estado(proceso: str | None) -> str:
         return "En almacén"
 
     return "En proceso"
+
 
 def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     orden = db.get(models.OrdenProduccion, orden_id)
@@ -209,6 +212,7 @@ def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     orden.estado = calcular_estado(proceso_actual)
 
     return orden
+
 
 def obtener_ordenes_produccion(db: Session):
     ordenes = (
@@ -280,6 +284,9 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         db.commit()
         db.refresh(operario)
 
+    if movimiento.tipo_laminado and movimiento.tipo_laminado.strip():
+        crear_tipo_merma_si_no_existe(db, "Laminado", movimiento.tipo_laminado.strip())
+
     if movimiento.tipo_merma and movimiento.tipo_merma.strip():
         crear_tipo_merma_si_no_existe(db, movimiento.proceso, movimiento.tipo_merma.strip())
 
@@ -296,6 +303,7 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         merma=movimiento.entrada - movimiento.salida,
         merma_real=movimiento.merma_real,
         tipo_merma=movimiento.tipo_merma,
+        tipo_laminado=movimiento.tipo_laminado,
         observacion=movimiento.observacion,
         fecha=ahora.date(),
         hora=ahora.time()
@@ -306,6 +314,7 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     db.refresh(nuevo_movimiento)
 
     return nuevo_movimiento
+
 
 def actualizar_totales_movimiento(db: Session, movimiento_id: int):
     movimiento = db.get(models.Movimiento, movimiento_id)
@@ -348,6 +357,7 @@ def buscar_operarios(db: Session, q: str):
         .all()
     )
 
+
 def obtener_movimientos_por_orden(db: Session, orden_id: int):
     return (
         db.query(models.Movimiento)
@@ -355,6 +365,7 @@ def obtener_movimientos_por_orden(db: Session, orden_id: int):
         .order_by(models.Movimiento.id.desc())
         .all()
     )
+
 
 def buscar_ordenes(db: Session, q: str):
     resultados = (
@@ -498,6 +509,11 @@ def editar_operario(
 
     return operario
 
+
+# =========================
+# DETALLES DE MERMA
+# =========================
+
 def crear_detalle_merma(db: Session, movimiento_id: int, detalle: schemas.DetalleMermaCreate):
     movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
@@ -562,8 +578,12 @@ def actualizar_merma_real(db: Session, movimiento_id: int):
 
 def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.DetalleMovimientoCreate):
     movimiento = db.get(models.Movimiento, movimiento_id)
+
     if movimiento is None:
         raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    if detalle.tipo_material and detalle.tipo_material.strip():
+        crear_tipo_material_si_no_existe(db, detalle.tipo_material.strip())
 
     peso_tuco = detalle.peso_tuco or 0
     peso_neto = detalle.peso_bruto - peso_tuco
@@ -576,7 +596,8 @@ def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.D
         peso_bruto=detalle.peso_bruto,
         peso_tuco=peso_tuco,
         peso_neto=peso_neto,
-        millares=detalle.millares if detalle.tipo == "fardo" else None
+        millares=detalle.millares if detalle.tipo == "fardo" else None,
+        tipo_material=detalle.tipo_material
     )
     db.add(nuevo)
     db.commit()
@@ -611,7 +632,12 @@ def eliminar_detalle_movimiento(db: Session, detalle_id: int):
     db.commit()
 
     actualizar_totales_movimiento(db, movimiento_id)
-    
+
+
+# =========================
+# TIPOS DE MERMA
+# =========================
+
 def buscar_tipos_merma(db: Session, proceso: str, q: str):
     return (
         db.query(models.TipoMerma)
@@ -632,5 +658,31 @@ def crear_tipo_merma_si_no_existe(db: Session, proceso: str, nombre: str):
     )
     if existente is None:
         nuevo = models.TipoMerma(proceso=proceso, nombre=nombre)
+        db.add(nuevo)
+        db.commit()
+
+
+# =========================
+# TIPOS DE MATERIAL
+# =========================
+
+def buscar_tipos_material(db: Session, q: str):
+    return (
+        db.query(models.TipoMaterial)
+        .filter(models.TipoMaterial.nombre.ilike(f"%{q}%"))
+        .order_by(models.TipoMaterial.nombre)
+        .limit(10)
+        .all()
+    )
+
+
+def crear_tipo_material_si_no_existe(db: Session, nombre: str):
+    existente = (
+        db.query(models.TipoMaterial)
+        .filter(models.TipoMaterial.nombre.ilike(nombre))
+        .first()
+    )
+    if existente is None:
+        nuevo = models.TipoMaterial(nombre=nombre)
         db.add(nuevo)
         db.commit()

@@ -24,8 +24,8 @@ const MAQUINAS_POR_PROCESO = {
   'Despacho': ['Almacén']
 }
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
 
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
@@ -48,7 +48,7 @@ function Movimientos() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [filtroCliente, setFiltroCliente] = useState('')
-
+  const [sugerenciasTipoLaminado, setSugerenciasTipoLaminado] = useState([])
   const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
 
   const [form, setForm] = useState({
@@ -59,10 +59,10 @@ function Movimientos() {
     entrada: '',
     salida: '',
     unidad: 'kg',
-    merma_real: '',
-    tipo_merma: '',
+    tipo_laminado: '',
     observacion: ''
   })
+
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
@@ -118,8 +118,7 @@ function Movimientos() {
       entrada: mov.entrada,
       salida: mov.salida,
       unidad: mov.unidad,
-      merma_real: mov.merma_real ?? '',
-      tipo_merma: mov.tipo_merma || '',
+      tipo_laminado: mov.tipo_laminado || '',
       observacion: mov.observacion || ''
     })
 
@@ -186,7 +185,7 @@ function Movimientos() {
     const { name, value } = e.target
 
     if (name === 'proceso') {
-      setForm({ ...form, proceso: value, maquina: '', entrada: '', salida: '', tipo_merma: '' })
+      setForm({ ...form, proceso: value, maquina: '', entrada: '', salida: '', tipo_laminado: '' })
       return
     }
 
@@ -208,6 +207,7 @@ function Movimientos() {
         : parseFloat(form.entrada) || 0,
       salida: esProcesoEspecial ? 0 : (parseFloat(form.salida) || 0),
       unidad: form.unidad,
+      tipo_laminado: form.proceso === 'Laminado' ? (form.tipo_laminado?.trim() || null) : null,
       observacion: form.observacion || null
     }
 
@@ -222,8 +222,7 @@ function Movimientos() {
         entrada: '',
         salida: '',
         unidad: 'kg',
-        merma_real: '',
-        tipo_merma: '',
+        tipo_laminado: '',
         observacion: ''
       })
       setBusquedaOrden('')
@@ -245,6 +244,19 @@ function Movimientos() {
   }
 
   const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
+
+  useEffect(() => {
+    if (form.proceso !== 'Laminado' || form.tipo_laminado.trim().length < 2) {
+      setSugerenciasTipoLaminado([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=Laminado&q=${form.tipo_laminado}`)
+        .then((res) => setSugerenciasTipoLaminado(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [form.tipo_laminado, form.proceso])
 
   useEffect(() => {
     if (busquedaOrden.trim().length < 2 || ordenSeleccionada) {
@@ -273,17 +285,12 @@ function Movimientos() {
   }, [busquedaOperario, operarioSeleccionado])
 
   useEffect(() => {
-    if (!esProcesoEspecial || form.tipo_merma.trim().length < 2) {
+    if (!esProcesoEspecial || form.proceso === 'Laminado') {
       setSugerenciasTipoMerma([])
       return
     }
-    const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${encodeURIComponent(form.proceso)}&q=${form.tipo_merma}`)
-        .then((res) => setSugerenciasTipoMerma(res.data))
-        .catch((err) => console.error(err))
-    }, 300)
-    return () => clearTimeout(temporizador)
-  }, [form.tipo_merma, form.proceso, esProcesoEspecial])
+    return
+  }, [form.proceso, esProcesoEspecial])
 
   const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
   const operariosUnicos = [...new Set(movimientos.map(m => nombreOperario(m.operario_id)))].sort()
@@ -465,11 +472,42 @@ function Movimientos() {
                 </p>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                  La merma se registra en detalle (por tipo) en el siguiente paso.
-                </p>
-              </div>
+              {form.proceso === 'Laminado' && (
+                <div className="relative">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Tipo de laminado
+                  </label>
+                  <input
+                    type="text"
+                    value={form.tipo_laminado}
+                    onChange={(e) => setForm({ ...form, tipo_laminado: e.target.value })}
+                    autoComplete="off"
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                    placeholder="Ej. BOPP/PE, Metalizado..."
+                  />
+                  {sugerenciasTipoLaminado.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                      {sugerenciasTipoLaminado.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, tipo_laminado: t.nombre })
+                            setSugerenciasTipoLaminado([])
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                        >
+                          {t.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                La merma se registra en detalle (por tipo) en el siguiente paso.
+              </p>
             </>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4">

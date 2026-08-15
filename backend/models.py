@@ -172,6 +172,8 @@ class Movimiento(Base):
     salida: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
+    
+    tipo_laminado: Mapped[str | None] = mapped_column(String(100))
 
     unidad: Mapped[str] = mapped_column(
         String(20),
@@ -251,10 +253,17 @@ class DetalleMovimiento(Base):
     peso_bruto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     peso_tuco: Mapped[float | None] = mapped_column(Numeric(10, 2))
     peso_neto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    tipo_material: Mapped[str | None] = mapped_column(String(100))
 
     millares: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
+    
+    class TipoMaterial(Base):
+        __tablename__ = "tipos_material"
+
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        nombre: Mapped[str] = mapped_column(String(100))
     
 # =========================
 # USUARIOS  

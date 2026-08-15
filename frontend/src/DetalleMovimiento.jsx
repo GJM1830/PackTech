@@ -28,6 +28,8 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const salidaEsFardo = PROCESOS_SALIDA_FARDO.includes(movimiento.proceso)
+  const [tipoMaterial, setTipoMaterial] = useState('')
+  const [sugerenciasTipoMaterial, setSugerenciasTipoMaterial] = useState([])
 
   const cargarDetallesMerma = () => {
     axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`)
@@ -49,6 +51,19 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       })
   }
   
+  useEffect(() => {
+    if (movimiento.proceso !== 'Laminado' || tipoMaterial.trim().length < 2) {
+      setSugerenciasTipoMaterial([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/materiales/buscar?q=${tipoMaterial}`)
+        .then((res) => setSugerenciasTipoMaterial(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [tipoMaterial, movimiento.proceso])
+
   useEffect(() => {
   if (!esProcesoEspecial || tipoMermaInput.trim().length < 2) {
     setSugerenciasTipoMerma([])
@@ -110,6 +125,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 
     const lado = esDobleLado ? ladoActivo : 'salida'
     const siguienteNumero = detallesLado(lado).length + 1
+    const esMaterialAplicable = movimiento.proceso === 'Laminado' && lado === 'entrada'
 
     try {
       await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
@@ -118,10 +134,12 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
         numero: siguienteNumero,
         peso_bruto: parseFloat(pesoBruto),
         peso_tuco: parseFloat(pesoTuco) || 0,
-        millares: null
+        millares: null,
+        tipo_material: esMaterialAplicable ? (tipoMaterial.trim() || null) : null
       })
       setPesoBruto('')
       setPesoTuco('')
+      setTipoMaterial('')
       cargarDetalles()
     } catch (err) {
       setError(err.response?.data?.detail || 'Error al agregar la bobina.')
@@ -419,6 +437,36 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
         />
       </div>
       <div className="flex items-end">
+          {movimiento.proceso === 'Laminado' && ladoActivo === 'entrada' && (
+    <div className="flex-1 relative">
+      <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
+      <input
+        type="text"
+        value={tipoMaterial}
+        onChange={(e) => setTipoMaterial(e.target.value)}
+        autoComplete="off"
+        className="w-full border border-slate-300 rounded px-3 py-2"
+        placeholder="Ej. PET, Uso pesado, Baja..."
+      />
+      {sugerenciasTipoMaterial.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+          {sugerenciasTipoMaterial.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => {
+                setTipoMaterial(m.nombre)
+                setSugerenciasTipoMaterial([])
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+            >
+              {m.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )}
         <button
           type="submit"
           disabled={enviando}
