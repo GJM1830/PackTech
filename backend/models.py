@@ -204,25 +204,26 @@ class Movimiento(Base):
         default=datetime.utcnow().time
     )
     
-    class DetalleMerma(Base):
-        __tablename__ = "detalles_merma"
+class DetalleMerma(Base):
+    __tablename__ = "detalles_merma"
 
-        id: Mapped[int] = mapped_column(Integer, primary_key=True)
-        movimiento_id: Mapped[int] = mapped_column(ForeignKey("movimientos.id"))
-        peso: Mapped[float] = mapped_column(Numeric(10, 2))
-        tipo_merma: Mapped[str | None] = mapped_column(String(100))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    movimiento_id: Mapped[int] = mapped_column(ForeignKey("movimientos.id"))
+    peso: Mapped[float] = mapped_column(Numeric(10, 2))
+    tipo_merma: Mapped[str | None] = mapped_column(String(100))
         
 
 # =========================
 # DETALLES DE MOVIMIENTO
 # =========================
 
-class TipoMerma(Base):
-    __tablename__ = "tipos_merma"
+class DetalleMerma(Base):
+    __tablename__ = "detalles_merma"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    proceso: Mapped[str] = mapped_column(String(50))
-    nombre: Mapped[str] = mapped_column(String(100))
+    movimiento_id: Mapped[int] = mapped_column(ForeignKey("movimientos.id"))
+    peso: Mapped[float] = mapped_column(Numeric(10, 2))
+    tipo_merma: Mapped[str | None] = mapped_column(String(100))
 
 class DetalleMovimiento(Base):
     __tablename__ = "detalles_movimiento"
