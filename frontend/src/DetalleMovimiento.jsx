@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado']
+const PROCESOS_SALIDA_FARDO = ['Sellado']
 
 function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const esExtrusion = movimiento.proceso === 'Extrusión'
@@ -21,9 +22,12 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [pesoBruto, setPesoBruto] = useState('')
   const [pesoTuco, setPesoTuco] = useState('')
   const [peso, setPeso] = useState('')
+  const [pesoFardo, setPesoFardo] = useState('')
+  const [millaresFardo, setMillaresFardo] = useState('')
   const [millares, setMillares] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
+  const salidaEsFardo = PROCESOS_SALIDA_FARDO.includes(movimiento.proceso)
 
   const cargarDetallesMerma = () => {
     axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`)
@@ -72,6 +76,32 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const entradaCalculada = esDobleLado ? sumaNeto(entradaBobinas) : Number(movimiento.entrada)
   const salidaCalculada = esProcesoEspecial ? sumaNeto(salidaBobinas) : Number(movimiento.salida)
   const mermaTeorica = entradaCalculada - salidaCalculada
+
+  const agregarFardoSalida = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+
+    const siguienteNumero = salidaBobinas.length + 1
+
+    try {
+      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+        tipo: 'fardo',
+        lado: 'salida',
+        numero: siguienteNumero,
+        peso_bruto: parseFloat(pesoFardo),
+        peso_tuco: 0,
+        millares: parseFloat(millaresFardo)
+      })
+      setPesoFardo('')
+      setMillaresFardo('')
+      cargarDetalles()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al agregar el fardo.')
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   const agregarDetalleEspecial = async (e) => {
     e.preventDefault()
@@ -171,12 +201,12 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
   const etiqueta = tipo === 'bobina' ? 'Bobina' : 'Fardo'
   const etiquetaPlural = tipo === 'bobina' ? 'Bobinas' : 'Fardos'
 
-  const TablaBobinas = ({ lista, titulo }) => (
+  const TablaBobinas = ({ lista, titulo, mostrarMillares }) => (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-2">
         <h4 className="text-sm font-semibold text-slate-700">{titulo}</h4>
         <span className="text-xs text-slate-400">
-          {lista.length} bobina{lista.length !== 1 ? 's' : ''} · {sumaNeto(lista).toFixed(2)} kg neto
+          {lista.length} {mostrarMillares ? 'fardo' : 'bobina'}{lista.length !== 1 ? 's' : ''} · {sumaNeto(lista).toFixed(2)} kg neto
         </span>
       </div>
       <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100">
@@ -184,9 +214,18 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
           <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
             <tr>
               <th className="px-4 py-2">N°</th>
-              <th className="px-4 py-2">Bruto</th>
-              <th className="px-4 py-2">Tuco</th>
-              <th className="px-4 py-2">Neto</th>
+              {mostrarMillares ? (
+                <>
+                  <th className="px-4 py-2">Peso</th>
+                  <th className="px-4 py-2">Millares</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-4 py-2">Bruto</th>
+                  <th className="px-4 py-2">Tuco</th>
+                  <th className="px-4 py-2">Neto</th>
+                </>
+              )}
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
@@ -194,9 +233,18 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
             {lista.map((d) => (
               <tr key={d.id} className="border-t border-slate-200">
                 <td className="px-4 py-2">{d.numero}</td>
-                <td className="px-4 py-2">{d.peso_bruto}</td>
-                <td className="px-4 py-2">{d.peso_tuco}</td>
-                <td className="px-4 py-2 font-medium text-slate-800">{d.peso_neto}</td>
+                {mostrarMillares ? (
+                  <>
+                    <td className="px-4 py-2 font-medium text-slate-800">{d.peso_neto}</td>
+                    <td className="px-4 py-2">{d.millares}</td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-2">{d.peso_bruto}</td>
+                    <td className="px-4 py-2">{d.peso_tuco}</td>
+                    <td className="px-4 py-2 font-medium text-slate-800">{d.peso_neto}</td>
+                  </>
+                )}
                 <td className="px-4 py-2 text-right">
                   <button
                     onClick={() => eliminarDetalle(d.id)}
@@ -209,8 +257,8 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
             ))}
             {lista.length === 0 && (
               <tr>
-                <td colSpan="5" className="px-4 py-4 text-center text-slate-400">
-                  Sin bobinas todavía.
+                <td colSpan={mostrarMillares ? 4 : 5} className="px-4 py-4 text-center text-slate-400">
+                  Sin registros todavía.
                 </td>
               </tr>
             )}
@@ -299,64 +347,100 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
               </div>
             )}
 
-            <form onSubmit={agregarDetalleEspecial} className="flex flex-col sm:flex-row gap-3 mb-6">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-600 mb-1">Peso bruto (kg)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={pesoBruto}
-                  onChange={(e) => setPesoBruto(e.target.value)}
-                  required
-                  className="w-full border border-slate-300 rounded px-3 py-2"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-600 mb-1">Peso del tuco (kg)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={pesoTuco}
-                  onChange={(e) => setPesoTuco(e.target.value)}
-                  required
-                  className="w-full border border-slate-300 rounded px-3 py-2"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-600 mb-1">Neto</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={
-                    pesoBruto !== '' && pesoTuco !== ''
-                      ? (parseFloat(pesoBruto) - parseFloat(pesoTuco)).toFixed(2)
-                      : ''
-                  }
-                  className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  disabled={enviando}
-                  className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
-                >
-                  {enviando ? 'Agregando...' : '+ Bobina'}
-                </button>
-              </div>
-            </form>
+            {salidaEsFardo && ladoActivo === 'salida' ? (
+  <form onSubmit={agregarFardoSalida} className="flex flex-col sm:flex-row gap-3 mb-6">
+    <div className="flex-1">
+      <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
+      <input
+        type="number"
+        step="0.01"
+        value={pesoFardo}
+        onChange={(e) => setPesoFardo(e.target.value)}
+        required
+        className="w-full border border-slate-300 rounded px-3 py-2"
+      />
+    </div>
+    <div className="flex-1">
+      <label className="block text-sm font-medium text-slate-600 mb-1">Millares</label>
+      <input
+        type="number"
+        step="0.01"
+        value={millaresFardo}
+        onChange={(e) => setMillaresFardo(e.target.value)}
+        required
+        className="w-full border border-slate-300 rounded px-3 py-2"
+      />
+    </div>
+    <div className="flex items-end">
+      <button
+        type="submit"
+        disabled={enviando}
+        className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+      >
+        {enviando ? 'Agregando...' : '+ Fardo'}
+      </button>
+    </div>
+  </form>
+) : (
+  <form onSubmit={agregarDetalleEspecial} className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso bruto (kg)</label>
+        <input
+          type="number"
+          step="0.01"
+          value={pesoBruto}
+          onChange={(e) => setPesoBruto(e.target.value)}
+          required
+          className="w-full border border-slate-300 rounded px-3 py-2"
+        />
+      </div>
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso del tuco (kg)</label>
+        <input
+          type="number"
+          step="0.01"
+          value={pesoTuco}
+          onChange={(e) => setPesoTuco(e.target.value)}
+          required
+          className="w-full border border-slate-300 rounded px-3 py-2"
+        />
+      </div>
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Neto</label>
+        <input
+          type="text"
+          readOnly
+          value={
+            pesoBruto !== '' && pesoTuco !== ''
+              ? (parseFloat(pesoBruto) - parseFloat(pesoTuco)).toFixed(2)
+              : ''
+          }
+          className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
+        />
+      </div>
+      <div className="flex items-end">
+        <button
+          type="submit"
+          disabled={enviando}
+          className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+        >
+          {enviando ? 'Agregando...' : '+ Bobina'}
+        </button>
+      </div>
+    </form>
+  )}
 
             {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
             {cargando ? (
-              <p className="text-slate-500 text-sm">Cargando...</p>
-            ) : esDobleLado ? (
-              ladoActivo === 'entrada'
-                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" />
-                : <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" />
-            ) : (
-    <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" />
-  )}
+        <p className="text-slate-500 text-sm">Cargando...</p>
+      ) : esDobleLado ? (
+        ladoActivo === 'entrada'
+          ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} />
+          : <TablaBobinas lista={salidaBobinas} titulo="Fardos de Salida" mostrarMillares={salidaEsFardo} />
+      ) : (
+        <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" mostrarMillares={false} />
+      )}
 
   <div className="mt-6 pt-5 border-t border-slate-200">
     <h4 className="text-sm font-semibold text-slate-700 mb-3">Detalle de Merma (opcional)</h4>

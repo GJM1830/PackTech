@@ -24,8 +24,8 @@ const MAQUINAS_POR_PROCESO = {
   'Despacho': ['Almacén']
 }
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado']
 
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
