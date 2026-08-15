@@ -209,6 +209,12 @@ class Movimiento(Base):
 # DETALLES DE MOVIMIENTO
 # =========================
 
+class TipoMerma(Base):
+    __tablename__ = "tipos_merma"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proceso: Mapped[str] = mapped_column(String(50))
+    nombre: Mapped[str] = mapped_column(String(100))
 class DetalleMerma(Base):
     __tablename__ = "detalles_merma"
 
