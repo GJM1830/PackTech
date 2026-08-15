@@ -208,8 +208,6 @@ function Movimientos() {
         : parseFloat(form.entrada) || 0,
       salida: esProcesoEspecial ? 0 : (parseFloat(form.salida) || 0),
       unidad: form.unidad,
-      merma_real: form.merma_real !== '' ? parseFloat(form.merma_real) : null,
-      tipo_merma: form.tipo_merma?.trim() || null,
       observacion: form.observacion || null
     }
 
@@ -468,52 +466,9 @@ function Movimientos() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Merma real (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="merma_real"
-                    value={form.merma_real}
-                    onChange={manejarCambio}
-                    className="w-full border border-slate-300 rounded px-3 py-2"
-                    placeholder="Opcional"
-                  />
-                </div>
-
-                <div className="flex-1 relative">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Tipo de merma
-                  </label>
-                  <input
-                    type="text"
-                    name="tipo_merma"
-                    value={form.tipo_merma}
-                    onChange={manejarCambio}
-                    autoComplete="off"
-                    className="w-full border border-slate-300 rounded px-3 py-2"
-                    placeholder="Ej. Purga, Rebaba..."
-                  />
-                  {sugerenciasTipoMerma.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                      {sugerenciasTipoMerma.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            setForm({ ...form, tipo_merma: t.nombre })
-                            setSugerenciasTipoMerma([])
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
-                        >
-                          {t.nombre}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  La merma se registra en detalle (por tipo) en el siguiente paso.
+                </p>
               </div>
             </>
           ) : (

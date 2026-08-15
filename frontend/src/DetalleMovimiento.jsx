@@ -9,6 +9,11 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const esDobleLado = PROCESOS_DOBLE_LADO.includes(movimiento.proceso)
   const esProcesoEspecial = PROCESOS_ESPECIALES.includes(movimiento.proceso)  
 
+  const [detallesMerma, setDetallesMerma] = useState([])
+  const [pesoMerma, setPesoMerma] = useState('')
+  const [tipoMermaInput, setTipoMermaInput] = useState('')
+  const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
+  const [enviandoMerma, setEnviandoMerma] = useState(false)
   const [ladoActivo, setLadoActivo] = useState('salida')
   const [tipo, setTipo] = useState('bobina')
   const [detalles, setDetalles] = useState([])
@@ -19,6 +24,12 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [millares, setMillares] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
+
+  const cargarDetallesMerma = () => {
+    axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`)
+      .then((res) => setDetallesMerma(res.data))
+      .catch((err) => console.error(err))
+  }
 
   const cargarDetalles = () => {
     setCargando(true)
@@ -33,10 +44,24 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
         setCargando(false)
       })
   }
-
+  
   useEffect(() => {
-    cargarDetalles()
-  }, [])
+  if (!esProcesoEspecial || tipoMermaInput.trim().length < 2) {
+    setSugerenciasTipoMerma([])
+    return
+  }
+  const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${encodeURIComponent(movimiento.proceso)}&q=${tipoMermaInput}`)
+        .then((res) => setSugerenciasTipoMerma(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [tipoMermaInput, esProcesoEspecial])
+
+    useEffect(() => {
+      cargarDetalles()
+      if (esProcesoEspecial) cargarDetallesMerma()
+    }, []) 
 
   const detallesLado = (lado) => detalles.filter(d => d.lado === lado)
   const sumaNeto = (lista) => lista.reduce((s, d) => s + Number(d.peso_neto), 0)
@@ -110,6 +135,36 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       alert(err.response?.data?.detail || 'Error al eliminar.')
     }
   }
+
+  const agregarMerma = async (e) => {
+  e.preventDefault()
+  setEnviandoMerma(true)
+  try {
+    await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`, {
+      peso: parseFloat(pesoMerma),
+      tipo_merma: tipoMermaInput.trim() || null
+    })
+    setPesoMerma('')
+    setTipoMermaInput('')
+    cargarDetallesMerma()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al agregar la merma.')
+  } finally {
+    setEnviandoMerma(false)
+  }
+}
+
+const eliminarMerma = async (id) => {
+  if (!confirm('¿Eliminar este registro de merma?')) return
+  try {
+    await axios.delete(`https://packtech-production.up.railway.app/mermas/${id}`)
+    cargarDetallesMerma()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al eliminar.')
+  }
+}
+
+const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0)
 
   const totalPesoSimple = detalles.reduce((s, d) => s + Number(d.peso_neto), 0)
   const totalMillaresSimple = detalles.reduce((s, d) => s + Number(d.millares || 0), 0)
@@ -196,27 +251,19 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
             </p>
           </div>
           <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2">
-            <p className="text-xs text-green-600 uppercase tracking-wide">Merma real</p>
-            <p className="text-sm font-semibold text-green-800">
-              {movimiento.merma_real != null ? `${movimiento.merma_real} ${movimiento.unidad}` : '—'}
-            </p>
-          </div>
+          <p className="text-xs text-green-600 uppercase tracking-wide">Merma real</p>
+          <p className="text-sm font-semibold text-green-800">
+            {totalMermaDetallada > 0 ? `${totalMermaDetallada.toFixed(2)} ${movimiento.unidad}` : '—'}
+          </p>
         </div>
+      </div>
 
         {esProcesoEspecial && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-            <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Tipo de merma</p>
-              <p className="text-sm font-medium text-slate-700">
-                {movimiento.tipo_merma?.trim() ? movimiento.tipo_merma : 'Sin especificar'}
-              </p>
-            </div>
-            <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Observación</p>
-              <p className="text-sm font-medium text-slate-700 truncate">
-                {movimiento.observacion?.trim() ? movimiento.observacion : 'Sin observación'}
-              </p>
-            </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-5">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Observación</p>
+            <p className="text-sm font-medium text-slate-700 truncate">
+              {movimiento.observacion?.trim() ? movimiento.observacion : 'Sin observación'}
+            </p>
           </div>
         )}
 
@@ -308,9 +355,94 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
                 ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" />
                 : <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" />
             ) : (
-              <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" />
-            )}
-          </>
+    <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" />
+  )}
+
+  <div className="mt-6 pt-5 border-t border-slate-200">
+    <h4 className="text-sm font-semibold text-slate-700 mb-3">Detalle de Merma (opcional)</h4>
+
+    <form onSubmit={agregarMerma} className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
+        <input
+          type="number"
+          step="0.01"
+          value={pesoMerma}
+          onChange={(e) => setPesoMerma(e.target.value)}
+          required
+          className="w-full border border-slate-300 rounded px-3 py-2"
+        />
+      </div>
+      <div className="flex-1 relative">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de merma</label>
+        <input
+          type="text"
+          value={tipoMermaInput}
+          onChange={(e) => setTipoMermaInput(e.target.value)}
+          autoComplete="off"
+          className="w-full border border-slate-300 rounded px-3 py-2"
+          placeholder="Ej. Purga, Rebaba... (opcional)"
+        />
+        {sugerenciasTipoMerma.length > 0 && (
+          <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {sugerenciasTipoMerma.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTipoMermaInput(t.nombre)
+                  setSugerenciasTipoMerma([])
+                }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+              >
+                {t.nombre}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex items-end">
+        <button
+          type="submit"
+          disabled={enviandoMerma}
+          className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+        >
+          {enviandoMerma ? 'Agregando...' : '+ Agregar merma'}
+        </button>
+      </div>
+    </form>
+
+    {detallesMerma.length > 0 && (
+      <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+            <tr>
+              <th className="px-4 py-2">Peso</th>
+              <th className="px-4 py-2">Tipo de merma</th>
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {detallesMerma.map((d) => (
+              <tr key={d.id} className="border-t border-slate-200">
+                <td className="px-4 py-2">{d.peso} kg</td>
+                <td className="px-4 py-2">{d.tipo_merma || 'Sin especificar'}</td>
+                <td className="px-4 py-2 text-right">
+                  <button
+                    onClick={() => eliminarMerma(d.id)}
+                    className="text-red-600 hover:text-red-800 text-xs"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+  </>
         ) : (
           <>
             {detalles.length === 0 && (
