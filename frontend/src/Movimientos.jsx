@@ -24,7 +24,8 @@ const MAQUINAS_POR_PROCESO = {
   'Despacho': ['Almacén']
 }
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte']
 
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
@@ -460,7 +461,7 @@ function Movimientos() {
                 </div>
               )}
 
-              {form.proceso === 'Impresión' && (
+              {PROCESOS_DOBLE_LADO.includes(form.proceso) && (
                 <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
                   La entrada y salida se calculan a partir de las bobinas que registres en el siguiente paso.
                 </p>

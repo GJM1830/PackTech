@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte']
 
 function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const esExtrusion = movimiento.proceso === 'Extrusión'
-  const esImpresion = movimiento.proceso === 'Impresión'
-  const esProcesoEspecial = PROCESOS_ESPECIALES.includes(movimiento.proceso)
+  const esDobleLado = PROCESOS_DOBLE_LADO.includes(movimiento.proceso)
+  const esProcesoEspecial = PROCESOS_ESPECIALES.includes(movimiento.proceso)  
 
   const [ladoActivo, setLadoActivo] = useState('salida')
   const [tipo, setTipo] = useState('bobina')
@@ -43,7 +44,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const entradaBobinas = detallesLado('entrada')
   const salidaBobinas = detallesLado('salida')
 
-  const entradaCalculada = esImpresion ? sumaNeto(entradaBobinas) : Number(movimiento.entrada)
+  const entradaCalculada = esDobleLado ? sumaNeto(entradaBobinas) : Number(movimiento.entrada)
   const salidaCalculada = esProcesoEspecial ? sumaNeto(salidaBobinas) : Number(movimiento.salida)
   const mermaTeorica = entradaCalculada - salidaCalculada
 
@@ -230,7 +231,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 
         {esProcesoEspecial ? (
           <>
-            {esImpresion && (
+            {esDobleLado && (
               <div className="flex gap-2 mb-4 border-b border-slate-200">
                 <button
                   onClick={() => setLadoActivo('entrada')}
@@ -302,7 +303,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 
             {cargando ? (
               <p className="text-slate-500 text-sm">Cargando...</p>
-            ) : esImpresion ? (
+            ) : esDobleLado ? (
               ladoActivo === 'entrada'
                 ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" />
                 : <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" />
