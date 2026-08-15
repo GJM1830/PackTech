@@ -49,7 +49,6 @@ app.include_router(detalles_router)
 app.include_router(auth_router)
 app.include_router(tipos_merma_router)
 
-
 @app.get("/")
 def root():
     return {"mensaje": "PackTech funcionando"}

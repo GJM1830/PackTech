@@ -1,7 +1,6 @@
 import os
 from fastapi import Header, HTTPException
 from sqlalchemy.orm import Session
-
 from database import SessionLocal
 import models
 
