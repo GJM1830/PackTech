@@ -381,7 +381,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
           onChange={(e) => setTipoMermaInput(e.target.value)}
           autoComplete="off"
           className="w-full border border-slate-300 rounded px-3 py-2"
-          placeholder="Ej. Purga, Rebaba... (opcional)"
+          placeholder="Ej. Refil, Rebaba... "
         />
         {sugerenciasTipoMerma.length > 0 && (
           <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
