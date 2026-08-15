@@ -78,7 +78,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     setEnviando(true)
     setError(null)
 
-    const lado = esImpresion ? ladoActivo : 'salida'
+    const lado = esDobleLado ? ladoActivo : 'salida'
     const siguienteNumero = detallesLado(lado).length + 1
 
     try {
