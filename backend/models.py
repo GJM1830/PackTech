@@ -290,6 +290,9 @@ class MovimientoAglomerado(Base):
 
     observacion: Mapped[str | None] = mapped_column(Text)
 
+    detalle_merma_id: Mapped[int | None] = mapped_column(ForeignKey("detalles_merma.id"))
+    origen_automatico: Mapped[bool] = mapped_column(default=False)
+
     fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
     hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
 

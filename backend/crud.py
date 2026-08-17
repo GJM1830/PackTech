@@ -541,6 +541,34 @@ def crear_detalle_merma(db: Session, movimiento_id: int, detalle: schemas.Detall
 
     actualizar_merma_real(db, movimiento_id)
 
+    orden = movimiento.orden_id and db.get(models.OrdenProduccion, movimiento.orden_id)
+    producto_origen = orden.descripcion if orden else None
+
+    if producto_origen and producto_origen.strip():
+        crear_producto_aglomerado_si_no_existe(db, producto_origen.strip())
+
+    if detalle.tipo_merma and detalle.tipo_merma.strip():
+        crear_clasificacion_aglomerado_si_no_existe(db, detalle.tipo_merma.strip())
+
+    ahora = ahora_lima()
+
+    entrada_aglomerado = models.MovimientoAglomerado(
+        tipo="entrada",
+        cantidad=detalle.peso,
+        proceso_origen=movimiento.proceso,
+        producto_origen=producto_origen,
+        orden_id=movimiento.orden_id,
+        clasificacion=detalle.tipo_merma,
+        operario_id=movimiento.operario_id,
+        observacion=movimiento.observacion,
+        detalle_merma_id=nuevo.id,
+        origen_automatico=True,
+        fecha=ahora.date(),
+        hora=ahora.time()
+    )
+    db.add(entrada_aglomerado)
+    db.commit()
+
     return nuevo
 
 
@@ -558,6 +586,11 @@ def eliminar_detalle_merma(db: Session, detalle_id: int):
         raise HTTPException(status_code=404, detail="El detalle de merma no existe.")
 
     movimiento_id = detalle.movimiento_id
+
+    db.query(models.MovimientoAglomerado).filter(
+        models.MovimientoAglomerado.detalle_merma_id == detalle_id
+    ).delete()
+
     db.delete(detalle)
     db.commit()
 

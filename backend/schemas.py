@@ -200,6 +200,7 @@ class MovimientoAglomeradoResponse(BaseModel):
     operario_id: int
     nombre_operario: str | None = None
     observacion: str | None
+    origen_automatico: bool
     fecha: date
     hora: time
 

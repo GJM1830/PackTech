@@ -138,7 +138,7 @@ function Aglomerado() {
       proceso_origen: tipo === 'entrada' ? procesoOrigen : null,
       producto_origen: tipo === 'entrada' ? (productoOrigen.trim() || null) : null,
       codigo_orden: tipo === 'salida' ? (busquedaOrden.trim() || null) : null,
-      clasificacion: tipo === 'salida' ? (clasificacion.trim() || null) : null,
+      clasificacion: (tipo === 'salida' || tipo === 'entrada') ? (clasificacion.trim() || null) : null,
       nombre_operario: busquedaOperario.trim(),
       observacion: observacion || null
     }
@@ -274,6 +274,32 @@ function Aglomerado() {
                         className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
                       >
                         {p.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Clasificación (opcional)</label>
+                <input
+                  type="text"
+                  value={clasificacion}
+                  onChange={(e) => setClasificacion(e.target.value)}
+                  autoComplete="off"
+                  className={estiloInput}
+                  placeholder="Ej. Alta, Baja, Blanco..."
+                />
+                {sugerenciasClasificacion.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {sugerenciasClasificacion.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => { setClasificacion(c.nombre); setSugerenciasClasificacion([]) }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                      >
+                        {c.nombre}
                       </button>
                     ))}
                   </div>
@@ -421,6 +447,7 @@ function Aglomerado() {
                   <th className="px-4 py-3">Operario</th>
                   <th className="px-4 py-3">Fecha</th>
                   <th className="px-4 py-3">Hora</th>
+                  <th className="px-4 py-3">Origen</th>
                   <th className="px-4 py-3 text-right"></th>
                 </tr>
               </thead>
@@ -446,6 +473,13 @@ function Aglomerado() {
                     <td className="px-4 py-3">{mov.nombre_operario}</td>
                     <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                     <td className="px-4 py-3">{mov.hora?.slice(0, 8)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        mov.origen_automatico ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        {mov.origen_automatico ? 'Automático' : 'Manual'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       {esAdmin && (
                         <MenuAcciones onEliminar={() => eliminarMovimiento(mov.id)} />
