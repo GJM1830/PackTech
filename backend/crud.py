@@ -694,3 +694,154 @@ def crear_tipo_material_si_no_existe(db: Session, nombre: str):
         nuevo = models.TipoMaterial(nombre=nombre)
         db.add(nuevo)
         db.commit()
+        
+        
+    # =========================
+# AGLOMERADO
+# =========================
+
+def crear_producto_aglomerado_si_no_existe(db: Session, nombre: str):
+    existente = (
+        db.query(models.ProductoAglomerado)
+        .filter(models.ProductoAglomerado.nombre.ilike(nombre))
+        .first()
+    )
+    if existente is None:
+        nuevo = models.ProductoAglomerado(nombre=nombre)
+        db.add(nuevo)
+        db.commit()
+
+
+def buscar_productos_aglomerado(db: Session, q: str):
+    return (
+        db.query(models.ProductoAglomerado)
+        .filter(models.ProductoAglomerado.nombre.ilike(f"%{q}%"))
+        .order_by(models.ProductoAglomerado.nombre)
+        .limit(10)
+        .all()
+    )
+
+
+def crear_clasificacion_aglomerado_si_no_existe(db: Session, nombre: str):
+    existente = (
+        db.query(models.ClasificacionAglomerado)
+        .filter(models.ClasificacionAglomerado.nombre.ilike(nombre))
+        .first()
+    )
+    if existente is None:
+        nuevo = models.ClasificacionAglomerado(nombre=nombre)
+        db.add(nuevo)
+        db.commit()
+
+
+def buscar_clasificaciones_aglomerado(db: Session, q: str):
+    return (
+        db.query(models.ClasificacionAglomerado)
+        .filter(models.ClasificacionAglomerado.nombre.ilike(f"%{q}%"))
+        .order_by(models.ClasificacionAglomerado.nombre)
+        .limit(10)
+        .all()
+    )
+
+
+def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglomeradoCreate):
+    operario = (
+        db.query(models.Operario)
+        .filter(models.Operario.nombre.ilike(movimiento.nombre_operario.strip()))
+        .first()
+    )
+    if operario is None:
+        operario = models.Operario(nombre=movimiento.nombre_operario.strip())
+        db.add(operario)
+        db.commit()
+        db.refresh(operario)
+
+    orden_id = None
+    if movimiento.codigo_orden and movimiento.codigo_orden.strip():
+        orden = (
+            db.query(models.OrdenProduccion)
+            .filter(models.OrdenProduccion.codigo.ilike(movimiento.codigo_orden.strip()))
+            .first()
+        )
+        if orden is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No se encontró ninguna Orden con ese código."
+            )
+        orden_id = orden.id
+
+    if movimiento.producto_origen and movimiento.producto_origen.strip():
+        crear_producto_aglomerado_si_no_existe(db, movimiento.producto_origen.strip())
+
+    if movimiento.clasificacion and movimiento.clasificacion.strip():
+        crear_clasificacion_aglomerado_si_no_existe(db, movimiento.clasificacion.strip())
+
+    ahora = ahora_lima()
+
+    nuevo = models.MovimientoAglomerado(
+        tipo=movimiento.tipo,
+        cantidad=movimiento.cantidad,
+        proceso_origen=movimiento.proceso_origen,
+        producto_origen=movimiento.producto_origen,
+        orden_id=orden_id,
+        clasificacion=movimiento.clasificacion,
+        operario_id=operario.id,
+        observacion=movimiento.observacion,
+        fecha=ahora.date(),
+        hora=ahora.time()
+    )
+
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+
+    nuevo.codigo_orden = nuevo.orden_obj.codigo if nuevo.orden_obj else None
+    nuevo.nombre_operario = nuevo.operario_obj.nombre
+
+    return nuevo
+
+
+def obtener_movimientos_aglomerado(db: Session):
+    movimientos = (
+        db.query(models.MovimientoAglomerado)
+        .order_by(models.MovimientoAglomerado.id.desc())
+        .all()
+    )
+
+    for mov in movimientos:
+        mov.codigo_orden = mov.orden_obj.codigo if mov.orden_obj else None
+        mov.nombre_operario = mov.operario_obj.nombre
+
+    return movimientos
+
+
+def calcular_saldo_aglomerado(db: Session):
+    todos = (
+        db.query(models.MovimientoAglomerado)
+        .order_by(models.MovimientoAglomerado.id.asc())
+        .all()
+    )
+
+    saldo = 0
+    for mov in todos:
+        if mov.tipo == "ajuste":
+            saldo = float(mov.cantidad)
+        elif mov.tipo == "entrada":
+            saldo += float(mov.cantidad)
+        elif mov.tipo == "salida":
+            saldo -= float(mov.cantidad)
+
+    return saldo
+
+
+def eliminar_movimiento_aglomerado(db: Session, movimiento_id: int):
+    movimiento = db.get(models.MovimientoAglomerado, movimiento_id)
+
+    if movimiento is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El movimiento de aglomerado no existe."
+        )
+
+    db.delete(movimiento)
+    db.commit()
