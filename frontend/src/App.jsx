@@ -6,6 +6,7 @@ import Movimientos from './Movimientos'
 import OrdenDetalle from './OrdenDetalle'
 import Clientes from './Clientes'
 import Operarios from './Operarios'
+import Aglomerado from './Aglomerado'
 import MenuAcciones from './MenuAcciones'
 import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
@@ -310,6 +311,7 @@ function App() {
         <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
+        <Link to="/aglomerado" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Aglomerado</Link>
         
         <button
         onClick={() => {
@@ -330,6 +332,7 @@ function App() {
             <Route path="/ordenes/:id" element={<OrdenDetalle />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/operarios" element={<Operarios />} />
+            <Route path="/aglomerado" element={<Aglomerado />} />
           </Routes>
         </div>
       </div>
