@@ -258,12 +258,13 @@ class DetalleMovimiento(Base):
     millares: Mapped[float | None] = mapped_column(
         Numeric(10, 2)
     )
-    
-    class TipoMaterial(Base):
-        __tablename__ = "tipos_material"
 
-        id: Mapped[int] = mapped_column(Integer, primary_key=True)
-        nombre: Mapped[str] = mapped_column(String(100))
+
+class TipoMaterial(Base):
+    __tablename__ = "tipos_material"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100))
     
 # =========================
 # USUARIOS  
