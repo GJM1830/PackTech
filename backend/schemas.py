@@ -171,3 +171,53 @@ class DetalleMermaResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+        
+# =========================
+# AGLOMERADO
+# =========================
+
+class MovimientoAglomeradoCreate(BaseModel):
+    tipo: str  # "entrada", "salida" o "ajuste"
+    cantidad: float
+    proceso_origen: str | None = None
+    producto_origen: str | None = None
+    codigo_orden: str | None = None  # se busca la orden por código, no por id
+    clasificacion: str | None = None
+    nombre_operario: str
+    observacion: str | None = None
+
+
+class MovimientoAglomeradoResponse(BaseModel):
+    id: int
+    tipo: str
+    cantidad: float
+    proceso_origen: str | None
+    producto_origen: str | None
+    orden_id: int | None
+    codigo_orden: str | None = None
+    clasificacion: str | None
+    operario_id: int
+    nombre_operario: str | None = None
+    observacion: str | None
+    fecha: date
+    hora: time
+
+    class Config:
+        from_attributes = True
+
+
+class ProductoAglomeradoResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
+class ClasificacionAglomeradoResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
