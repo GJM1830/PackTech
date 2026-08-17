@@ -7,6 +7,7 @@ import OrdenDetalle from './OrdenDetalle'
 import Clientes from './Clientes'
 import Operarios from './Operarios'
 import Aglomerado from './Aglomerado'
+import Reportes from './Reportes'
 import MenuAcciones from './MenuAcciones'
 import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
@@ -312,7 +313,7 @@ function App() {
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
         <Link to="/aglomerado" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Aglomerado</Link>
-        
+        <Link to="/reportes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Reportes</Link>
         <button
         onClick={() => {
           localStorage.removeItem('packtech_clave')
@@ -333,6 +334,7 @@ function App() {
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/operarios" element={<Operarios />} />
             <Route path="/aglomerado" element={<Aglomerado />} />
+            <Route path="/reportes" element={<Reportes />} />
           </Routes>
         </div>
       </div>
