@@ -57,7 +57,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/materiales/buscar?q=${tipoMaterial}`)
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/materiales/buscar?q=${tipoMaterial}`)
         .then((res) => setSugerenciasTipoMaterial(res.data))
         .catch((err) => console.error(err))
     }, 300)

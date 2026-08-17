@@ -266,6 +266,50 @@ class TipoMaterial(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100))
     
+    
+# =========================
+# AGLOMERADO
+# =========================
+
+class MovimientoAglomerado(Base):
+    __tablename__ = "movimientos_aglomerado"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    tipo: Mapped[str] = mapped_column(String(20))  # "entrada", "salida" o "ajuste"
+
+    cantidad: Mapped[float] = mapped_column(Numeric(10, 2))
+
+    proceso_origen: Mapped[str | None] = mapped_column(String(50))
+    producto_origen: Mapped[str | None] = mapped_column(String(200))
+
+    orden_id: Mapped[int | None] = mapped_column(ForeignKey("ordenes_produccion.id"))
+    clasificacion: Mapped[str | None] = mapped_column(String(100))
+
+    operario_id: Mapped[int] = mapped_column(ForeignKey("operarios.id"))
+
+    observacion: Mapped[str | None] = mapped_column(Text)
+
+    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
+    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+
+    orden_obj: Mapped["OrdenProduccion"] = relationship("OrdenProduccion")
+    operario_obj: Mapped["Operario"] = relationship("Operario")
+
+
+class ProductoAglomerado(Base):
+    __tablename__ = "productos_aglomerado"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(200))
+
+
+class ClasificacionAglomerado(Base):
+    __tablename__ = "clasificaciones_aglomerado"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100))
+    
 # =========================
 # USUARIOS  
 # =========================
