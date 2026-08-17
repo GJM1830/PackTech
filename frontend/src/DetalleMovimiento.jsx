@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_SALIDA_FARDO = ['Sellado']
 
 function DetalleMovimiento({ movimiento, orden, onCerrar }) {
@@ -219,7 +219,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
   const etiqueta = tipo === 'bobina' ? 'Bobina' : 'Fardo'
   const etiquetaPlural = tipo === 'bobina' ? 'Bobinas' : 'Fardos'
 
-  const TablaBobinas = ({ lista, titulo, mostrarMillares }) => (
+  const TablaBobinas = ({ lista, titulo, mostrarMillares, mostrarMaterial }) => (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-2">
         <h4 className="text-sm font-semibold text-slate-700">{titulo}</h4>
@@ -242,6 +242,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
                   <th className="px-4 py-2">Bruto</th>
                   <th className="px-4 py-2">Tuco</th>
                   <th className="px-4 py-2">Neto</th>
+                  {mostrarMaterial && <th className="px-4 py-2">Material</th>}
                 </>
               )}
               <th className="px-4 py-2"></th>
@@ -261,6 +262,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
                     <td className="px-4 py-2">{d.peso_bruto}</td>
                     <td className="px-4 py-2">{d.peso_tuco}</td>
                     <td className="px-4 py-2 font-medium text-slate-800">{d.peso_neto}</td>
+                    {mostrarMaterial && <td className="px-4 py-2">{d.tipo_material || '—'}</td>}
                   </>
                 )}
                 <td className="px-4 py-2 text-right">
@@ -275,7 +277,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
             ))}
             {lista.length === 0 && (
               <tr>
-                <td colSpan={mostrarMillares ? 4 : 5} className="px-4 py-4 text-center text-slate-400">
+                <td colSpan={mostrarMillares ? 4 : (mostrarMaterial ? 6 : 5)} className="px-4 py-4 text-center text-slate-400">
                   Sin registros todavía.
                 </td>
               </tr>
@@ -436,60 +438,59 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
           className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
         />
       </div>
-      <div className="flex items-end">
-          {movimiento.proceso === 'Laminado' && ladoActivo === 'entrada' && (
-    <div className="flex-1 relative">
-      <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
-      <input
-        type="text"
-        value={tipoMaterial}
-        onChange={(e) => setTipoMaterial(e.target.value)}
-        autoComplete="off"
-        className="w-full border border-slate-300 rounded px-3 py-2"
-        placeholder="Ej. PET, Uso pesado, Baja..."
-      />
-      {sugerenciasTipoMaterial.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-          {sugerenciasTipoMaterial.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => {
-                setTipoMaterial(m.nombre)
-                setSugerenciasTipoMaterial([])
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
-            >
-              {m.nombre}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )}
-        <button
-          type="submit"
-          disabled={enviando}
-          className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
-        >
-          {enviando ? 'Agregando...' : '+ Bobina'}
-        </button>
+      {movimiento.proceso === 'Laminado' && ladoActivo === 'entrada' && (
+  <div className="flex-1 relative">
+    <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
+    <input
+      type="text"
+      value={tipoMaterial}
+      onChange={(e) => setTipoMaterial(e.target.value)}
+      autoComplete="off"
+      className="w-full border border-slate-300 rounded px-3 py-2"
+      placeholder="Ej. PET, Uso pesado, Baja..."
+    />
+    {sugerenciasTipoMaterial.length > 0 && (
+      <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        {sugerenciasTipoMaterial.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => {
+              setTipoMaterial(m.nombre)
+              setSugerenciasTipoMaterial([])
+            }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+          >
+            {m.nombre}
+          </button>
+        ))}
       </div>
-    </form>
+    )}
+  </div>
+)}
+<div className="flex items-end">
+  <button
+    type="submit"
+    disabled={enviando}
+    className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+  >
+    {enviando ? 'Agregando...' : '+ Bobina'}
+  </button>
+</div>
+</form>
   )}
 
             {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
             {cargando ? (
-        <p className="text-slate-500 text-sm">Cargando...</p>
-      ) : esDobleLado ? (
-        ladoActivo === 'entrada'
-          ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} />
-          : <TablaBobinas lista={salidaBobinas} titulo="Fardos de Salida" mostrarMillares={salidaEsFardo} />
-      ) : (
-        <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" mostrarMillares={false} />
-      )}
-
+              <p className="text-slate-500 text-sm">Cargando...</p>
+            ) : esDobleLado ? (
+              ladoActivo === 'entrada'
+                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} mostrarMaterial={movimiento.proceso === 'Laminado'} />
+                : <TablaBobinas lista={salidaBobinas} titulo="Fardos de Salida" mostrarMillares={salidaEsFardo} />
+            ) : (
+              <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" mostrarMillares={false} />
+            )}
   <div className="mt-6 pt-5 border-t border-slate-200">
     <h4 className="text-sm font-semibold text-slate-700 mb-3">Detalle de Merma (opcional)</h4>
 
