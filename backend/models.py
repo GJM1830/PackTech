@@ -255,7 +255,7 @@ class DetalleMovimiento(Base):
     peso_neto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     tipo_material: Mapped[str | None] = mapped_column(String(100))
 
-    millares: Mapped[float] = mapped_column(
+    millares: Mapped[float | None] = mapped_column(
         Numeric(10, 2)
     )
     

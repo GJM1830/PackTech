@@ -414,6 +414,14 @@ def eliminar_movimiento(
             detail="El movimiento no existe."
         )
 
+    db.query(models.DetalleMovimiento).filter(
+        models.DetalleMovimiento.movimiento_id == movimiento_id
+    ).delete()
+
+    db.query(models.DetalleMerma).filter(
+        models.DetalleMerma.movimiento_id == movimiento_id
+    ).delete()
+
     db.delete(movimiento)
     db.commit()
 
