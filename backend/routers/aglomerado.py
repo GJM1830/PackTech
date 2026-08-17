@@ -57,4 +57,4 @@ def buscar_clasificaciones(
     q: str,
     db: Session = Depends(obtener_db)
 ):
-    return crud.buscar_clasificaciones_aglomerado(db, q)
+    return crud.buscar_clasificaciones_aglomerado(db, q)    

@@ -472,7 +472,7 @@ function Aglomerado() {
                     </td>
                     <td className="px-4 py-3">{mov.nombre_operario}</td>
                     <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
-                    <td className="px-4 py-3">{mov.hora?.slice(0, 8)}</td>
+                    <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         mov.origen_automatico ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700 border border-amber-200'

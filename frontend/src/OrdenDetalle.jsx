@@ -55,21 +55,12 @@ function OrdenDetalle() {
     setEditandoPlan(true)
   }
 
-  const alternarProceso = (proceso) => {
-    setSeleccionados((actual) =>
-      actual.includes(proceso)
-        ? actual.filter((p) => p !== proceso)
-        : [...actual, proceso]
-    )
-  }
-
   const guardarPlan = async () => {
     setGuardando(true)
     try {
-      const ordenadosSegunFlujo = TODOS_LOS_PROCESOS.filter((p) => seleccionados.includes(p))
       await axios.put(
         `https://packtech-production.up.railway.app/ordenes-produccion/${id}/procesos`,
-        { procesos_plan: ordenadosSegunFlujo.join(',') }
+        { procesos_plan: seleccionados.join(',') }
       )
       setEditandoPlan(false)
       cargar()
@@ -78,6 +69,24 @@ function OrdenDetalle() {
     } finally {
       setGuardando(false)
     }
+  }
+
+  const agregarProceso = (proceso) => {
+    setSeleccionados((actual) => [...actual, proceso])
+  }
+
+  const quitarProceso = (index) => {
+    setSeleccionados((actual) => actual.filter((_, i) => i !== index))
+  }
+
+  const moverProceso = (index, direccion) => {
+    setSeleccionados((actual) => {
+      const nuevo = [...actual]
+      const destino = index + direccion
+      if (destino < 0 || destino >= nuevo.length) return actual
+      ;[nuevo[index], nuevo[destino]] = [nuevo[destino], nuevo[index]]
+      return nuevo
+    })
   }
 
   const procesosPlan = orden?.procesos_plan ? orden.procesos_plan.split(',') : []
@@ -202,20 +211,83 @@ function OrdenDetalle() {
 
       {editandoPlan && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Definir Ruta de Producción</h3>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Definir Ruta de Producción</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Agrega los procesos en el orden que quieras. Puedes reordenarlos con las flechas.
+            </p>
 
-            <div className="space-y-2 mb-6">
-              {TODOS_LOS_PROCESOS.map((proceso) => (
-                <label key={proceso} className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.includes(proceso)}
-                    onChange={() => alternarProceso(proceso)}
-                  />
-                  {proceso}
-                </label>
-              ))}
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Procesos disponibles
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {TODOS_LOS_PROCESOS.filter((p) => !seleccionados.includes(p)).map((proceso) => (
+                  <button
+                    key={proceso}
+                    type="button"
+                    onClick={() => agregarProceso(proceso)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                  >
+                    + {proceso}
+                  </button>
+                ))}
+                {TODOS_LOS_PROCESOS.every((p) => seleccionados.includes(p)) && (
+                  <p className="text-sm text-slate-400">Ya agregaste todos los procesos.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Tu ruta ({seleccionados.length})
+              </p>
+
+              {seleccionados.length === 0 && (
+                <p className="text-sm text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-3 text-center">
+                  Agrega procesos arriba para armar la ruta.
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {seleccionados.map((proceso, index) => (
+                  <div
+                    key={`${proceso}-${index}`}
+                    className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+                  >
+                    <span className="text-xs font-bold text-blue-700 bg-white rounded-full w-5 h-5 flex items-center justify-center border border-blue-300">
+                      {index + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-blue-800">{proceso}</span>
+                    <button
+                      type="button"
+                      onClick={() => moverProceso(index, -1)}
+                      disabled={index === 0}
+                      className="text-blue-600 hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed px-1"
+                      title="Mover arriba"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moverProceso(index, 1)}
+                      disabled={index === seleccionados.length - 1}
+                      className="text-blue-600 hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed px-1"
+                      title="Mover abajo"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quitarProceso(index)}
+                      className="text-red-500 hover:text-red-700 px-1"
+                      title="Quitar"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex gap-3">
