@@ -878,3 +878,109 @@ def eliminar_movimiento_aglomerado(db: Session, movimiento_id: int):
 
     db.delete(movimiento)
     db.commit()
+    
+    
+# =========================
+# REPORTES
+# =========================
+
+def merma_efectiva(movimiento) -> float:
+    if movimiento.merma_real is not None:
+        return float(movimiento.merma_real)
+    return float(movimiento.merma or 0)
+
+
+def reporte_resumen(db: Session, desde: str | None, hasta: str | None, agrupar_por: str):
+    query = db.query(models.Movimiento)
+
+    if desde:
+        query = query.filter(models.Movimiento.fecha >= desde)
+    if hasta:
+        query = query.filter(models.Movimiento.fecha <= hasta)
+
+    movimientos = query.all()
+
+    grupos = {}
+
+    for mov in movimientos:
+        if agrupar_por == "proceso":
+            etiqueta = mov.proceso
+        elif agrupar_por == "maquina":
+            etiqueta = mov.maquina
+        elif agrupar_por == "operario":
+            operario = db.get(models.Operario, mov.operario_id)
+            etiqueta = operario.nombre if operario else "Desconocido"
+        elif agrupar_por == "cliente":
+            orden = db.get(models.OrdenProduccion, mov.orden_id)
+            cliente = orden.cliente_obj if orden else None
+            etiqueta = cliente.nombre if cliente else "Desconocido"
+        else:
+            raise HTTPException(status_code=400, detail="Agrupación no válida.")
+
+        if etiqueta not in grupos:
+            grupos[etiqueta] = {"etiqueta": etiqueta, "entrada": 0, "salida": 0, "merma": 0, "movimientos": 0}
+
+        grupos[etiqueta]["entrada"] += float(mov.entrada or 0)
+        grupos[etiqueta]["salida"] += float(mov.salida or 0)
+        grupos[etiqueta]["merma"] += merma_efectiva(mov)
+        grupos[etiqueta]["movimientos"] += 1
+
+    resultado = list(grupos.values())
+    resultado.sort(key=lambda g: g["merma"], reverse=True)
+
+    return resultado
+
+
+def reporte_orden(db: Session, codigo: str):
+    orden = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.codigo.ilike(codigo.strip()))
+        .first()
+    )
+
+    if orden is None:
+        raise HTTPException(status_code=404, detail="No se encontró ninguna Orden con ese código.")
+
+    movimientos = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden.id)
+        .order_by(models.Movimiento.id.asc())
+        .all()
+    )
+
+    pasos = []
+    total_entrada = 0
+    total_salida = 0
+    total_merma = 0
+
+    for mov in movimientos:
+        operario = db.get(models.Operario, mov.operario_id)
+        merma = merma_efectiva(mov)
+
+        pasos.append({
+            "proceso": mov.proceso,
+            "maquina": mov.maquina,
+            "operario": operario.nombre if operario else "Desconocido",
+            "entrada": float(mov.entrada or 0),
+            "salida": float(mov.salida or 0),
+            "merma": merma,
+            "observacion": mov.observacion,
+            "fecha": mov.fecha,
+            "hora": mov.hora
+        })
+
+        total_entrada += float(mov.entrada or 0)
+        total_salida += float(mov.salida or 0)
+        total_merma += merma
+
+    return {
+        "codigo": orden.codigo,
+        "cliente": orden.cliente_obj.nombre,
+        "descripcion": orden.descripcion,
+        "cantidad": float(orden.cantidad),
+        "unidad": orden.unidad,
+        "pasos": pasos,
+        "total_entrada": total_entrada,
+        "total_salida": total_salida,
+        "total_merma": total_merma
+    }

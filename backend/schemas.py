@@ -222,3 +222,38 @@ class ClasificacionAglomeradoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+# =========================
+# REPORTES
+# =========================
+
+class ReporteGrupo(BaseModel):
+    etiqueta: str
+    entrada: float
+    salida: float
+    merma: float
+    movimientos: int
+
+
+class ReportePaso(BaseModel):
+    proceso: str
+    maquina: str
+    operario: str
+    entrada: float
+    salida: float
+    merma: float
+    observacion: str | None
+    fecha: date
+    hora: time
+
+
+class ReporteOrden(BaseModel):
+    codigo: str
+    cliente: str
+    descripcion: str | None
+    cantidad: float
+    unidad: str
+    pasos: list[ReportePaso]
+    total_entrada: float
+    total_salida: float
+    total_merma: float

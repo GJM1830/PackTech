@@ -241,7 +241,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
                 <>
                   <th className="px-4 py-2">Bruto</th>
                   <th className="px-4 py-2">Tuco</th>
-                  <th className="px-4 py-2">Neto</th>
+                  <th className="px-4 py-2">Peso Neto</th>
                   {mostrarMaterial && <th className="px-4 py-2">Material</th>}
                 </>
               )}

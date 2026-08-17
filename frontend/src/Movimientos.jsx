@@ -14,10 +14,10 @@ const formatearFecha = (fecha) => {
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
   'Laminado': ['Laminadora-01', 'Laminadora-02'],
-  'Impresión': ['Impresora-01', 'Impresora-02'],
+  'Impresión': ['Impresora-01', 'Impresora-02', 'Impresora-03'],
   'Sellado': [
     'Selladora-01', 'Selladora-02', 'Selladora-03',
-    'Selladora-04', 'Selladora-05', 'Selladora-06'
+    'Selladora-04', 'Selladora-05', 'Selladora-06', 'Selladora-07'
   ],
   'Corte': ['Cortadora-01', 'Cortadora-02'],
   'Almacén': ['Almacén'],
