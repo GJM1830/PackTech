@@ -280,3 +280,6 @@ class SiguienteProcesoResponse(BaseModel):
     siguiente_proceso: str | None
     movimiento: MovimientoResponse | None
     mensaje: str | None = None
+    
+class ImportarBobinasResponse(BaseModel):
+    importadas: int

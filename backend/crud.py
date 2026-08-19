@@ -1174,3 +1174,56 @@ def crear_siguiente_movimiento(db: Session, orden_id: int):
         db.refresh(nuevo_movimiento)
 
     return {"siguiente_proceso": siguiente, "movimiento": nuevo_movimiento, "mensaje": None}
+
+def importar_bobinas_anteriores(db: Session, movimiento_id: int):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    anterior = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == movimiento.orden_id)
+        .filter(models.Movimiento.id < movimiento.id)
+        .order_by(models.Movimiento.id.desc())
+        .first()
+    )
+
+    if anterior is None:
+        raise HTTPException(status_code=400, detail="No hay un proceso anterior registrado en esta orden.")
+
+    bobinas_salida = (
+        db.query(models.DetalleMovimiento)
+        .filter(models.DetalleMovimiento.movimiento_id == anterior.id)
+        .filter(models.DetalleMovimiento.lado == "salida")
+        .order_by(models.DetalleMovimiento.numero)
+        .all()
+    )
+
+    if not bobinas_salida:
+        raise HTTPException(status_code=400, detail=f"El proceso anterior ({anterior.proceso}) no tiene bobinas de salida registradas.")
+
+    existentes = (
+        db.query(models.DetalleMovimiento)
+        .filter(models.DetalleMovimiento.movimiento_id == movimiento_id)
+        .filter(models.DetalleMovimiento.lado == "entrada")
+        .count()
+    )
+
+    for i, bobina in enumerate(bobinas_salida, start=existentes + 1):
+        nueva = models.DetalleMovimiento(
+            movimiento_id=movimiento_id,
+            tipo="bobina",
+            lado="entrada",
+            numero=i,
+            peso_bruto=bobina.peso_neto,
+            peso_tuco=0,
+            peso_neto=bobina.peso_neto,
+            millares=None,
+            tipo_material=bobina.tipo_material
+        )
+        db.add(nueva)
+
+    db.commit()
+    actualizar_totales_movimiento(db, movimiento_id)
+
+    return {"importadas": len(bobinas_salida)}

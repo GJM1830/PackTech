@@ -27,3 +27,12 @@ def listar_detalles(
     db: Session = Depends(obtener_db)
 ):
     return crud.obtener_detalles_movimiento(db, movimiento_id)
+
+
+@router.post("/importar-anteriores", response_model=schemas.ImportarBobinasResponse)
+def importar_bobinas_anteriores(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.importar_bobinas_anteriores(db, movimiento_id)

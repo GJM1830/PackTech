@@ -32,6 +32,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const salidaEsFardo = PROCESOS_SALIDA_FARDO.includes(movimiento.proceso)
+  const [importando, setImportando] = useState(false)
   const [tipoMaterial, setTipoMaterial] = useState('')
   const [sugerenciasTipoMaterial, setSugerenciasTipoMaterial] = useState([])
 
@@ -176,6 +177,20 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       setError(err.response?.data?.detail || 'Error al agregar el detalle.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  const importarBobinasAnteriores = async () => {
+    setImportando(true)
+    setError(null)
+    try {
+      const res = await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles/importar-anteriores`)
+      cargarDetalles()
+      alert(`Se importaron ${res.data.importadas} bobina(s) del proceso anterior.`)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudieron importar las bobinas del proceso anterior.')
+    } finally {
+      setImportando(false)
     }
   }
 
@@ -377,23 +392,35 @@ const duplicarMerma = (detalle) => {
         {esProcesoEspecial ? (
           <>
             {esDobleLado && (
-              <div className="flex gap-2 mb-4 border-b border-slate-200">
-                <button
-                  onClick={() => setLadoActivo('entrada')}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    ladoActivo === 'entrada' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  Bobinas de Entrada
-                </button>
-                <button
-                  onClick={() => setLadoActivo('salida')}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    ladoActivo === 'salida' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {salidaEsFardo ? 'Fardos de Salida' : 'Bobinas de Salida'}
-                </button>
+              <div className="flex justify-between items-center mb-4 border-b border-slate-200">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setLadoActivo('entrada')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      ladoActivo === 'entrada' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Bobinas de Entrada
+                  </button>
+                  <button
+                    onClick={() => setLadoActivo('salida')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      ladoActivo === 'salida' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    {salidaEsFardo ? 'Fardos de Salida' : 'Bobinas de Salida'}
+                  </button>
+                </div>
+
+                {ladoActivo === 'entrada' && entradaBobinas.length === 0 && (
+                  <button
+                    onClick={importarBobinasAnteriores}
+                    disabled={importando}
+                    className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 mb-2"
+                  >
+                    {importando ? 'Trayendo...' : '↓ Traer bobinas del proceso anterior'}
+                  </button>
+                )}
               </div>
             )}
 
