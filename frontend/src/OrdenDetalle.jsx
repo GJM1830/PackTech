@@ -22,6 +22,7 @@ function OrdenDetalle() {
   const [seleccionados, setSeleccionados] = useState([])
   const [guardando, setGuardando] = useState(false)
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
+  const [creandoSiguiente, setCreandoSiguiente] = useState(false)
 
   const cargar = async () => {
     try {
@@ -91,6 +92,28 @@ function OrdenDetalle() {
 
   const procesosPlan = orden?.procesos_plan ? orden.procesos_plan.split(',') : []
   const procesosCompletados = new Set(movimientos.map((m) => m.proceso))
+  const siguienteProcesoPendiente = procesosPlan.find((p) => !procesosCompletados.has(p))
+
+  const crearSiguienteMovimiento = async () => {
+    setCreandoSiguiente(true)
+    try {
+      const res = await axios.post('https://packtech-production.up.railway.app/movimientos/siguiente-proceso', {
+        orden_id: parseInt(id)
+      })
+
+      if (!res.data.movimiento) {
+        alert(res.data.mensaje || 'No se pudo crear el siguiente movimiento.')
+        return
+      }
+
+      await cargar()
+      setMovimientoAbierto(res.data.movimiento)
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al crear el siguiente proceso.')
+    } finally {
+      setCreandoSiguiente(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -127,12 +150,23 @@ function OrdenDetalle() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-slate-800">Ruta de Producción</h3>
-          <button
-            onClick={abrirPlanificador}
-            className="text-sm text-slate-600 hover:text-slate-900 underline"
-          >
-            {procesosPlan.length > 0 ? 'Editar ruta' : 'Definir ruta'}
-          </button>
+          <div className="flex items-center gap-3">
+            {siguienteProcesoPendiente && (
+              <button
+                onClick={crearSiguienteMovimiento}
+                disabled={creandoSiguiente}
+                className="text-sm bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-green-800 disabled:opacity-50"
+              >
+                {creandoSiguiente ? 'Creando...' : `→ Iniciar ${siguienteProcesoPendiente}`}
+              </button>
+            )}
+            <button
+              onClick={abrirPlanificador}
+              className="text-sm text-slate-600 hover:text-slate-900 underline"
+            >
+              {procesosPlan.length > 0 ? 'Editar ruta' : 'Definir ruta'}
+            </button>
+          </div>
         </div>
 
         {procesosPlan.length === 0 && (
@@ -192,11 +226,17 @@ function OrdenDetalle() {
                 <tr
                   key={mov.id}
                   onClick={() => setMovimientoAbierto(mov)}
-                  className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                  className={`border-t border-slate-100 cursor-pointer hover:bg-slate-50 ${
+                    (!mov.operario_id || !mov.maquina) ? 'bg-red-50' : ''
+                  }`}
                 >
                   <td className="px-4 py-3 font-medium text-slate-800">{mov.proceso}</td>
-                  <td className="px-4 py-3">{mov.maquina}</td>
-                  <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
+                  <td className="px-4 py-3">
+                    {mov.maquina || <span className="text-red-600 font-medium">Falta máquina</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {mov.operario_id ? nombreOperario(mov.operario_id) : <span className="text-red-600 font-medium">Falta operario</span>}
+                  </td>
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>

@@ -683,7 +683,9 @@ const guardarEdicion = async () => {
                     <tr
                       key={mov.id}
                       onClick={() => setMovimientoAbierto(mov)}
-                      className="border-t border-slate-100 cursor-pointer hover:bg-blue-50/50"
+                      className={`border-t border-slate-100 cursor-pointer hover:bg-blue-50/50 ${
+                        (!mov.operario_id || !mov.maquina) ? 'bg-red-50' : ''
+                      }`}
                     >
                       <td className="px-4 py-3 font-medium text-slate-800">
                         {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
@@ -692,8 +694,12 @@ const guardarEdicion = async () => {
                         {ordenes.find(o => o.id === mov.orden_id)?.cliente || '—'}
                       </td>
                       <td className="px-4 py-3">{mov.proceso}</td>
-                      <td className="px-4 py-3">{mov.maquina}</td>
-                      <td className="px-4 py-3">{nombreOperario(mov.operario_id)}</td>
+                      <td className="px-4 py-3">
+                        {mov.maquina || <span className="text-red-600 font-medium">Falta máquina</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {mov.operario_id ? nombreOperario(mov.operario_id) : <span className="text-red-600 font-medium">Falta operario</span>}
+                      </td>
                       <td className="px-4 py-3">{mov.entrada}</td>
                       <td className="px-4 py-3">{mov.salida}</td>
                       <td className="px-4 py-3">{mov.unidad}</td>
