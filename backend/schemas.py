@@ -257,3 +257,18 @@ class ReporteOrden(BaseModel):
     total_entrada: float
     total_salida: float
     total_merma: float
+    
+class MovimientoEditar(BaseModel):
+    codigo_orden: str
+    proceso: str
+    nombre_operario: str
+    maquina: str
+    unidad: str
+    entrada: float | None = None
+    salida: float | None = None
+    observacion: str | None = None
+    
+class ReporteTipoMerma(BaseModel):
+    etiqueta: str
+    peso: float
+    registros: int

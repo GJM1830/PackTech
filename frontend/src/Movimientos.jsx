@@ -140,35 +140,22 @@ function Movimientos() {
       entrada: mov.entrada,
       salida: mov.salida,
       unidad: mov.unidad,
-      merma_real: mov.merma_real ?? '',
-      tipo_merma: mov.tipo_merma || '',
-      observacion: mov.observacion || ''
+      observacion: mov.observacion || '',
+      esEspecial: PROCESOS_ESPECIALES.includes(mov.proceso)
     })
   }
 
-  const guardarEdicion = async () => {
+const guardarEdicion = async () => {
     setGuardando(true)
     try {
-      const ordenEncontrada = ordenes.find(
-        o => o.codigo.toLowerCase() === String(editando.orden_id).toLowerCase()
-      )
-
-      if (!ordenEncontrada) {
-        alert('No se encontró ninguna Orden con ese código.')
-        setGuardando(false)
-        return
-      }
-
       await axios.put(`https://packtech-production.up.railway.app/movimientos/${editando.id}`, {
-        orden_id: ordenEncontrada.id,
+        codigo_orden: editando.orden_id,
         proceso: editando.proceso,
         nombre_operario: editando.nombre_operario,
         maquina: editando.maquina,
-        entrada: parseFloat(editando.entrada) || 0,
-        salida: parseFloat(editando.salida) || 0,
         unidad: editando.unidad,
-        merma_real: editando.merma_real !== '' ? parseFloat(editando.merma_real) : null,
-        tipo_merma: editando.tipo_merma || null,
+        entrada: editando.esEspecial ? null : (parseFloat(editando.entrada) || 0),
+        salida: editando.esEspecial ? null : (parseFloat(editando.salida) || 0),
         observacion: editando.observacion || null
       })
 
@@ -744,11 +731,11 @@ function Movimientos() {
             { name: 'proceso', label: 'Proceso' },
             { name: 'nombre_operario', label: 'Operario' },
             { name: 'maquina', label: 'Máquina' },
-            { name: 'entrada', label: 'Entrada', type: 'number' },
-            { name: 'salida', label: 'Salida', type: 'number' },
             { name: 'unidad', label: 'Unidad' },
-            { name: 'merma_real', label: 'Merma real', type: 'number' },
-            { name: 'tipo_merma', label: 'Tipo de merma' },
+            ...(editando.esEspecial ? [] : [
+              { name: 'entrada', label: 'Entrada', type: 'number' },
+              { name: 'salida', label: 'Salida', type: 'number' }
+            ]),
             { name: 'observacion', label: 'Observación' }
           ]}
           valores={editando}

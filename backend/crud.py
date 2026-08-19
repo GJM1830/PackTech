@@ -1017,3 +1017,75 @@ def reporte_orden(db: Session, codigo: str):
         "total_salida": total_salida,
         "total_merma": total_merma
     }
+    
+    
+PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
+
+
+def editar_movimiento(db: Session, movimiento_id: int, datos: schemas.MovimientoEditar):
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento is None:
+        raise HTTPException(status_code=404, detail="El movimiento no existe.")
+
+    orden = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.codigo.ilike(datos.codigo_orden.strip()))
+        .first()
+    )
+    if orden is None:
+        raise HTTPException(status_code=400, detail="No se encontró ninguna Orden con ese código.")
+
+    operario = (
+        db.query(models.Operario)
+        .filter(models.Operario.nombre.ilike(datos.nombre_operario.strip()))
+        .first()
+    )
+    if operario is None:
+        operario = models.Operario(nombre=datos.nombre_operario.strip())
+        db.add(operario)
+        db.commit()
+        db.refresh(operario)
+
+    movimiento.orden_id = orden.id
+    movimiento.proceso = datos.proceso
+    movimiento.operario_id = operario.id
+    movimiento.maquina = datos.maquina
+    movimiento.unidad = datos.unidad
+    movimiento.observacion = datos.observacion
+
+    if movimiento.proceso not in PROCESOS_ESPECIALES:
+        if datos.entrada is not None:
+            movimiento.entrada = datos.entrada
+        if datos.salida is not None:
+            movimiento.salida = datos.salida
+        movimiento.merma = movimiento.entrada - movimiento.salida
+
+    db.commit()
+    db.refresh(movimiento)
+
+    return movimiento
+
+def reporte_por_tipo_merma(db: Session, desde: str | None, hasta: str | None):
+    query = (
+        db.query(models.DetalleMerma)
+        .join(models.Movimiento, models.DetalleMerma.movimiento_id == models.Movimiento.id)
+    )
+
+    if desde:
+        query = query.filter(models.Movimiento.fecha >= desde)
+    if hasta:
+        query = query.filter(models.Movimiento.fecha <= hasta)
+
+    detalles = query.all()
+
+    grupos = {}
+    for d in detalles:
+        etiqueta = d.tipo_merma.strip() if d.tipo_merma and d.tipo_merma.strip() else "Sin especificar"
+        if etiqueta not in grupos:
+            grupos[etiqueta] = {"etiqueta": etiqueta, "peso": 0, "registros": 0}
+        grupos[etiqueta]["peso"] += float(d.peso)
+        grupos[etiqueta]["registros"] += 1
+
+    resultado = list(grupos.values())
+    resultado.sort(key=lambda g: g["peso"], reverse=True)
+    return resultado

@@ -27,6 +27,16 @@ def listar_movimientos(
     return crud.obtener_movimientos(db)
 
 
+@router.put("/movimientos/{movimiento_id}", response_model=schemas.MovimientoResponse)
+def editar_movimiento(
+    movimiento_id: int,
+    datos: schemas.MovimientoEditar,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.editar_movimiento(db, movimiento_id, datos)
+
+
 @router.get(
     "/ordenes-produccion/{orden_id}/movimientos",
     response_model=list[schemas.MovimientoResponse]

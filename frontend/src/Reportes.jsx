@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -172,6 +172,116 @@ function VistaGeneral() {
             </>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+const COLORES_MERMA = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#ec4899', '#64748b']
+
+function VistaTipoMerma() {
+  const [periodo, setPeriodo] = useState('semana')
+  const [datos, setDatos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+
+  const cargar = () => {
+    setCargando(true)
+    const p = PERIODOS.find((x) => x.id === periodo)
+    const desde = p.desde()
+
+    axios.get('https://packtech-production.up.railway.app/reportes/tipos-merma', {
+      params: { desde: desde || undefined }
+    })
+      .then((res) => {
+        setDatos(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError('No se pudo cargar el reporte.')
+      })
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [periodo])
+
+  const totalPeso = datos.reduce((s, d) => s + d.peso, 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {PERIODOS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPeriodo(p.id)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              periodo === p.id
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!cargando && !error && (
+        datos.length === 0 ? (
+          <p className="text-slate-400 text-center py-8">Sin mermas registradas para este periodo.</p>
+        ) : (
+          <>
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 w-fit">
+              <p className="text-xs text-red-500 uppercase tracking-wide">Merma total detallada</p>
+              <p className="text-xl font-bold text-red-700">{totalPeso.toFixed(2)} kg</p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-4">Merma por tipo</h3>
+              <ResponsiveContainer width="100%" height={Math.max(280, datos.length * 45)}>
+                <BarChart data={datos} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="etiqueta" type="category" width={140} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="peso" name="Merma (kg)" radius={[0, 4, 4, 0]}>
+                    {datos.map((_, i) => (
+                      <Cell key={i} fill={COLORES_MERMA[i % COLORES_MERMA.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3">Tipo de merma</th>
+                    <th className="px-4 py-3">Peso</th>
+                    <th className="px-4 py-3">% del total</th>
+                    <th className="px-4 py-3">Registros</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.map((d) => (
+                    <tr key={d.etiqueta} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-medium text-slate-800">{d.etiqueta}</td>
+                      <td className="px-4 py-3 text-red-600 font-medium">{d.peso.toFixed(2)} kg</td>
+                      <td className="px-4 py-3">{totalPeso > 0 ? `${((d.peso / totalPeso) * 100).toFixed(1)}%` : '—'}</td>
+                      <td className="px-4 py-3 text-slate-500">{d.registros}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )
       )}
     </div>
   )
@@ -367,9 +477,19 @@ function Reportes() {
         >
           Por Orden
         </button>
+        <button
+          onClick={() => setVista('tipoMerma')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'tipoMerma' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Por Tipo de Merma
+        </button>
       </div>
 
-      {vista === 'general' ? <VistaGeneral /> : <VistaOrden />}
+      {vista === 'general' && <VistaGeneral />}
+      {vista === 'orden' && <VistaOrden />}
+      {vista === 'tipoMerma' && <VistaTipoMerma />}
     </div>
   )
 }
