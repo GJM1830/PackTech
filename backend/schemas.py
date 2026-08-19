@@ -63,8 +63,8 @@ class MovimientoResponse(BaseModel):
     id: int
     orden_id: int
     proceso: str
-    operario_id: int
-    maquina: str
+    operario_id: int | None
+    maquina: str | None
     entrada: float
     salida: float
     unidad: str
@@ -272,3 +272,11 @@ class ReporteTipoMerma(BaseModel):
     etiqueta: str
     peso: float
     registros: int
+    
+class SiguienteProcesoRequest(BaseModel):
+    orden_id: int
+
+class SiguienteProcesoResponse(BaseModel):
+    siguiente_proceso: str | None
+    movimiento: MovimientoResponse | None
+    mensaje: str | None = None

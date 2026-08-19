@@ -157,11 +157,11 @@ class Movimiento(Base):
         String(50)
     )
 
-    operario_id: Mapped[int] = mapped_column(
+    operario_id: Mapped[int | None] = mapped_column(
         ForeignKey("operarios.id")
     )
 
-    maquina: Mapped[str] = mapped_column(
+    maquina: Mapped[str | None] = mapped_column(
         String(100)
     )
 

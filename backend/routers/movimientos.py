@@ -101,3 +101,11 @@ def eliminar_detalle_merma(
 ):
     crud.eliminar_detalle_merma(db, detalle_id)
     return {"mensaje": "Detalle de merma eliminado correctamente."}
+
+@router.post("/movimientos/siguiente-proceso", response_model=schemas.SiguienteProcesoResponse)
+def siguiente_proceso(
+    datos: schemas.SiguienteProcesoRequest,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.crear_siguiente_movimiento(db, datos.orden_id)

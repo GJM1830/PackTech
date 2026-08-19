@@ -1089,3 +1089,79 @@ def reporte_por_tipo_merma(db: Session, desde: str | None, hasta: str | None):
     resultado = list(grupos.values())
     resultado.sort(key=lambda g: g["peso"], reverse=True)
     return resultado
+
+def crear_siguiente_movimiento(db: Session, orden_id: int):
+    orden = db.get(models.OrdenProduccion, orden_id)
+    if orden is None:
+        raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
+
+    if not orden.procesos_plan:
+        return {"siguiente_proceso": None, "movimiento": None, "mensaje": "Esta orden no tiene una ruta de producción definida."}
+
+    ruta = orden.procesos_plan.split(",")
+
+    movimientos_existentes = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden_id)
+        .order_by(models.Movimiento.id.asc())
+        .all()
+    )
+    procesos_completados = {m.proceso for m in movimientos_existentes}
+
+    siguiente = None
+    for proceso in ruta:
+        if proceso not in procesos_completados:
+            siguiente = proceso
+            break
+
+    if siguiente is None:
+        return {"siguiente_proceso": None, "movimiento": None, "mensaje": "Ya se completaron todos los procesos de la ruta."}
+
+    ultimo_movimiento = movimientos_existentes[-1] if movimientos_existentes else None
+
+    ahora = ahora_lima()
+
+    nuevo_movimiento = models.Movimiento(
+        orden_id=orden_id,
+        proceso=siguiente,
+        operario_id=None,
+        maquina=None,
+        entrada=0,
+        salida=0,
+        unidad=ultimo_movimiento.unidad if ultimo_movimiento else "kg",
+        merma=0,
+        fecha=ahora.date(),
+        hora=ahora.time()
+    )
+    db.add(nuevo_movimiento)
+    db.commit()
+    db.refresh(nuevo_movimiento)
+
+    if ultimo_movimiento:
+        bobinas_salida_anterior = (
+            db.query(models.DetalleMovimiento)
+            .filter(models.DetalleMovimiento.movimiento_id == ultimo_movimiento.id)
+            .filter(models.DetalleMovimiento.lado == "salida")
+            .order_by(models.DetalleMovimiento.numero)
+            .all()
+        )
+
+        for i, bobina in enumerate(bobinas_salida_anterior, start=1):
+            nueva_bobina = models.DetalleMovimiento(
+                movimiento_id=nuevo_movimiento.id,
+                tipo="bobina",
+                lado="entrada",
+                numero=i,
+                peso_bruto=bobina.peso_neto,
+                peso_tuco=0,
+                peso_neto=bobina.peso_neto,
+                millares=None,
+                tipo_material=bobina.tipo_material
+            )
+            db.add(nueva_bobina)
+
+        db.commit()
+        actualizar_totales_movimiento(db, nuevo_movimiento.id)
+        db.refresh(nuevo_movimiento)
+
+    return {"siguiente_proceso": siguiente, "movimiento": nuevo_movimiento, "mensaje": None}
