@@ -280,8 +280,8 @@ const guardarEdicion = async () => {
   }, [form.proceso, esProcesoEspecial])
 
   const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
-  const operariosUnicos = [...new Set(movimientos.map(m => nombreOperario(m.operario_id)))].sort()
-  const maquinasUnicas = [...new Set(movimientos.map(m => m.maquina))].sort()
+  const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
+  const maquinasUnicas = [...new Set(movimientos.filter(m => m.maquina).map(m => m.maquina))].sort()
 
   const movimientosFiltrados = movimientos.filter((mov) => {
     const codigo = ordenes.find(o => o.id === mov.orden_id)?.codigo || String(mov.orden_id)
