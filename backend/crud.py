@@ -259,6 +259,35 @@ def eliminar_orden_produccion(
             detail="La Orden de Producción no existe."
         )
 
+    movimientos_ids = [
+        m.id for m in
+        db.query(models.Movimiento.id).filter(models.Movimiento.orden_id == orden_id).all()
+    ]
+
+    if movimientos_ids:
+        detalle_merma_ids = [
+            d.id for d in
+            db.query(models.DetalleMerma.id)
+            .filter(models.DetalleMerma.movimiento_id.in_(movimientos_ids))
+            .all()
+        ]
+        if detalle_merma_ids:
+            db.query(models.MovimientoAglomerado).filter(
+                models.MovimientoAglomerado.detalle_merma_id.in_(detalle_merma_ids)
+            ).delete(synchronize_session=False)
+
+        db.query(models.DetalleMovimiento).filter(
+            models.DetalleMovimiento.movimiento_id.in_(movimientos_ids)
+        ).delete(synchronize_session=False)
+
+        db.query(models.DetalleMerma).filter(
+            models.DetalleMerma.movimiento_id.in_(movimientos_ids)
+        ).delete(synchronize_session=False)
+
+    db.query(models.MovimientoAglomerado).filter(
+        models.MovimientoAglomerado.orden_id == orden_id
+    ).update({"orden_id": None}, synchronize_session=False)
+
     db.query(models.Movimiento).filter(
         models.Movimiento.orden_id == orden_id
     ).delete()
@@ -416,6 +445,17 @@ def eliminar_movimiento(
             status_code=404,
             detail="El movimiento no existe."
         )
+
+    detalle_merma_ids = [
+        d.id for d in
+        db.query(models.DetalleMerma.id)
+        .filter(models.DetalleMerma.movimiento_id == movimiento_id)
+        .all()
+    ]
+    if detalle_merma_ids:
+        db.query(models.MovimientoAglomerado).filter(
+            models.MovimientoAglomerado.detalle_merma_id.in_(detalle_merma_ids)
+        ).delete(synchronize_session=False)
 
     db.query(models.DetalleMovimiento).filter(
         models.DetalleMovimiento.movimiento_id == movimiento_id

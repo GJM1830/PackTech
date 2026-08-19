@@ -17,7 +17,6 @@ function Ordenes() {
   const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [pendientesBorrar, setPendientesBorrar] = useState({})
   const navegar = useNavigate()
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
@@ -46,22 +45,14 @@ function Ordenes() {
     cargarOrdenes()
   }, [])
 
-  const marcarParaBorrar = (id) => {
-    const temporizador = setTimeout(async () => {
-      try {
-        await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
-      } catch (err) {
-        alert(err.response?.data?.detail || 'Error al eliminar la orden.')
-        cargarOrdenes()
-      }
-      setPendientesBorrar((actual) => {
-        const copia = { ...actual }
-        delete copia[id]
-        return copia
-      })
-    }, 5000)
-
-    setPendientesBorrar((actual) => ({ ...actual, [id]: temporizador }))
+  const eliminarOrden = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar esta orden? Se borrarán también todos sus movimientos.')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
+      cargarOrdenes()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar la orden.')
+    }
   }
 
   const formatearFecha = (fecha) => {
@@ -112,21 +103,10 @@ const guardarEdicion = async () => {
   }
 }
 
-  const deshacerBorrado = (id) => {
-    clearTimeout(pendientesBorrar[id])
-    setPendientesBorrar((actual) => {
-      const copia = { ...actual }
-      delete copia[id]
-      return copia
-    })
-  }
-
-  const ordenesVisibles = ordenes.filter((o) => !(o.id in pendientesBorrar))
-
   const clientesUnicos = [...new Set(ordenes.map(o => o.cliente))].sort()
   const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
 
-  const ordenesFiltradas = ordenesVisibles.filter((orden) => {
+  const ordenesFiltradas = ordenes.filter((orden) => {
     if (filtroCodigo && !orden.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
     if (filtroCliente && orden.cliente !== filtroCliente) return false
     if (filtroEstado && orden.estado !== filtroEstado) return false
@@ -143,22 +123,6 @@ const guardarEdicion = async () => {
       </div>
 
       <CrearOrden onCreada={cargarOrdenes} duplicarDesde={duplicarDesde} />
-
-      {Object.keys(pendientesBorrar).length > 0 && (
-        <div className="space-y-2">
-          {Object.keys(pendientesBorrar).map((id) => (
-            <div key={id} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm">
-              <span className="text-green-800">Orden eliminada en unos segundos...</span>
-              <button
-                onClick={() => deshacerBorrado(id)}
-                className="text-green-700 font-medium underline hover:text-green-800"
-              >
-                Deshacer
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div>
       {cargando && <p className="text-slate-500">Cargando...</p>}
@@ -257,7 +221,7 @@ const guardarEdicion = async () => {
                       <MenuAcciones
                         onEditar={() => abrirEdicion(orden)}
                         onDuplicar={() => duplicarOrden(orden)}
-                        onEliminar={() => marcarParaBorrar(orden.id)}
+                        onEliminar={() => eliminarOrden(orden.id)}
                       />
                     </td>
                   </tr>
