@@ -94,7 +94,10 @@ function Movimientos() {
     cargarDatos()
   }, [])
 
-  const nombreOperario = (id) => operarios.find(o => o.id === id)?.nombre || id
+  const nombreOperario = (id) => {
+    if (!id) return ''
+    return operarios.find(o => o.id === id)?.nombre || ''
+  }
 
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
@@ -114,18 +117,18 @@ function Movimientos() {
       orden_id: mov.orden_id,
       proceso: mov.proceso,
       nombre_operario: nombreOp,
-      maquina: mov.maquina,
-      entrada: mov.entrada,
-      salida: mov.salida,
-      unidad: mov.unidad,
+      maquina: mov.maquina || '',
+      entrada: mov.entrada || '',
+      salida: mov.salida || '',
+      unidad: mov.unidad || 'kg',
       tipo_laminado: mov.tipo_laminado || '',
       observacion: mov.observacion || ''
     })
 
     setBusquedaOrden(codigoOrden)
-    setOrdenSeleccionada({ id: mov.orden_id, codigo: codigoOrden })
+    setOrdenSeleccionada(codigoOrden ? { id: mov.orden_id, codigo: codigoOrden } : null)
     setBusquedaOperario(nombreOp)
-    setOperarioSeleccionado({ nombre: nombreOp })
+    setOperarioSeleccionado(nombreOp ? { nombre: nombreOp } : null)
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }

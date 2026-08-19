@@ -48,7 +48,10 @@ function OrdenDetalle() {
     cargar()
   }, [id])
 
-  const nombreOperario = (opId) => operarios.find(o => o.id === opId)?.nombre || opId
+  const nombreOperario = (opId) => {
+    if (!opId) return ''
+    return operarios.find(o => o.id === opId)?.nombre || ''
+  }
 
   const abrirPlanificador = () => {
     const actuales = orden?.procesos_plan ? orden.procesos_plan.split(',') : []
