@@ -530,6 +530,12 @@ def crear_detalle_merma(db: Session, movimiento_id: int, detalle: schemas.Detall
     if movimiento is None:
         raise HTTPException(status_code=404, detail="El movimiento no existe.")
 
+    if movimiento.operario_id is None or not movimiento.maquina:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes asignar operario y máquina a este movimiento antes de registrar merma."
+        )
+
     if detalle.tipo_merma and detalle.tipo_merma.strip():
         crear_tipo_merma_si_no_existe(db, movimiento.proceso, detalle.tipo_merma.strip())
 
