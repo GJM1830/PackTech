@@ -17,7 +17,7 @@ const MAQUINAS_POR_PROCESO = {
   'Impresión': ['Impresora-01', 'Impresora-02', 'Impresora-03'],
   'Sellado': [
     'Selladora-01', 'Selladora-02', 'Selladora-03',
-    'Selladora-04', 'Selladora-05', 'Selladora-06', 'Selladora-07'
+    'Selladora-04', 'Selladora-05', 'Selladora-06', 'Selladora-07', 'Selladora-08'
   ],
   'Corte': ['Cortadora-01', 'Cortadora-02'],
   'Almacén': ['Almacén'],

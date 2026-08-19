@@ -94,7 +94,8 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 
   const entradaCalculada = esDobleLado ? sumaNeto(entradaBobinas) : Number(movimiento.entrada)
   const salidaCalculada = esProcesoEspecial ? sumaNeto(salidaBobinas) : Number(movimiento.salida)
-  const mermaTeorica = entradaCalculada - salidaCalculada
+  const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0)
+  const diferenciaReal = entradaCalculada - (salidaCalculada + totalMermaDetallada)
 
   const agregarFardoSalida = async (e) => {
     e.preventDefault()
@@ -242,8 +243,6 @@ const duplicarMerma = (detalle) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0)
-
   const totalPesoSimple = detalles.reduce((s, d) => s + Number(d.peso_neto), 0)
   const totalMillaresSimple = detalles.reduce((s, d) => s + Number(d.millares || 0), 0)
   const etiqueta = tipo === 'bobina' ? 'Bobina' : 'Fardo'
@@ -335,18 +334,19 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-            <p className="text-xs text-slate-400 uppercase tracking-wide">Entrada</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wide">{esDobleLado ? 'Entrada (neto)' : 'Entrada'}</p>
             <p className="text-sm font-semibold text-slate-800">{entradaCalculada.toFixed(2)} {movimiento.unidad}</p>
           </div>
           <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-            <p className="text-xs text-slate-400 uppercase tracking-wide">Salida</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wide">{esProcesoEspecial ? 'Salida (neto)' : 'Salida'}</p>
             <p className="text-sm font-semibold text-slate-800">{salidaCalculada.toFixed(2)} {movimiento.unidad}</p>
           </div>
           <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
             <p className="text-xs text-blue-500 uppercase tracking-wide">Faltante/Sobrante</p>
             <p className="text-sm font-semibold text-blue-800">
-              {mermaTeorica.toFixed(2)} {movimiento.unidad}
+              {diferenciaReal.toFixed(2)} {movimiento.unidad}
             </p>
+            <p className="text-[11px] text-blue-400 mt-0.5">Entrada − (Salida + Merma real)</p>
           </div>
           <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2">
           <p className="text-xs text-green-600 uppercase tracking-wide">Merma real</p>
@@ -392,7 +392,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
                     ladoActivo === 'salida' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  Bobinas de Salida
+                  {salidaEsFardo ? 'Fardos de Salida' : 'Bobinas de Salida'}
                 </button>
               </div>
             )}
@@ -456,7 +456,7 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
         />
       </div>
       <div className="flex-1">
-        <label className="block text-sm font-medium text-slate-600 mb-1">Neto</label>
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso Neto</label>
         <input
           type="text"
           readOnly
