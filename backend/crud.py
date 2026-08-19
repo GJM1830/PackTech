@@ -52,7 +52,7 @@ def crear_cliente(
 
 
 def obtener_clientes(db: Session):
-    return db.query(models.Cliente).all()
+    return db.query(models.Cliente).order_by(models.Cliente.id.desc()).all()
 
 
 def obtener_cliente_por_ruc(
@@ -514,7 +514,7 @@ def crear_operario(
 
 
 def obtener_operarios(db: Session):
-    return db.query(models.Operario).all()
+    return db.query(models.Operario).order_by(models.Operario.id.desc()).all()
 
 
 def eliminar_operario(
