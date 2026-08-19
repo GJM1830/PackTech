@@ -68,7 +68,7 @@ def obtener_cliente(
 def eliminar_cliente(
     cliente_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("admin"))
 ):
     crud.eliminar_cliente(db, cliente_id)
     return {"mensaje": "Cliente eliminado correctamente."}

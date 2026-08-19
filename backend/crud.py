@@ -26,17 +26,18 @@ def crear_cliente(
     db: Session,
     cliente: schemas.ClienteCreate
 ):
-    cliente_existente = (
-        db.query(models.Cliente)
-        .filter(models.Cliente.ruc == cliente.ruc)
-        .first()
-    )
-
-    if cliente_existente is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un cliente con ese RUC."
+    if cliente.ruc and cliente.ruc.strip():
+        cliente_existente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc == cliente.ruc)
+            .first()
         )
+
+        if cliente_existente is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un cliente con ese RUC."
+            )
 
     nuevo_cliente = models.Cliente(
         ruc=cliente.ruc,
@@ -108,11 +109,13 @@ def crear_orden_produccion(
     db: Session,
     orden: schemas.OrdenProduccionCreate
 ):
-    cliente = (
-        db.query(models.Cliente)
-        .filter(models.Cliente.ruc == orden.ruc)
-        .first()
-    )
+    cliente = None
+    if orden.ruc and orden.ruc.strip():
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc == orden.ruc)
+            .first()
+        )
 
     if cliente is None:
         if not orden.nombre_cliente:
@@ -122,7 +125,7 @@ def crear_orden_produccion(
             )
 
         cliente = models.Cliente(
-            ruc=orden.ruc,
+            ruc=orden.ruc.strip() if orden.ruc and orden.ruc.strip() else None,
             nombre=orden.nombre_cliente
         )
 
@@ -578,6 +581,36 @@ def obtener_detalles_merma(db: Session, movimiento_id: int):
         .filter(models.DetalleMerma.movimiento_id == movimiento_id)
         .all()
     )
+
+
+def editar_detalle_merma(db: Session, detalle_id: int, detalle: schemas.DetalleMermaCreate):
+    existente = db.get(models.DetalleMerma, detalle_id)
+    if existente is None:
+        raise HTTPException(status_code=404, detail="El detalle de merma no existe.")
+
+    if detalle.tipo_merma and detalle.tipo_merma.strip():
+        movimiento = db.get(models.Movimiento, existente.movimiento_id)
+        crear_tipo_merma_si_no_existe(db, movimiento.proceso, detalle.tipo_merma.strip())
+
+    existente.peso = detalle.peso
+    existente.tipo_merma = detalle.tipo_merma
+
+    db.commit()
+    db.refresh(existente)
+
+    actualizar_merma_real(db, existente.movimiento_id)
+
+    aglomerado = (
+        db.query(models.MovimientoAglomerado)
+        .filter(models.MovimientoAglomerado.detalle_merma_id == detalle_id)
+        .first()
+    )
+    if aglomerado:
+        aglomerado.cantidad = detalle.peso
+        aglomerado.clasificacion = detalle.tipo_merma
+        db.commit()
+
+    return existente
 
 
 def eliminar_detalle_merma(db: Session, detalle_id: int):

@@ -73,6 +73,16 @@ def listar_detalles_merma(
     return crud.obtener_detalles_merma(db, movimiento_id)
 
 
+@router.put("/mermas/{detalle_id}", response_model=schemas.DetalleMermaResponse)
+def editar_detalle_merma(
+    detalle_id: int,
+    detalle: schemas.DetalleMermaCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.editar_detalle_merma(db, detalle_id, detalle)
+
+
 @router.delete("/mermas/{detalle_id}")
 def eliminar_detalle_merma(
     detalle_id: int,

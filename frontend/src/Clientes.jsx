@@ -90,9 +90,8 @@ function Clientes() {
               type="text"
               value={form.ruc}
               onChange={(e) => setForm({ ...form, ruc: e.target.value })}
-              required
               className="w-full border border-slate-300 rounded px-3 py-2"
-              placeholder="20100070970"
+              placeholder="20100070970 (opcional)"
             />
           </div>
 
@@ -144,7 +143,7 @@ function Clientes() {
               {clientesFiltrados.map((c) => (
                 <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">{c.id}</td>
-                  <td className="px-4 py-3">{c.ruc}</td>
+                  <td className="px-4 py-3">{c.ruc || '—'}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
                   <td className="px-4 py-3 text-right">
                     <MenuAcciones

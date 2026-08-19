@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
+import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
 
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
@@ -15,6 +17,8 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [tipoMermaInput, setTipoMermaInput] = useState('')
   const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
   const [enviandoMerma, setEnviandoMerma] = useState(false)
+  const [editandoMerma, setEditandoMerma] = useState(null)
+  const [guardandoMerma, setGuardandoMerma] = useState(false)
   const [ladoActivo, setLadoActivo] = useState('salida')
   const [tipo, setTipo] = useState('bobina')
   const [detalles, setDetalles] = useState([])
@@ -210,6 +214,32 @@ const eliminarMerma = async (id) => {
   } catch (err) {
     alert(err.response?.data?.detail || 'Error al eliminar.')
   }
+}
+
+const abrirEdicionMerma = (detalle) => {
+  setEditandoMerma({ id: detalle.id, peso: detalle.peso, tipo_merma: detalle.tipo_merma || '' })
+}
+
+const guardarEdicionMerma = async () => {
+  setGuardandoMerma(true)
+  try {
+    await axios.put(`https://packtech-production.up.railway.app/mermas/${editandoMerma.id}`, {
+      peso: parseFloat(editandoMerma.peso),
+      tipo_merma: editandoMerma.tipo_merma || null
+    })
+    setEditandoMerma(null)
+    cargarDetallesMerma()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar la merma.')
+  } finally {
+    setGuardandoMerma(false)
+  }
+}
+
+const duplicarMerma = (detalle) => {
+  setPesoMerma(String(detalle.peso))
+  setTipoMermaInput(detalle.tipo_merma || '')
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0)
@@ -560,13 +590,12 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
               <tr key={d.id} className="border-t border-slate-200">
                 <td className="px-4 py-2">{d.peso} kg</td>
                 <td className="px-4 py-2">{d.tipo_merma || 'Sin especificar'}</td>
-                <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => eliminarMerma(d.id)}
-                    className="text-red-600 hover:text-red-800 text-xs"
-                  >
-                    Eliminar
-                  </button>
+                <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                  <MenuAcciones
+                    onEditar={() => abrirEdicionMerma(d)}
+                    onDuplicar={() => duplicarMerma(d)}
+                    onEliminar={() => eliminarMerma(d.id)}
+                  />
                 </td>
               </tr>
             ))}
@@ -709,6 +738,21 @@ const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0
           </>
         )}
       </div>
+
+      {editandoMerma && (
+        <ModalEditar
+          titulo="Editar Merma"
+          campos={[
+            { name: 'peso', label: 'Peso (kg)', type: 'number' },
+            { name: 'tipo_merma', label: 'Tipo de merma' }
+          ]}
+          valores={editandoMerma}
+          onCambio={(campo, valor) => setEditandoMerma({ ...editandoMerma, [campo]: valor })}
+          onGuardar={guardarEdicionMerma}
+          onCerrar={() => setEditandoMerma(null)}
+          guardando={guardandoMerma}
+        />
+      )}
     </div>
   )
 }

@@ -22,10 +22,10 @@ class Cliente(Base):
         primary_key=True
     )
 
-    ruc: Mapped[str] = mapped_column(
+    ruc: Mapped[str | None] = mapped_column(
         String(11),
         unique=True,
-        nullable=False
+        nullable=True
     )
 
     nombre: Mapped[str] = mapped_column(

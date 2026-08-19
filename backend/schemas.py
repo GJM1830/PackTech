@@ -16,7 +16,7 @@ class ClienteResponse(BaseModel):
 
 class OrdenProduccionCreate(BaseModel):
     codigo: str
-    ruc: str
+    ruc: str | None = None
     nombre_cliente: str | None = None
     numero_std: int
     descripcion: str | None = None
@@ -36,7 +36,7 @@ class OrdenProduccionResponse(BaseModel):
     estado: str | None
     fecha: date
     hora: time
-    ruc: str
+    ruc: str | None
     cliente: str
     ultimo_proceso: str
     procesos_plan: str | None = None

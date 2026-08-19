@@ -169,10 +169,9 @@ function CrearOrden({ onCreada, duplicarDesde }) {
               manejarCambio(e)
               setClienteSeleccionado(null)
             }}
-            required
             autoComplete="off"
             className={estiloInput}
-            placeholder="20100070970"
+            placeholder="20100070970 (opcional)"
           />
 
           {sugerenciasClientes.length > 0 && (
