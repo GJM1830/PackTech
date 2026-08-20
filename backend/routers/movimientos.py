@@ -22,9 +22,11 @@ def crear_movimiento(
 
 @router.get("/movimientos", response_model=list[schemas.MovimientoResponse])
 def listar_movimientos(
+    limit: int = 20,
+    antes_de: int | None = None,
     db: Session = Depends(obtener_db)
 ):
-    return crud.obtener_movimientos(db)
+    return crud.obtener_movimientos(db, limit, antes_de)
 
 
 @router.put("/movimientos/{movimiento_id}", response_model=schemas.MovimientoResponse)

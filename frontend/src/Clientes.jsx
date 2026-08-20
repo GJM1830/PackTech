@@ -7,6 +7,7 @@ function Clientes() {
   const [clientes, setClientes] = useState([])
   const [form, setForm] = useState({ ruc: '', nombre: '' })
   const [error, setError] = useState(null)
+  const [errorCarga, setErrorCarga] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
@@ -34,8 +35,14 @@ function Clientes() {
 
   const cargarClientes = () => {
     axios.get('https://packtech-production.up.railway.app/clientes')
-      .then((res) => setClientes(res.data))
-      .catch((err) => console.error(err))
+      .then((res) => {
+        setClientes(res.data)
+        setErrorCarga(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setErrorCarga('No se pudo conectar con el backend.')
+      })
   }
 
   useEffect(() => {
@@ -120,6 +127,8 @@ function Clientes() {
       </div>
 
       <div>
+
+        {errorCarga && <p className="text-red-600 mb-3">{errorCarga}</p>}
 
         <input
           type="text"

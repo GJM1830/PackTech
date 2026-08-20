@@ -25,9 +25,11 @@ def crear_orden(
 
 @router.get("", response_model=list[schemas.OrdenProduccionResponse])
 def listar_ordenes(
+    limit: int = 20,
+    antes_de: int | None = None,
     db: Session = Depends(obtener_db)
 ):
-    return crud.obtener_ordenes_produccion(db)
+    return crud.obtener_ordenes_produccion(db, limit, antes_de)
 
 @router.delete("/{orden_id}")
 def eliminar_orden(

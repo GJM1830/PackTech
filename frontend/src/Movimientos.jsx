@@ -69,16 +69,20 @@ function Movimientos() {
 
   const esProcesoEspecial = PROCESOS_ESPECIALES.includes(form.proceso)
 
+  const [hayMasMovimientos, setHayMasMovimientos] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
   const cargarDatos = async () => {
     setCargando(true)
     try {
       const [movRes, ordRes, opRes] = await Promise.all([
-        axios.get('https://packtech-production.up.railway.app/movimientos'),
-        axios.get('https://packtech-production.up.railway.app/ordenes-produccion'),
+        axios.get('https://packtech-production.up.railway.app/movimientos?limit=20'),
+        axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=500'),
         axios.get('https://packtech-production.up.railway.app/operarios')
       ])
 
       setMovimientos(movRes.data)
+      setHayMasMovimientos(movRes.data.length === 20)
       setOrdenes(ordRes.data)
       setOperarios(opRes.data)
       setError(null)
@@ -87,6 +91,21 @@ function Movimientos() {
       setError('No se pudo conectar con el backend.')
     } finally {
       setCargando(false)
+    }
+  }
+
+  const cargarMasMovimientos = async () => {
+    if (movimientos.length === 0) return
+    setCargandoMas(true)
+    try {
+      const ultimoId = movimientos[movimientos.length - 1].id
+      const res = await axios.get(`https://packtech-production.up.railway.app/movimientos?limit=20&antes_de=${ultimoId}`)
+      setMovimientos((actual) => [...actual, ...res.data])
+      setHayMasMovimientos(res.data.length === 20)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setCargandoMas(false)
     }
   }
 
@@ -720,6 +739,18 @@ const guardarEdicion = async () => {
                 </tbody>
               </table>
             </div>
+
+            {hayMasMovimientos && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={cargarMasMovimientos}
+                  disabled={cargandoMas}
+                  className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {cargandoMas ? 'Cargando...' : 'Cargar más movimientos'}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

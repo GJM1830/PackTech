@@ -229,34 +229,18 @@ def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     return orden
 
 
-def obtener_ordenes_produccion(db: Session):
+def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | None = None):
+    query = db.query(models.OrdenProduccion)
+
+    if antes_de:
+        query = query.filter(models.OrdenProduccion.id < antes_de)
+
     ordenes = (
-        db.query(models.OrdenProduccion)
+        query
         .order_by(models.OrdenProduccion.id.desc())
+        .limit(limit)
         .all()
     )
-
-    for orden in ordenes:
-        orden.ruc = orden.cliente_obj.ruc
-        orden.cliente = orden.cliente_obj.nombre
-
-        ultimo_movimiento = (
-            db.query(models.Movimiento)
-            .filter(models.Movimiento.orden_id == orden.id)
-            .order_by(models.Movimiento.id.desc())
-            .first()
-        )
-
-        proceso_actual = (
-            ultimo_movimiento.proceso
-            if ultimo_movimiento
-            else None
-        )
-
-        orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-        orden.estado = calcular_estado(proceso_actual)
-
-    return ordenes
 
 
 def eliminar_orden_produccion(
@@ -384,10 +368,16 @@ def actualizar_totales_movimiento(db: Session, movimiento_id: int):
     db.commit()
 
 
-def obtener_movimientos(db: Session):
+def obtener_movimientos(db: Session, limit: int = 20, antes_de: int | None = None):
+    query = db.query(models.Movimiento)
+
+    if antes_de:
+        query = query.filter(models.Movimiento.id < antes_de)
+
     return (
-        db.query(models.Movimiento)
+        query
         .order_by(models.Movimiento.id.desc())
+        .limit(limit)
         .all()
     )
 

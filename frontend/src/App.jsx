@@ -27,11 +27,15 @@ function Ordenes() {
   const [fechaHasta, setFechaHasta] = useState('')
   const [filtroCodigo, setFiltroCodigo] = useState('')
 
+  const [hayMasOrdenes, setHayMasOrdenes] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
   const cargarOrdenes = () => {
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/ordenes-produccion')
+    axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=20')
       .then((respuesta) => {
         setOrdenes(respuesta.data)
+        setHayMasOrdenes(respuesta.data.length === 20)
         setCargando(false)
       })
       .catch((err) => {
@@ -39,6 +43,19 @@ function Ordenes() {
         setError('No se pudo conectar con el backend.')
         setCargando(false)
       })
+  }
+
+  const cargarMasOrdenes = () => {
+    if (ordenes.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = ordenes[ordenes.length - 1].id
+    axios.get(`https://packtech-production.up.railway.app/ordenes-produccion?limit=20&antes_de=${ultimoId}`)
+      .then((respuesta) => {
+        setOrdenes((actual) => [...actual, ...respuesta.data])
+        setHayMasOrdenes(respuesta.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
   }
 
   useEffect(() => {
@@ -229,6 +246,18 @@ const guardarEdicion = async () => {
               </tbody>
             </table>
             </div>
+
+            {hayMasOrdenes && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={cargarMasOrdenes}
+                  disabled={cargandoMas}
+                  className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {cargandoMas ? 'Cargando...' : 'Cargar más órdenes'}
+                </button>
+              </div>
+            )}
         </>
       )}
     </div>
