@@ -123,6 +123,15 @@ def crear_orden_produccion(
     db: Session,
     orden: schemas.OrdenProduccionCreate
 ):
+    if not orden.codigo or not orden.codigo.strip():
+        raise HTTPException(status_code=400, detail="El código de la orden no puede estar vacío.")
+
+    if orden.cantidad is not None and orden.cantidad < 0:
+        raise HTTPException(status_code=400, detail="La cantidad no puede ser negativa.")
+
+    if orden.numero_std is not None and orden.numero_std < 0:
+        raise HTTPException(status_code=400, detail="El número estándar no puede ser negativo.")
+
     cliente = None
     ruc_limpio = orden.ruc.strip() if orden.ruc and orden.ruc.strip() else None
 
@@ -327,22 +336,35 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     if orden is None:
         raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
 
+    if movimiento.entrada is not None and movimiento.entrada < 0:
+        raise HTTPException(status_code=400, detail="La entrada no puede ser negativa.")
+
+    if movimiento.salida is not None and movimiento.salida < 0:
+        raise HTTPException(status_code=400, detail="La salida no puede ser negativa.")
+
+    nombre_operario_limpio = movimiento.nombre_operario.strip()
+    if not nombre_operario_limpio:
+        raise HTTPException(status_code=400, detail="El nombre del operario no puede estar vacío.")
+
     operario = (
         db.query(models.Operario)
-        .filter(models.Operario.nombre.ilike(movimiento.nombre_operario.strip()))
+        .filter(models.Operario.nombre.ilike(nombre_operario_limpio))
         .first()
     )
     if operario is None:
-        operario = models.Operario(nombre=movimiento.nombre_operario.strip())
+        operario = models.Operario(nombre=nombre_operario_limpio)
         db.add(operario)
         db.commit()
         db.refresh(operario)
 
-    if movimiento.tipo_laminado and movimiento.tipo_laminado.strip():
-        crear_tipo_merma_si_no_existe(db, "Laminado", movimiento.tipo_laminado.strip())
+    tipo_laminado_limpio = movimiento.tipo_laminado.strip() if movimiento.tipo_laminado and movimiento.tipo_laminado.strip() else None
+    tipo_merma_limpio = movimiento.tipo_merma.strip() if movimiento.tipo_merma and movimiento.tipo_merma.strip() else None
 
-    if movimiento.tipo_merma and movimiento.tipo_merma.strip():
-        crear_tipo_merma_si_no_existe(db, movimiento.proceso, movimiento.tipo_merma.strip())
+    if tipo_laminado_limpio:
+        crear_tipo_merma_si_no_existe(db, "Laminado", tipo_laminado_limpio)
+
+    if tipo_merma_limpio:
+        crear_tipo_merma_si_no_existe(db, movimiento.proceso, tipo_merma_limpio)
 
     ahora = ahora_lima()
 
@@ -356,8 +378,8 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         unidad=movimiento.unidad,
         merma=movimiento.entrada - movimiento.salida,
         merma_real=movimiento.merma_real,
-        tipo_merma=movimiento.tipo_merma,
-        tipo_laminado=movimiento.tipo_laminado,
+        tipo_merma=tipo_merma_limpio,
+        tipo_laminado=tipo_laminado_limpio,
         observacion=movimiento.observacion,
         fecha=ahora.date(),
         hora=ahora.time()
@@ -606,6 +628,9 @@ def crear_detalle_merma(db: Session, movimiento_id: int, detalle: schemas.Detall
     if movimiento is None:
         raise HTTPException(status_code=404, detail="El movimiento no existe.")
 
+    if detalle.peso is not None and detalle.peso <= 0:
+        raise HTTPException(status_code=400, detail="El peso de la merma debe ser mayor a cero.")
+
     if movimiento.operario_id is None or not movimiento.maquina:
         raise HTTPException(
             status_code=400,
@@ -741,11 +766,20 @@ def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.D
     if movimiento is None:
         raise HTTPException(status_code=404, detail="El movimiento no existe.")
 
+    if detalle.peso_bruto is not None and detalle.peso_bruto < 0:
+        raise HTTPException(status_code=400, detail="El peso bruto no puede ser negativo.")
+
+    if detalle.peso_tuco is not None and detalle.peso_tuco < 0:
+        raise HTTPException(status_code=400, detail="El peso del tuco no puede ser negativo.")
+
     if detalle.tipo_material and detalle.tipo_material.strip():
         crear_tipo_material_si_no_existe(db, detalle.tipo_material.strip())
 
     peso_tuco = detalle.peso_tuco or 0
     peso_neto = detalle.peso_bruto - peso_tuco
+
+    if peso_neto < 0:
+        raise HTTPException(status_code=400, detail="El peso neto no puede ser negativo (revisa el peso del tuco).")
 
     nuevo = models.DetalleMovimiento(
         movimiento_id=movimiento_id,
@@ -809,6 +843,10 @@ def buscar_tipos_merma(db: Session, proceso: str, q: str):
 
 
 def crear_tipo_merma_si_no_existe(db: Session, proceso: str, nombre: str):
+    nombre = nombre.strip()
+    if not nombre:
+        return
+
     existente = (
         db.query(models.TipoMerma)
         .filter(models.TipoMerma.proceso == proceso)
@@ -836,6 +874,10 @@ def buscar_tipos_material(db: Session, q: str):
 
 
 def crear_tipo_material_si_no_existe(db: Session, nombre: str):
+    nombre = nombre.strip()
+    if not nombre:
+        return
+
     existente = (
         db.query(models.TipoMaterial)
         .filter(models.TipoMaterial.nombre.ilike(nombre))
@@ -852,6 +894,10 @@ def crear_tipo_material_si_no_existe(db: Session, nombre: str):
 # =========================
 
 def crear_producto_aglomerado_si_no_existe(db: Session, nombre: str):
+    nombre = nombre.strip()
+    if not nombre:
+        return
+
     existente = (
         db.query(models.ProductoAglomerado)
         .filter(models.ProductoAglomerado.nombre.ilike(nombre))
@@ -874,6 +920,10 @@ def buscar_productos_aglomerado(db: Session, q: str):
 
 
 def crear_clasificacion_aglomerado_si_no_existe(db: Session, nombre: str):
+    nombre = nombre.strip()
+    if not nombre:
+        return
+
     existente = (
         db.query(models.ClasificacionAglomerado)
         .filter(models.ClasificacionAglomerado.nombre.ilike(nombre))
@@ -896,13 +946,23 @@ def buscar_clasificaciones_aglomerado(db: Session, q: str):
 
 
 def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglomeradoCreate):
+    if movimiento.cantidad is None or movimiento.cantidad <= 0:
+        raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a cero.")
+
+    if movimiento.tipo not in ("entrada", "salida", "ajuste"):
+        raise HTTPException(status_code=400, detail="Tipo de movimiento no válido.")
+
+    nombre_operario_limpio = movimiento.nombre_operario.strip()
+    if not nombre_operario_limpio:
+        raise HTTPException(status_code=400, detail="El nombre del operario no puede estar vacío.")
+
     operario = (
         db.query(models.Operario)
-        .filter(models.Operario.nombre.ilike(movimiento.nombre_operario.strip()))
+        .filter(models.Operario.nombre.ilike(nombre_operario_limpio))
         .first()
     )
     if operario is None:
-        operario = models.Operario(nombre=movimiento.nombre_operario.strip())
+        operario = models.Operario(nombre=nombre_operario_limpio)
         db.add(operario)
         db.commit()
         db.refresh(operario)
@@ -921,11 +981,14 @@ def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglom
             )
         orden_id = orden.id
 
-    if movimiento.producto_origen and movimiento.producto_origen.strip():
-        crear_producto_aglomerado_si_no_existe(db, movimiento.producto_origen.strip())
+    producto_origen_limpio = movimiento.producto_origen.strip() if movimiento.producto_origen and movimiento.producto_origen.strip() else None
+    clasificacion_limpia = movimiento.clasificacion.strip() if movimiento.clasificacion and movimiento.clasificacion.strip() else None
 
-    if movimiento.clasificacion and movimiento.clasificacion.strip():
-        crear_clasificacion_aglomerado_si_no_existe(db, movimiento.clasificacion.strip())
+    if producto_origen_limpio:
+        crear_producto_aglomerado_si_no_existe(db, producto_origen_limpio)
+
+    if clasificacion_limpia:
+        crear_clasificacion_aglomerado_si_no_existe(db, clasificacion_limpia)
 
     ahora = ahora_lima()
 
@@ -933,9 +996,9 @@ def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglom
         tipo=movimiento.tipo,
         cantidad=movimiento.cantidad,
         proceso_origen=movimiento.proceso_origen,
-        producto_origen=movimiento.producto_origen,
+        producto_origen=producto_origen_limpio,
         orden_id=orden_id,
-        clasificacion=movimiento.clasificacion,
+        clasificacion=clasificacion_limpia,
         operario_id=operario.id,
         observacion=movimiento.observacion,
         fecha=ahora.date(),
@@ -1112,21 +1175,29 @@ def editar_movimiento(db: Session, movimiento_id: int, datos: schemas.Movimiento
     if movimiento is None:
         raise HTTPException(status_code=404, detail="El movimiento no existe.")
 
+    codigo_orden_limpio = datos.codigo_orden.strip()
+    if not codigo_orden_limpio:
+        raise HTTPException(status_code=400, detail="El código de orden no puede estar vacío.")
+
     orden = (
         db.query(models.OrdenProduccion)
-        .filter(models.OrdenProduccion.codigo.ilike(datos.codigo_orden.strip()))
+        .filter(models.OrdenProduccion.codigo.ilike(codigo_orden_limpio))
         .first()
     )
     if orden is None:
         raise HTTPException(status_code=400, detail="No se encontró ninguna Orden con ese código.")
 
+    nombre_operario_limpio = datos.nombre_operario.strip()
+    if not nombre_operario_limpio:
+        raise HTTPException(status_code=400, detail="El nombre del operario no puede estar vacío.")
+
     operario = (
         db.query(models.Operario)
-        .filter(models.Operario.nombre.ilike(datos.nombre_operario.strip()))
+        .filter(models.Operario.nombre.ilike(nombre_operario_limpio))
         .first()
     )
     if operario is None:
-        operario = models.Operario(nombre=datos.nombre_operario.strip())
+        operario = models.Operario(nombre=nombre_operario_limpio)
         db.add(operario)
         db.commit()
         db.refresh(operario)
