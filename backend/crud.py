@@ -1299,3 +1299,61 @@ def importar_bobinas_anteriores(db: Session, movimiento_id: int):
     actualizar_totales_movimiento(db, movimiento_id)
 
     return {"importadas": len(bobinas_salida)}
+
+def editar_orden_produccion(
+    db: Session,
+    orden_id: int,
+    orden_nueva: schemas.OrdenProduccionCreate
+):
+    orden = db.get(models.OrdenProduccion, orden_id)
+
+    if orden is None:
+        raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
+
+    cliente = None
+    if orden_nueva.ruc and orden_nueva.ruc.strip():
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc == orden_nueva.ruc)
+            .first()
+        )
+
+    if cliente is None:
+        if not orden_nueva.nombre_cliente:
+            raise HTTPException(
+                status_code=400,
+                detail="Cliente no encontrado. Debe ingresar el nombre."
+            )
+        cliente = models.Cliente(
+            ruc=orden_nueva.ruc.strip() if orden_nueva.ruc and orden_nueva.ruc.strip() else None,
+            nombre=orden_nueva.nombre_cliente
+        )
+        db.add(cliente)
+        db.commit()
+        db.refresh(cliente)
+
+    orden.codigo = orden_nueva.codigo
+    orden.cliente_id = cliente.id
+    orden.numero_std = orden_nueva.numero_std
+    orden.descripcion = orden_nueva.descripcion
+    orden.cantidad = orden_nueva.cantidad
+    orden.unidad = orden_nueva.unidad
+    orden.estado = orden_nueva.estado
+
+    db.commit()
+    db.refresh(orden)
+
+    orden.ruc = cliente.ruc
+    orden.cliente = cliente.nombre
+
+    ultimo_movimiento = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden.id)
+        .order_by(models.Movimiento.id.desc())
+        .first()
+    )
+    proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+    orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+    orden.estado = calcular_estado(proceso_actual)
+
+    return orden

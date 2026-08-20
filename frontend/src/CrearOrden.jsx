@@ -27,12 +27,12 @@ function CrearOrden({ onCreada, duplicarDesde }) {
     })
   }
 
-  useEffect(() => {
+    useEffect(() => {
     if (duplicarDesde) {
       setForm({
         codigo: '',
-        ruc: duplicarDesde.ruc,
-        nombre_cliente: duplicarDesde.cliente,
+        ruc: duplicarDesde.ruc || '',
+        nombre_cliente: duplicarDesde.cliente || '',
         numero_std: duplicarDesde.numero_std,
         descripcion: duplicarDesde.descripcion || '',
         cantidad: duplicarDesde.cantidad,
@@ -41,14 +41,14 @@ function CrearOrden({ onCreada, duplicarDesde }) {
       })
 
       setClienteSeleccionado({
-        ruc: duplicarDesde.ruc,
-        nombre: duplicarDesde.cliente
+        ruc: duplicarDesde.ruc || '',
+        nombre: duplicarDesde.cliente || ''
       })
     }
   }, [duplicarDesde])
 
   useEffect(() => {
-    if (form.ruc.trim().length < 4 || clienteSeleccionado) {
+    if (!form.ruc || form.ruc.trim().length < 4 || clienteSeleccionado) {
       setSugerenciasClientes([])
       return
     }
