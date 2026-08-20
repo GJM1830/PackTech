@@ -286,7 +286,7 @@ class MovimientoAglomerado(Base):
     orden_id: Mapped[int | None] = mapped_column(ForeignKey("ordenes_produccion.id"))
     clasificacion: Mapped[str | None] = mapped_column(String(100))
 
-    operario_id: Mapped[int] = mapped_column(ForeignKey("operarios.id"))
+    operario_id: Mapped[int | None] = mapped_column(ForeignKey("operarios.id"))
 
     observacion: Mapped[str | None] = mapped_column(Text)
 

@@ -75,6 +75,18 @@ def eliminar_cliente(db: Session, cliente_id: int):
             detail="El cliente no existe."
         )
 
+    tiene_ordenes = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.cliente_id == cliente_id)
+        .first()
+    )
+
+    if tiene_ordenes is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar: este cliente tiene Órdenes de Producción registradas. Elimina o reasigna esas órdenes primero."
+        )
+
     db.delete(cliente)
     db.commit()
 
@@ -531,6 +543,14 @@ def eliminar_operario(
             status_code=404,
             detail="El operario no existe."
         )
+
+    db.query(models.Movimiento).filter(
+        models.Movimiento.operario_id == operario_id
+    ).update({"operario_id": None}, synchronize_session=False)
+
+    db.query(models.MovimientoAglomerado).filter(
+        models.MovimientoAglomerado.operario_id == operario_id
+    ).update({"operario_id": None}, synchronize_session=False)
 
     db.delete(operario)
     db.commit()
