@@ -26,10 +26,12 @@ def crear_cliente(
     db: Session,
     cliente: schemas.ClienteCreate
 ):
-    if cliente.ruc and cliente.ruc.strip():
+    ruc_limpio = cliente.ruc.strip() if cliente.ruc and cliente.ruc.strip() else None
+
+    if ruc_limpio:
         cliente_existente = (
             db.query(models.Cliente)
-            .filter(models.Cliente.ruc == cliente.ruc)
+            .filter(models.Cliente.ruc == ruc_limpio)
             .first()
         )
 
@@ -40,7 +42,7 @@ def crear_cliente(
             )
 
     nuevo_cliente = models.Cliente(
-        ruc=cliente.ruc,
+        ruc=ruc_limpio,
         nombre=cliente.nombre
     )
 
@@ -122,10 +124,12 @@ def crear_orden_produccion(
     orden: schemas.OrdenProduccionCreate
 ):
     cliente = None
-    if orden.ruc and orden.ruc.strip():
+    ruc_limpio = orden.ruc.strip() if orden.ruc and orden.ruc.strip() else None
+
+    if ruc_limpio:
         cliente = (
             db.query(models.Cliente)
-            .filter(models.Cliente.ruc == orden.ruc)
+            .filter(models.Cliente.ruc == ruc_limpio)
             .first()
         )
 
@@ -137,7 +141,7 @@ def crear_orden_produccion(
             )
 
         cliente = models.Cliente(
-            ruc=orden.ruc.strip() if orden.ruc and orden.ruc.strip() else None,
+            ruc=ruc_limpio,
             nombre=orden.nombre_cliente
         )
 
@@ -1310,11 +1314,13 @@ def editar_orden_produccion(
     if orden is None:
         raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
 
+    ruc_limpio = orden_nueva.ruc.strip() if orden_nueva.ruc and orden_nueva.ruc.strip() else None
+
     cliente = None
-    if orden_nueva.ruc and orden_nueva.ruc.strip():
+    if ruc_limpio:
         cliente = (
             db.query(models.Cliente)
-            .filter(models.Cliente.ruc == orden_nueva.ruc)
+            .filter(models.Cliente.ruc == ruc_limpio)
             .first()
         )
 
@@ -1325,7 +1331,7 @@ def editar_orden_produccion(
                 detail="Cliente no encontrado. Debe ingresar el nombre."
             )
         cliente = models.Cliente(
-            ruc=orden_nueva.ruc.strip() if orden_nueva.ruc and orden_nueva.ruc.strip() else None,
+            ruc=ruc_limpio,
             nombre=orden_nueva.nombre_cliente
         )
         db.add(cliente)
