@@ -1362,8 +1362,8 @@ def importar_bobinas_anteriores(db: Session, movimiento_id: int):
             tipo="bobina",
             lado="entrada",
             numero=i,
-            peso_bruto=bobina.peso_neto,
-            peso_tuco=0,
+            peso_bruto=bobina.peso_bruto,
+            peso_tuco=bobina.peso_tuco,
             peso_neto=bobina.peso_neto,
             millares=None,
             tipo_material=bobina.tipo_material
