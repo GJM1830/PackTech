@@ -2,13 +2,13 @@ from datetime import date, time, datetime
 from pydantic import BaseModel
 
 class ClienteCreate(BaseModel):
-    ruc: str
+    ruc: str | None
     nombre: str
 
 
 class ClienteResponse(BaseModel):
     id: int
-    ruc: str
+    ruc: str | None
     nombre: str
 
     class Config:

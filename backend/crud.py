@@ -57,7 +57,7 @@ def obtener_clientes(db: Session):
 
 def obtener_cliente_por_ruc(
     db: Session,
-    ruc: str
+    ruc: str | None
 ):
     return (
         db.query(models.Cliente)
@@ -241,6 +241,28 @@ def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | Non
         .limit(limit)
         .all()
     )
+
+    for orden in ordenes:
+        orden.ruc = orden.cliente_obj.ruc
+        orden.cliente = orden.cliente_obj.nombre
+
+        ultimo_movimiento = (
+            db.query(models.Movimiento)
+            .filter(models.Movimiento.orden_id == orden.id)
+            .order_by(models.Movimiento.id.desc())
+            .first()
+        )
+
+        proceso_actual = (
+            ultimo_movimiento.proceso
+            if ultimo_movimiento
+            else None
+        )
+
+        orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+        orden.estado = calcular_estado(proceso_actual)
+
+    return ordenes
 
 
 def eliminar_orden_produccion(

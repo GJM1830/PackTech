@@ -38,7 +38,7 @@ def buscar_clientes(
 
 @router.get("/ruc/{ruc}", response_model=schemas.ClienteResponse | None)
 def buscar_cliente_por_ruc(
-    ruc: str,
+    ruc: str | None,
     db: Session = Depends(obtener_db)
 ):
     return (
@@ -50,7 +50,7 @@ def buscar_cliente_por_ruc(
 
 @router.get("/{ruc}", response_model=schemas.ClienteResponse)
 def obtener_cliente(
-    ruc: str,
+    ruc: str | None,
     db: Session = Depends(obtener_db)
 ):
     cliente = crud.obtener_cliente_por_ruc(db, ruc)
