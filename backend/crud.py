@@ -134,11 +134,19 @@ def crear_orden_produccion(
 
     cliente = None
     ruc_limpio = orden.ruc.strip() if orden.ruc and orden.ruc.strip() else None
+    nombre_cliente_limpio = orden.nombre_cliente.strip() if orden.nombre_cliente else None
 
     if ruc_limpio:
         cliente = (
             db.query(models.Cliente)
             .filter(models.Cliente.ruc == ruc_limpio)
+            .first()
+        )
+    elif nombre_cliente_limpio:
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc.is_(None))
+            .filter(models.Cliente.nombre.ilike(nombre_cliente_limpio))
             .first()
         )
 
@@ -151,7 +159,7 @@ def crear_orden_produccion(
 
         cliente = models.Cliente(
             ruc=ruc_limpio,
-            nombre=orden.nombre_cliente
+            nombre=nombre_cliente_limpio
         )
 
         db.add(cliente)
@@ -1386,12 +1394,20 @@ def editar_orden_produccion(
         raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
 
     ruc_limpio = orden_nueva.ruc.strip() if orden_nueva.ruc and orden_nueva.ruc.strip() else None
+    nombre_cliente_limpio = orden_nueva.nombre_cliente.strip() if orden_nueva.nombre_cliente else None
 
     cliente = None
     if ruc_limpio:
         cliente = (
             db.query(models.Cliente)
             .filter(models.Cliente.ruc == ruc_limpio)
+            .first()
+        )
+    elif nombre_cliente_limpio:
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc.is_(None))
+            .filter(models.Cliente.nombre.ilike(nombre_cliente_limpio))
             .first()
         )
 
@@ -1403,7 +1419,7 @@ def editar_orden_produccion(
             )
         cliente = models.Cliente(
             ruc=ruc_limpio,
-            nombre=orden_nueva.nombre_cliente
+            nombre=nombre_cliente_limpio
         )
         db.add(cliente)
         db.commit()
