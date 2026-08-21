@@ -23,9 +23,11 @@ def crear_cliente(
 
 @router.get("", response_model=list[schemas.ClienteResponse])
 def listar_clientes(
+    limit: int = 20,
+    antes_de: int | None = None,
     db: Session = Depends(obtener_db)
 ):
-    return crud.obtener_clientes(db)
+    return crud.obtener_clientes(db, limit, antes_de)
 
 
 @router.get("/buscar", response_model=list[schemas.ClienteResponse])

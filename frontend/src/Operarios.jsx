@@ -33,10 +33,29 @@ function Operarios() {
     }
   }
 
+  const [hayMas, setHayMas] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
   const cargarOperarios = () => {
-    axios.get('https://packtech-production.up.railway.app/operarios')
-      .then((res) => setOperarios(res.data))
+    axios.get('https://packtech-production.up.railway.app/operarios?limit=20')
+      .then((res) => {
+        setOperarios(res.data)
+        setHayMas(res.data.length === 20)
+      })
       .catch((err) => console.error(err))
+  }
+
+  const cargarMasOperarios = () => {
+    if (operarios.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = operarios[operarios.length - 1].id
+    axios.get(`https://packtech-production.up.railway.app/operarios?limit=20&antes_de=${ultimoId}`)
+      .then((res) => {
+        setOperarios((actual) => [...actual, ...res.data])
+        setHayMas(res.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
   }
 
   useEffect(() => {
@@ -157,6 +176,18 @@ function Operarios() {
             </tbody>
           </table>
         </div>
+
+        {hayMas && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={cargarMasOperarios}
+              disabled={cargandoMas}
+              className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {cargandoMas ? 'Cargando...' : 'Cargar más operarios'}
+            </button>
+          </div>
+        )}
       </div>
       {editando && (
       <ModalEditar

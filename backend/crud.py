@@ -53,9 +53,13 @@ def crear_cliente(
     return nuevo_cliente
 
 
-def obtener_clientes(db: Session):
-    return db.query(models.Cliente).order_by(models.Cliente.id.desc()).all()
+def obtener_clientes(db: Session, limit: int = 20, antes_de: int | None = None):
+    query = db.query(models.Cliente)
 
+    if antes_de:
+        query = query.filter(models.Cliente.id < antes_de)
+
+    return query.order_by(models.Cliente.id.desc()).limit(limit).all()
 
 def obtener_cliente_por_ruc(
     db: Session,
@@ -574,8 +578,13 @@ def crear_operario(
     return nuevo_operario
 
 
-def obtener_operarios(db: Session):
-    return db.query(models.Operario).order_by(models.Operario.id.desc()).all()
+def obtener_operarios(db: Session, limit: int = 20, antes_de: int | None = None):
+    query = db.query(models.Operario)
+
+    if antes_de:
+        query = query.filter(models.Operario.id < antes_de)
+
+    return query.order_by(models.Operario.id.desc()).limit(limit).all()
 
 
 def eliminar_operario(

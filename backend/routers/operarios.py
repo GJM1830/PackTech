@@ -22,9 +22,11 @@ def crear_operario(
 
 @router.get("", response_model=list[schemas.OperarioResponse])
 def listar_operarios(
+    limit: int = 20,
+    antes_de: int | None = None,
     db: Session = Depends(obtener_db)
 ):
-    return crud.obtener_operarios(db)
+    return crud.obtener_operarios(db, limit, antes_de)
 
 @router.delete("/{operario_id}")
 def eliminar_operario(

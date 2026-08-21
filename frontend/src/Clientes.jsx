@@ -33,16 +33,33 @@ function Clientes() {
     }
   }
 
+  const [hayMas, setHayMas] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
   const cargarClientes = () => {
-    axios.get('https://packtech-production.up.railway.app/clientes')
+    axios.get('https://packtech-production.up.railway.app/clientes?limit=20')
       .then((res) => {
         setClientes(res.data)
+        setHayMas(res.data.length === 20)
         setErrorCarga(null)
       })
       .catch((err) => {
         console.error(err)
         setErrorCarga('No se pudo conectar con el backend.')
       })
+  }
+
+  const cargarMasClientes = () => {
+    if (clientes.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = clientes[clientes.length - 1].id
+    axios.get(`https://packtech-production.up.railway.app/clientes?limit=20&antes_de=${ultimoId}`)
+      .then((res) => {
+        setClientes((actual) => [...actual, ...res.data])
+        setHayMas(res.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
   }
 
   useEffect(() => {
@@ -165,6 +182,18 @@ function Clientes() {
             </tbody>
           </table>
         </div>
+
+        {hayMas && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={cargarMasClientes}
+              disabled={cargandoMas}
+              className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {cargandoMas ? 'Cargando...' : 'Cargar más clientes'}
+            </button>
+          </div>
+        )}
       </div>
 
       {editando && (
