@@ -48,21 +48,27 @@ function CrearOrden({ onCreada, duplicarDesde }) {
   }, [duplicarDesde])
 
   useEffect(() => {
-    if (!form.ruc || form.ruc.trim().length < 4 || clienteSeleccionado) {
+    if (clienteSeleccionado) {
+      setSugerenciasClientes([])
+      return
+    }
+
+    const query = form.ruc.trim() || form.nombre_cliente.trim()
+    if (query.length < 2) {
       setSugerenciasClientes([])
       return
     }
 
     const temporizador = setTimeout(() => {
       axios.get(
-        `https://packtech-production.up.railway.app/clientes/buscar?q=${form.ruc}`
+        `https://packtech-production.up.railway.app/clientes/buscar?q=${query}`
       )
         .then((res) => setSugerenciasClientes(res.data))
         .catch((err) => console.error(err))
     }, 300)
 
     return () => clearTimeout(temporizador)
-  }, [form.ruc, clienteSeleccionado])
+  }, [form.ruc, form.nombre_cliente, clienteSeleccionado])
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
@@ -206,7 +212,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
           )}
         </div>
 
-        <div>
+        <div className="relative">
           <label className="block text-sm font-medium text-slate-600 mb-1.5">
             Cliente
           </label>
@@ -215,10 +221,38 @@ function CrearOrden({ onCreada, duplicarDesde }) {
             type="text"
             name="nombre_cliente"
             value={form.nombre_cliente}
-            onChange={manejarCambio}
+            onChange={(e) => {
+              manejarCambio(e)
+              setClienteSeleccionado(null)
+            }}
+            autoComplete="off"
             className={estiloInput}
-            placeholder="Se autocompleta si el RUC existe, o escríbelo si es nuevo"
+            placeholder="Escribe el nombre, o el RUC arriba si lo tienes"
           />
+
+          {sugerenciasClientes.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {sugerenciasClientes.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setClienteSeleccionado(c)
+                    setForm({
+                      ...form,
+                      ruc: c.ruc || '',
+                      nombre_cliente: c.nombre
+                    })
+                    setSugerenciasClientes([])
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0 transition"
+                >
+                  <span className="font-medium text-slate-800">{c.nombre}</span>
+                  {c.ruc && <span className="text-slate-500"> · {c.ruc}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

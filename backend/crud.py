@@ -205,8 +205,11 @@ def crear_orden_produccion(
 def buscar_clientes(db: Session, q: str):
     return (
         db.query(models.Cliente)
-        .filter(models.Cliente.ruc.ilike(f"%{q}%"))
-        .order_by(models.Cliente.ruc)
+        .filter(
+            (models.Cliente.ruc.ilike(f"%{q}%")) |
+            (models.Cliente.nombre.ilike(f"%{q}%"))
+        )
+        .order_by(models.Cliente.nombre)
         .limit(10)
         .all()
     )
