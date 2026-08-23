@@ -74,3 +74,19 @@ def editar_orden(
     _: None = Depends(requiere_rol("admin"))
 ):
     return crud.editar_orden_produccion(db, orden_id, orden)
+
+@router.get("/preaprobadas/listar", response_model=list[schemas.OrdenProduccionResponse])
+def listar_preaprobadas(
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.obtener_ordenes_preaprobadas(db)
+
+
+@router.post("/{orden_id}/aprobar", response_model=schemas.OrdenProduccionResponse)
+def aprobar_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    return crud.aprobar_orden_preaprobada(db, orden_id)
