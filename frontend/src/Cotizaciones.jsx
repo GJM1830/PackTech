@@ -478,7 +478,11 @@ function Cotizaciones() {
               </thead>
               <tbody>
                 {ordenes.map((o) => (
-                  <tr key={o.id} className="border-t border-slate-100">
+                  <tr
+                    key={o.id}
+                    onClick={() => setVistaAbierta(o)}
+                    className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                  >
                     <td className="px-4 py-3 font-medium text-slate-800">{o.codigo}</td>
                     <td className="px-4 py-3">{o.cliente}</td>
                     <td className="px-4 py-3">{o.descripcion}</td>
@@ -496,7 +500,7 @@ function Cotizaciones() {
                     )}
                     <td className="px-4 py-3">{o.vendedor || '—'}</td>
                     {vendedorOAdmin && (
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => aprobar(o.id)}
                           disabled={aprobando === o.id}
@@ -529,6 +533,10 @@ function Cotizaciones() {
           </div>
         )}
       </div>
+
+      {vistaAbierta && (
+        <VistaCotizacion orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
+      )}
 
       {editando && (
         <ModalEditar
