@@ -8,6 +8,7 @@ import Clientes from './Clientes'
 import Operarios from './Operarios'
 import Aglomerado from './Aglomerado'
 import Reportes from './Reportes'
+import Cotizaciones from './Cotizaciones'
 import MenuAcciones from './MenuAcciones'
 import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
@@ -328,6 +329,7 @@ function App() {
             <Route path="/operarios" element={<Operarios />} />
             <Route path="/aglomerado" element={<Aglomerado />} />
             <Route path="/reportes" element={<Reportes />} />
+            <Route path="/cotizaciones" element={<Cotizaciones />} />
           </Routes>
         </div>
       </div>

@@ -43,6 +43,12 @@ def eliminar_orden(
 class ProcesosUpdate(BaseModel):
     procesos_plan: str
 
+@router.get("/vendedores/buscar", response_model=list[schemas.VendedorResponse])
+def buscar_vendedores(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_vendedores(db, q)
 
 @router.get("/buscar", response_model=list[schemas.OrdenProduccionResponse])
 def buscar_ordenes(

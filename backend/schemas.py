@@ -22,8 +22,18 @@ class OrdenProduccionCreate(BaseModel):
     descripcion: str | None = None
     cantidad: float
     unidad: str
-    estado: str |None = "Pendiente"
+    estado: str | None = "Pendiente"
     procesos_plan: str | None = None
+    moneda: str | None = None
+    vendedor: str | None = None
+    fecha_entrega: date | None = None
+    precio_unitario: float | None = None
+    unidad_precio: str | None = None
+    millares: float | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
 
 class OrdenProduccionResponse(BaseModel):
     id: int
@@ -40,6 +50,25 @@ class OrdenProduccionResponse(BaseModel):
     cliente: str
     ultimo_proceso: str
     procesos_plan: str | None = None
+    moneda: str | None = None
+    vendedor: str | None = None
+    fecha_entrega: date | None = None
+    precio_unitario: float | None = None
+    unidad_precio: str | None = None
+    millares: float | None = None
+    costo_total: float | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class VendedorResponse(BaseModel):
+    id: int
+    nombre: str
 
     class Config:
         from_attributes = True

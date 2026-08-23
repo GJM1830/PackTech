@@ -142,12 +142,11 @@ function Clientes()   {
           >
             {enviando ? 'Creando...' : 'Registrar Cliente'}
           </button>
-        </form>
+                </form>
       </div>
+      )}
 
       <div>
-
-        {errorCarga && <p className="text-red-600 mb-3">{errorCarga}</p>}
 
         <input
           type="text"

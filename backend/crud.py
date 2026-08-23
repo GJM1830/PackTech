@@ -182,7 +182,22 @@ def crear_orden_produccion(
             detail="Ya existe una Orden de Producción con ese código."
         )
 
+    if orden.unidad_precio == "millares" and not orden.millares:
+        raise HTTPException(status_code=400, detail="Debes indicar los millares si el precio es por millar.")
+
+    costo_total_calc = None
+    if orden.precio_unitario is not None and orden.unidad_precio:
+        if orden.unidad_precio == "millares":
+            costo_total_calc = float(orden.precio_unitario) * float(orden.millares)
+        else:
+            costo_total_calc = float(orden.precio_unitario) * float(orden.cantidad)
+
+    if orden.vendedor and orden.vendedor.strip():
+        crear_vendedor_si_no_existe(db, orden.vendedor.strip())
+
     ahora = ahora_lima()
+
+
 
     nueva_orden = models.OrdenProduccion(
         codigo=orden.codigo,
@@ -193,7 +208,18 @@ def crear_orden_produccion(
         unidad=orden.unidad,
         estado=orden.estado,
         fecha=ahora.date(),
-        hora=ahora.time()
+        hora=ahora.time(),
+        moneda=orden.moneda,
+        vendedor=orden.vendedor.strip() if orden.vendedor and orden.vendedor.strip() else None,
+        fecha_entrega=orden.fecha_entrega,
+        precio_unitario=orden.precio_unitario,
+        unidad_precio=orden.unidad_precio,
+        millares=orden.millares,
+        costo_total=costo_total_calc,
+        direccion_entrega=orden.direccion_entrega,
+        numero_contacto=orden.numero_contacto,
+        email_cliente=orden.email_cliente,
+        telefono_cliente=orden.telefono_cliente
     )
 
     db.add(nueva_orden)
@@ -887,6 +913,30 @@ def buscar_tipos_material(db: Session, q: str):
         .all()
     )
 
+def buscar_vendedores(db: Session, q: str):
+    return (
+        db.query(models.Vendedor)
+        .filter(models.Vendedor.nombre.ilike(f"%{q}%"))
+        .order_by(models.Vendedor.nombre)
+        .limit(10)
+        .all()
+    )
+
+
+def crear_vendedor_si_no_existe(db: Session, nombre: str):
+    nombre = nombre.strip()
+    if not nombre:
+        return
+
+    existente = (
+        db.query(models.Vendedor)
+        .filter(models.Vendedor.nombre.ilike(nombre))
+        .first()
+    )
+    if existente is None:
+        nuevo = models.Vendedor(nombre=nombre)
+        db.add(nuevo)
+        db.commit()
 
 def crear_tipo_material_si_no_existe(db: Session, nombre: str):
     nombre = nombre.strip()
@@ -1423,7 +1473,7 @@ def editar_orden_produccion(
         )
 
     if cliente is None:
-        if not orden_nueva.nombre_cliente:
+        if not nombre_cliente_limpio:
             raise HTTPException(
                 status_code=400,
                 detail="Cliente no encontrado. Debe ingresar el nombre."
@@ -1436,6 +1486,19 @@ def editar_orden_produccion(
         db.commit()
         db.refresh(cliente)
 
+    if orden_nueva.unidad_precio == "millares" and not orden_nueva.millares:
+        raise HTTPException(status_code=400, detail="Debes indicar los millares si el precio es por millar.")
+
+    costo_total_calc = None
+    if orden_nueva.precio_unitario is not None and orden_nueva.unidad_precio:
+        if orden_nueva.unidad_precio == "millares":
+            costo_total_calc = float(orden_nueva.precio_unitario) * float(orden_nueva.millares)
+        else:
+            costo_total_calc = float(orden_nueva.precio_unitario) * float(orden_nueva.cantidad)
+
+    if orden_nueva.vendedor and orden_nueva.vendedor.strip():
+        crear_vendedor_si_no_existe(db, orden_nueva.vendedor.strip())
+
     orden.codigo = orden_nueva.codigo
     orden.cliente_id = cliente.id
     orden.numero_std = orden_nueva.numero_std
@@ -1443,6 +1506,17 @@ def editar_orden_produccion(
     orden.cantidad = orden_nueva.cantidad
     orden.unidad = orden_nueva.unidad
     orden.estado = orden_nueva.estado
+    orden.moneda = orden_nueva.moneda
+    orden.vendedor = orden_nueva.vendedor.strip() if orden_nueva.vendedor and orden_nueva.vendedor.strip() else None
+    orden.fecha_entrega = orden_nueva.fecha_entrega
+    orden.precio_unitario = orden_nueva.precio_unitario
+    orden.unidad_precio = orden_nueva.unidad_precio
+    orden.millares = orden_nueva.millares
+    orden.costo_total = costo_total_calc
+    orden.direccion_entrega = orden_nueva.direccion_entrega
+    orden.numero_contacto = orden_nueva.numero_contacto
+    orden.email_cliente = orden_nueva.email_cliente
+    orden.telefono_cliente = orden_nueva.telefono_cliente
 
     db.commit()
     db.refresh(orden)
@@ -1461,3 +1535,37 @@ def editar_orden_produccion(
     orden.estado = calcular_estado(proceso_actual)
 
     return orden
+
+def aprobar_orden_preaprobada(db: Session, orden_id: int):
+    orden = db.get(models.OrdenProduccion, orden_id)
+    if orden is None:
+        raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
+
+    if orden.estado != "Preaprobada":
+        raise HTTPException(status_code=400, detail="Esta orden no está en estado Preaprobada.")
+
+    orden.estado = "Pendiente"
+    db.commit()
+    db.refresh(orden)
+
+    orden.ruc = orden.cliente_obj.ruc
+    orden.cliente = orden.cliente_obj.nombre
+    orden.ultimo_proceso = "Sin iniciar"
+
+    return orden
+
+
+def obtener_ordenes_preaprobadas(db: Session):
+    ordenes = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.estado == "Preaprobada")
+        .order_by(models.OrdenProduccion.id.desc())
+        .all()
+    )
+
+    for orden in ordenes:
+        orden.ruc = orden.cliente_obj.ruc
+        orden.cliente = orden.cliente_obj.nombre
+        orden.ultimo_proceso = "Sin iniciar"
+
+    return ordenes

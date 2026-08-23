@@ -87,6 +87,18 @@ class OrdenProduccion(Base):
     
     procesos_plan: Mapped[str | None] = mapped_column(Text)
 
+    moneda: Mapped[str | None] = mapped_column(String(10))
+    vendedor: Mapped[str | None] = mapped_column(String(100))
+    fecha_entrega: Mapped[date | None] = mapped_column(Date)
+    precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    unidad_precio: Mapped[str | None] = mapped_column(String(20))
+    millares: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    direccion_entrega: Mapped[str | None] = mapped_column(String(200))
+    numero_contacto: Mapped[str | None] = mapped_column(String(50))
+    email_cliente: Mapped[str | None] = mapped_column(String(150))
+    telefono_cliente: Mapped[str | None] = mapped_column(String(50))
+
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True
@@ -325,4 +337,10 @@ class Usuario(Base):
     rol: Mapped[str] = mapped_column(String(20), nullable=False)  # admin, operario, lector
     nombre: Mapped[str | None] = mapped_column(String(100))
     
+    
+class Vendedor(Base):
+    __tablename__ = "vendedores"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100))
     
