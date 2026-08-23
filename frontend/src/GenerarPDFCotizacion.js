@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return '-'
@@ -10,134 +9,191 @@ const formatearFecha = (fecha) => {
 export function generarPDFCotizacion(orden) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+  const M = 12
+  const ANCHO = 210 - M * 2
 
-  // Encabezado con marco
-  doc.setDrawColor(30, 41, 59)
-  doc.setLineWidth(0.5)
-  doc.rect(10, 10, 190, 20)
+  const azul = [30, 64, 175]
+  const slate900 = [15, 23, 42]
+  const slate600 = [71, 85, 105]
+  const slate400 = [148, 163, 184]
+  const borde = [203, 213, 225]
 
-  doc.setFontSize(18)
+  let y = 14
+
+  // ---- Encabezado: logo/nombre a la izquierda, pedido/fecha a la derecha ----
+  doc.setDrawColor(...slate900)
+  doc.setLineWidth(0.4)
+  doc.rect(M, y, ANCHO, 16)
+  doc.line(M + 120, y, M + 120, y + 16)
+  doc.line(M + 120, y + 8, M + 186, y + 8)
+
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(30, 64, 175)
-  doc.text('PACKTECH', 15, 22)
-
-  doc.setFontSize(9)
-  doc.setTextColor(100, 116, 139)
+  doc.setFontSize(15)
+  doc.setTextColor(...azul)
+  doc.text('PACKTECH', M + 4, y + 7)
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
-  doc.text('Sistema de Gestión de Producción', 15, 27)
+  doc.setTextColor(...slate600)
+  doc.text('S.A.C.', M + 4, y + 12)
 
-  doc.setDrawColor(30, 41, 59)
-  doc.line(130, 10, 130, 30)
+  doc.setFontSize(8)
+  doc.setTextColor(...slate600)
+  doc.text('PEDIDO', M + 122, y + 5.5)
+  doc.text('FECHA', M + 122, y + 13.5)
 
-  doc.setFontSize(9)
-  doc.setTextColor(71, 85, 105)
-  doc.text('PEDIDO', 135, 15)
-  doc.text('FECHA', 135, 22)
-
-  doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(15, 23, 42)
-  doc.text(String(orden.codigo), 165, 15)
-  doc.text(formatearFecha(orden.fecha), 165, 22)
+  doc.setFontSize(10)
+  doc.setTextColor(...slate900)
+  doc.text(String(orden.codigo), M + 182, y + 5.5, { align: 'right' })
+  doc.text(formatearFecha(orden.fecha), M + 182, y + 13.5, { align: 'right' })
 
-  // Datos del cliente
-  let y = 38
-  const filaDatos = (label, valor) => {
-    doc.setFontSize(9)
+  y += 16
+
+  // ---- Bloque cliente / condición comercial ----
+  const alturaBloque = 30
+  doc.rect(M, y, ANCHO, alturaBloque)
+  doc.line(M + 130, y, M + 130, y + alturaBloque)
+
+  const filaIzq = (label, valor, offsetY) => {
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(71, 85, 105)
-    doc.text(label, 12, y)
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text(label, M + 3, y + offsetY)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(15, 23, 42)
-    doc.text(valor || '-', 55, y)
-    y += 6
+    doc.setFontSize(8.5)
+    doc.setTextColor(...slate900)
+    doc.text(String(valor || '-'), M + 32, y + offsetY)
   }
 
-  filaDatos('CLIENTE:', orden.cliente)
-  filaDatos('RUC / DNI:', orden.ruc)
-  filaDatos('DIRECCIÓN DE ENTREGA:', orden.direccion_entrega)
-  filaDatos('N° DE CONTACTO:', orden.numero_contacto)
-  filaDatos('EMAIL:', orden.email_cliente)
-  filaDatos('FECHA DE ENTREGA:', formatearFecha(orden.fecha_entrega))
+  filaIzq('CLIENTE', orden.cliente, 6)
+  filaIzq('RUC / DNI', orden.ruc, 12)
+  filaIzq('DIRECCIÓN ENTREGA', orden.direccion_entrega, 18)
+  filaIzq('CONTACTO', orden.numero_contacto, 24)
 
-  // Datos comerciales, columna derecha
-  let y2 = 38
-  const filaDerecha = (label, valor) => {
-    doc.setFontSize(9)
+  const filaDer = (label, valor, offsetY) => {
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(71, 85, 105)
-    doc.text(label, 130, y2)
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text(label, M + 133, y + offsetY)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(15, 23, 42)
-    doc.text(valor || '-', 165, y2)
-    y2 += 6
+    doc.setFontSize(8.5)
+    doc.setTextColor(...slate900)
+    doc.text(String(valor || '-'), M + 160, y + offsetY)
   }
 
-  filaDerecha('MONEDA:', orden.moneda)
-  filaDerecha('VENDEDOR:', orden.vendedor)
+  filaDer('MONEDA', orden.moneda, 6)
+  filaDer('VENDEDOR', orden.vendedor, 12)
+  filaDer('F. ENTREGA', formatearFecha(orden.fecha_entrega), 18)
+  filaDer('EMAIL', orden.email_cliente, 24)
 
-  y = Math.max(y, y2) + 4
+  y += alturaBloque
 
-  // Tabla del producto
-  autoTable(doc, {
-    startY: y,
-    head: [['CANT.', 'UNIDAD', 'DESCRIPCIÓN', 'PRECIO UNIT.', 'TOTAL']],
-    body: [[
-      String(orden.cantidad),
-      orden.unidad,
-      orden.descripcion || '-',
-      orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)} / ${orden.unidad_precio}` : '-',
-      orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'
-    ]],
-    theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    margin: { left: 10, right: 10 }
-  })
+  // ---- Tabla de producto (estilo cuadrícula, como el papel) ----
+  const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
+  const filaAltura = 8
 
-  let yFinal = doc.lastAutoTable.finalY + 6
-
-  if (orden.millares) {
-    doc.setFontSize(9)
-    doc.setTextColor(71, 85, 105)
-    doc.text(`Millares de referencia: ${orden.millares}`, 12, yFinal)
-    yFinal += 8
-  }
-
-  // Total destacado
   doc.setFillColor(30, 41, 59)
-  doc.rect(130, yFinal, 70, 12, 'F')
-  doc.setFontSize(11)
-  doc.setFont('helvetica', 'bold')
+  doc.rect(M, y, ANCHO, filaAltura, 'F')
   doc.setTextColor(255, 255, 255)
-  doc.text('TOTAL', 135, yFinal + 8)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.text('CANT.', colX[0] + 2, y + 5.5)
+  doc.text('UNIDAD', colX[1] + 2, y + 5.5)
+  doc.text('DESCRIPCIÓN', colX[2] + 2, y + 5.5)
+  doc.text('P. UNITARIO', colX[3] + 2, y + 5.5)
+  doc.text('TOTAL', colX[4] + 2, y + 5.5)
+
+  y += filaAltura
+
+  doc.setDrawColor(...borde)
+  doc.rect(M, y, ANCHO, filaAltura)
+  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(...slate900)
+  doc.text(String(orden.cantidad), colX[0] + 2, y + 5.5)
+  doc.text(orden.unidad, colX[1] + 2, y + 5.5)
+  doc.text(orden.descripcion || '-', colX[2] + 2, y + 5.5)
+  doc.text(
+    orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
+    colX[3] + 2, y + 5.5
+  )
   doc.text(
     orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
-    195, yFinal + 8, { align: 'right' }
+    colX[4] + 2, y + 5.5
   )
 
-  yFinal += 24
+  y += filaAltura
 
-  // Condiciones
-  doc.setFontSize(8)
+  // Filas vacías, como en el papel original (para que se vea igual de "formulario")
+  for (let i = 0; i < 3; i++) {
+    doc.rect(M, y, ANCHO, filaAltura)
+    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
+    y += filaAltura
+  }
+
+  if (orden.millares) {
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text(`Millares de referencia: ${orden.millares}`, M, y + 4)
+    y += 8
+  } else {
+    y += 3
+  }
+
+  // ---- Totales ----
+  const anchoTotales = 55
+  const xTotales = M + ANCHO - anchoTotales
+
+  doc.setDrawColor(...borde)
+  doc.rect(xTotales, y, anchoTotales, 7)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(100, 116, 139)
+  doc.setFontSize(8)
+  doc.setTextColor(...slate600)
+  doc.text('SUBTOTAL', xTotales + 2, y + 4.8)
+  doc.setTextColor(...slate900)
+  doc.text(
+    orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
+    xTotales + anchoTotales - 2, y + 4.8, { align: 'right' }
+  )
+  y += 7
+
+  doc.setFillColor(30, 41, 59)
+  doc.rect(xTotales, y, anchoTotales, 9, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  doc.setTextColor(255, 255, 255)
+  doc.text('TOTAL', xTotales + 2, y + 6)
+  doc.text(
+    orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
+    xTotales + anchoTotales - 2, y + 6, { align: 'right' }
+  )
+
+  y += 20
+
+  // ---- Condiciones ----
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...slate400)
   const condiciones = [
-    'El comprador se declara estar legalmente autorizado para la marca que tiene en este pedido',
-    'y exime al fabricante de toda responsabilidad sobre registro y marcas.',
+    'El comprador se declara estar legalmente autorizado para la marca que tiene en este pedido y exime al',
+    'fabricante de toda responsabilidad sobre registro y marcas.',
     '',
-    'Para asegurar la máxima vida útil del producto, manténgalo en el empaque original,',
-    'considerando la manipulación y condición del almacenado del material.'
+    'Para asegurar la máxima vida útil del producto, manténgalo en el empaque original, considerando la',
+    'manipulación y condición del almacenado del material.'
   ]
   condiciones.forEach((linea) => {
-    doc.text(linea, 12, yFinal)
-    yFinal += 4.5
+    doc.text(linea, M, y)
+    y += 3.8
   })
 
-  yFinal += 15
-  doc.setDrawColor(148, 163, 184)
-  doc.line(12, yFinal, 80, yFinal)
-  doc.text('Firma / Huella', 12, yFinal + 4)
+  y += 14
+  doc.setDrawColor(...slate400)
+  doc.line(M, y, M + 60, y)
+  doc.setFontSize(7.5)
+  doc.setTextColor(...slate600)
+  doc.text('Firma / Huella', M, y + 4)
 
   doc.save(`Cotizacion_${orden.codigo}.pdf`)
 }
