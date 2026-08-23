@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from dependencias import obtener_db, requiere_rol
+from dependencias import obtener_db, requiere_rol, obtener_usuario_por_clave, SessionLocal
 
 router = APIRouter(
     prefix="/aglomerado",
@@ -15,7 +15,7 @@ router = APIRouter(
 def crear_movimiento(
     movimiento: schemas.MovimientoAglomeradoCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.crear_movimiento_aglomerado(db, movimiento)
 

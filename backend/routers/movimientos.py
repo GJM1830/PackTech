@@ -15,7 +15,7 @@ router = APIRouter(
 def crear_movimiento(
     movimiento: schemas.MovimientoCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.crear_movimiento(db, movimiento)
 
@@ -34,7 +34,7 @@ def editar_movimiento(
     movimiento_id: int,
     datos: schemas.MovimientoEditar,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
 ):
     return crud.editar_movimiento(db, movimiento_id, datos)
 
@@ -53,7 +53,7 @@ def listar_movimientos_por_orden(
 def eliminar_movimiento(
     movimiento_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("admin"))
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
 ):
     crud.eliminar_movimiento(db, movimiento_id)
     return {"mensaje": "Movimiento eliminado correctamente."}
@@ -62,7 +62,7 @@ def eliminar_movimiento(
 def eliminar_detalle(
     detalle_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
 ):
     crud.eliminar_detalle_movimiento(db, detalle_id)
     return {"mensaje": "Detalle eliminado correctamente."}
@@ -72,7 +72,7 @@ def crear_detalle_merma(
     movimiento_id: int,
     detalle: schemas.DetalleMermaCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
 ):
     return crud.crear_detalle_merma(db, movimiento_id, detalle)
 
@@ -90,7 +90,7 @@ def editar_detalle_merma(
     detalle_id: int,
     detalle: schemas.DetalleMermaCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
 ):
     return crud.editar_detalle_merma(db, detalle_id, detalle)
 
@@ -99,7 +99,7 @@ def editar_detalle_merma(
 def eliminar_detalle_merma(
     detalle_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
 ):
     crud.eliminar_detalle_merma(db, detalle_id)
     return {"mensaje": "Detalle de merma eliminado correctamente."}

@@ -18,7 +18,7 @@ router = APIRouter(
 def crear_orden(
     orden: schemas.OrdenProduccionCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.crear_orden_produccion(db, orden)
 
@@ -56,7 +56,7 @@ def actualizar_procesos(
     orden_id: int,
     datos: ProcesosUpdate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.actualizar_procesos_plan(db, orden_id, datos.procesos_plan)
 

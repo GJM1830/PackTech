@@ -578,13 +578,8 @@ def crear_operario(
     return nuevo_operario
 
 
-def obtener_operarios(db: Session, limit: int = 20, antes_de: int | None = None):
-    query = db.query(models.Operario)
-
-    if antes_de:
-        query = query.filter(models.Operario.id < antes_de)
-
-    return query.order_by(models.Operario.id.desc()).limit(limit).all()
+def obtener_operarios(db: Session):
+    return db.query(models.Operario).order_by(models.Operario.id.desc()).all()
 
 
 def eliminar_operario(
@@ -965,11 +960,15 @@ def buscar_clasificaciones_aglomerado(db: Session, q: str):
     )
 
 
-def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglomeradoCreate):
+def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglomeradoCreate, rol_usuario: str):
     if movimiento.cantidad is None or movimiento.cantidad <= 0:
         raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a cero.")
 
     if movimiento.tipo not in ("entrada", "salida", "ajuste"):
+        raise HTTPException(status_code=400, detail="Tipo de movimiento no válido.")
+
+    if movimiento.tipo == "ajuste" and rol_usuario != "admin":
+        raise HTTPException(status_code=403, detail="Solo un administrador puede registrar un ajuste de saldo.")
         raise HTTPException(status_code=400, detail="Tipo de movimiento no válido.")
 
     nombre_operario_limpio = movimiento.nombre_operario.strip()

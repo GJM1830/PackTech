@@ -16,7 +16,7 @@ router = APIRouter(
 def crear_cliente(
     cliente: schemas.ClienteCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.crear_cliente(db, cliente)
 
@@ -70,7 +70,7 @@ def obtener_cliente(
 def eliminar_cliente(
     cliente_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("admin"))
+    _: None = Depends(requiere_rol("vendedor"))
 ):
     crud.eliminar_cliente(db, cliente_id)
     return {"mensaje": "Cliente eliminado correctamente."}
@@ -81,6 +81,6 @@ def editar_cliente(
     cliente_id: int,
     cliente: schemas.ClienteCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("vendedor"))
 ):
     return crud.editar_cliente(db, cliente_id, cliente)

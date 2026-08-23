@@ -15,7 +15,7 @@ router = APIRouter(
 def crear_operario(
     operario: schemas.OperarioCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.crear_operario(db, operario)
 
@@ -28,11 +28,12 @@ def listar_operarios(
 ):
     return crud.obtener_operarios(db, limit, antes_de)
 
-@router.delete("/{operario_id}")
-def eliminar_operario(
+@router.put("/{operario_id}", response_model=schemas.OperarioResponse)
+def editar_operario(
     operario_id: int,
+    operario: schemas.OperarioCreate,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("vendedor"))
 ):
     crud.eliminar_operario(db, operario_id)
     return {"mensaje": "Operario eliminado correctamente."}
