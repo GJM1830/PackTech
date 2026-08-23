@@ -293,6 +293,8 @@ function App() {
     !!localStorage.getItem('packtech_clave')
   )
 
+  const rol = localStorage.getItem('packtech_rol')
+
   if (!autenticado) {
     return <Login onIngresar={() => setAutenticado(true)} />
   }
