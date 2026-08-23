@@ -228,6 +228,7 @@ def crear_orden_produccion(
 
     nueva_orden.ruc = cliente.ruc
     nueva_orden.cliente = cliente.nombre
+    nueva_orden.ultimo_proceso = "Sin iniciar"
 
     return nueva_orden
 
