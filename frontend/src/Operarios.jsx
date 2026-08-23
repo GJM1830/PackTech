@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
+import { esVendedorOMas, puedeCrear } from './roles'
 
 function Operarios() {
   const [operarios, setOperarios] = useState([])
@@ -100,6 +101,7 @@ function Operarios() {
       <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Operarios</h1>
       <p className="text-slate-500 text-sm mt-1">Administra el personal de planta registrado en el sistema.</p>
     </div>
+      {puedeCrear() && (
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Operario</h2>
 
@@ -138,6 +140,7 @@ function Operarios() {
           </button>
         </form>
       </div>
+      )}
 
       <div>
 
@@ -166,10 +169,12 @@ function Operarios() {
                   <td className="px-4 py-3 font-medium text-slate-800">{o.nombre}</td>
                   <td className="px-4 py-3">{o.cargo}</td>
                   <td className="px-4 py-3 text-right">
-                    <MenuAcciones
-                      onEditar={() => abrirEdicion(o)}
-                      onEliminar={() => eliminarOperario(o.id)}
-                    />
+                    {esVendedorOMas() && (
+                      <MenuAcciones
+                        onEditar={() => abrirEdicion(o)}
+                        onEliminar={() => eliminarOperario(o.id)}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}

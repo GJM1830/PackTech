@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
+import { esVendedorOMas, puedeCrear } from './roles'
 
-function Clientes() {
+function Clientes()   {
   const [clientes, setClientes] = useState([])
   const [form, setForm] = useState({ ruc: '', nombre: '' })
   const [error, setError] = useState(null)
@@ -104,6 +105,7 @@ function Clientes() {
       <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clientes</h1>
       <p className="text-slate-500 text-sm mt-1">Administra los clientes registrados en el sistema.</p>
     </div>
+      {puedeCrear() && (
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Cliente</h2>
 
@@ -172,10 +174,12 @@ function Clientes() {
                   <td className="px-4 py-3">{c.ruc || '—'}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
                   <td className="px-4 py-3 text-right">
-                    <MenuAcciones
-                      onEditar={() => abrirEdicion(c)}
-                      onEliminar={() => eliminarCliente(c.id)}
-                    />
+                    {esVendedorOMas() && (
+                      <MenuAcciones
+                        onEditar={() => abrirEdicion(c)}
+                        onEliminar={() => eliminarCliente(c.id)}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}

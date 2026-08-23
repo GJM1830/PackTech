@@ -4,6 +4,7 @@ import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import DetalleMovimiento from './DetalleMovimiento'
 import FiltroDesplegable from './FiltroDesplegable'
+import { puedeCrear, esProduccionOMas } from './roles'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -325,6 +326,7 @@ const guardarEdicion = async () => {
         <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
       </div>
 
+      {puedeCrear() && (
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">
           Registrar Movimiento
@@ -609,6 +611,7 @@ const guardarEdicion = async () => {
           </button>
         </form>
       </div>
+      )}
 
       <div>
         {cargando && <p className="text-slate-500">Cargando...</p>}
@@ -728,11 +731,13 @@ const guardarEdicion = async () => {
                       <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                       <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        <MenuAcciones
-                          onEditar={() => abrirEdicion(mov)}
-                          onDuplicar={() => duplicarMovimiento(mov)}
-                          onEliminar={() => eliminarMovimiento(mov.id)}
-                        />
+                        {puedeCrear() && (
+                          <MenuAcciones
+                            onEditar={esProduccionOMas() ? () => abrirEdicion(mov) : undefined}
+                            onDuplicar={() => duplicarMovimiento(mov)}
+                            onEliminar={esProduccionOMas() ? () => eliminarMovimiento(mov.id) : undefined}
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}

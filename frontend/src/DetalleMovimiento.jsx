@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
+import { esProduccionOMas } from './roles'
 
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
@@ -310,12 +311,14 @@ const duplicarMerma = (detalle) => {
                   </>
                 )}
                 <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => eliminarDetalle(d.id)}
-                    className="text-red-600 hover:text-red-800 text-xs"
-                  >
-                    Eliminar
-                  </button>
+                  {esProduccionOMas() && (
+                    <button
+                      onClick={() => eliminarDetalle(d.id)}
+                      className="text-red-600 hover:text-red-800 text-xs"
+                    >
+                      Eliminar
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -391,7 +394,7 @@ const duplicarMerma = (detalle) => {
 
         {esProcesoEspecial ? (
           <>
-            {esDobleLado && (
+            {esProduccionOMas() && esDobleLado && (
               <div className="flex justify-between items-center mb-4 border-b border-slate-200">
                 <div className="flex gap-2">
                   <button
@@ -412,7 +415,7 @@ const duplicarMerma = (detalle) => {
                   </button>
                 </div>
 
-                {ladoActivo === 'entrada' && entradaBobinas.length === 0 && (
+                {esProduccionOMas() && ladoActivo === 'entrada' && entradaBobinas.length === 0 && (
                   <button
                     onClick={importarBobinasAnteriores}
                     disabled={importando}
@@ -424,7 +427,7 @@ const duplicarMerma = (detalle) => {
               </div>
             )}
 
-            {salidaEsFardo && ladoActivo === 'salida' ? (
+            {esProduccionOMas() && (salidaEsFardo && ladoActivo === 'salida' ? (
   <form onSubmit={agregarFardoSalida} className="flex flex-col sm:flex-row gap-3 mb-6">
     <div className="flex-1">
       <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
@@ -535,7 +538,7 @@ const duplicarMerma = (detalle) => {
   </button>
 </div>
 </form>
-  )}
+  ))}
 
             {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
@@ -551,6 +554,7 @@ const duplicarMerma = (detalle) => {
   <div className="mt-6 pt-5 border-t border-slate-200">
     <h4 className="text-sm font-semibold text-slate-700 mb-3">Detalle de Merma (opcional)</h4>
 
+    {esProduccionOMas() && (
     <form onSubmit={agregarMerma} className="flex flex-col sm:flex-row gap-3 mb-4">
       <div className="flex-1">
         <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
@@ -601,6 +605,7 @@ const duplicarMerma = (detalle) => {
         </button>
       </div>
     </form>
+    )}
 
     {detallesMerma.length > 0 && (
       <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100">
@@ -618,11 +623,13 @@ const duplicarMerma = (detalle) => {
                 <td className="px-4 py-2">{d.peso} kg</td>
                 <td className="px-4 py-2">{d.tipo_merma || 'Sin especificar'}</td>
                 <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                  <MenuAcciones
-                    onEditar={() => abrirEdicionMerma(d)}
-                    onDuplicar={() => duplicarMerma(d)}
-                    onEliminar={() => eliminarMerma(d.id)}
-                  />
+                  {esProduccionOMas() && (
+                    <MenuAcciones
+                      onEditar={() => abrirEdicionMerma(d)}
+                      onDuplicar={() => duplicarMerma(d)}
+                      onEliminar={() => eliminarMerma(d.id)}
+                    />
+                  )}
                 </td>
               </tr>
             ))}
@@ -634,7 +641,7 @@ const duplicarMerma = (detalle) => {
   </>
         ) : (
           <>
-            {detalles.length === 0 && (
+            {esProduccionOMas() && detalles.length === 0 && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-600 mb-1">Tipo</label>
                 <select
@@ -648,6 +655,7 @@ const duplicarMerma = (detalle) => {
               </div>
             )}
 
+            {esProduccionOMas() && (
             <form onSubmit={agregarDetalleSimple} className="flex flex-col sm:flex-row gap-3 mb-6">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
@@ -683,6 +691,7 @@ const duplicarMerma = (detalle) => {
                 </button>
               </div>
             </form>
+            )}
 
             {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
@@ -706,12 +715,14 @@ const duplicarMerma = (detalle) => {
                         <td className="px-4 py-2">{d.peso_neto}</td>
                         <td className="px-4 py-2">{d.millares ?? '—'}</td>
                         <td className="px-4 py-2 text-right">
-                          <button
-                            onClick={() => eliminarDetalle(d.id)}
-                            className="text-red-600 hover:text-red-800 text-xs"
-                          >
-                            Eliminar
-                          </button>
+                          {esProduccionOMas() && (
+                            <button
+                              onClick={() => eliminarDetalle(d.id)}
+                              className="text-red-600 hover:text-red-800 text-xs"
+                            >
+                              Eliminar
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

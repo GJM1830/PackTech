@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
+import { puedeCrear } from './roles'
 import MenuAcciones from './MenuAcciones'
 
 const formatearFecha = (fecha) => {
@@ -186,6 +187,7 @@ function Aglomerado() {
         </div>
       </div>
 
+      {puedeCrear() && (
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Movimiento</h2>
 
@@ -430,6 +432,7 @@ function Aglomerado() {
           </button>
         </form>
       </div>
+      )}
 
       <div>
         {cargando && <p className="text-slate-500">Cargando...</p>}
