@@ -285,7 +285,7 @@ def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
 
 
 def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | None = None):
-    query = db.query(models.OrdenProduccion)
+    query = db.query(models.OrdenProduccion).filter(models.OrdenProduccion.estado != "Preaprobada")
 
     if antes_de:
         query = query.filter(models.OrdenProduccion.id < antes_de)
@@ -495,6 +495,7 @@ def buscar_ordenes(db: Session, q: str):
     resultados = (
         db.query(models.OrdenProduccion)
         .filter(models.OrdenProduccion.codigo.ilike(f"%{q}%"))
+        .filter(models.OrdenProduccion.estado != "Preaprobada")
         .order_by(models.OrdenProduccion.id.desc())
         .limit(10)
         .all()
