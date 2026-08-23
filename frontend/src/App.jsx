@@ -27,6 +27,7 @@ function Ordenes() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [filtroCodigo, setFiltroCodigo] = useState('')
+  const rol = localStorage.getItem('packtech_rol')
 
   const [hayMasOrdenes, setHayMasOrdenes] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
@@ -308,6 +309,10 @@ function App() {
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
         <Link to="/aglomerado" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Aglomerado</Link>
         <Link to="/reportes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Reportes</Link>
+        {rol !== 'observador' && (
+          <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Cotizaciones</Link>
+        )}
+  
         <button
         onClick={() => {
           localStorage.removeItem('packtech_clave')
