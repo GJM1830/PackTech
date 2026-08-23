@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from dependencias import obtener_db, requiere_rol
+from dependencias import obtener_db, requiere_rol, requiere_alguno_de
 
 router = APIRouter(
     prefix="/movimientos/{movimiento_id}/detalles",
