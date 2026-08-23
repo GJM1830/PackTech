@@ -3181,9 +3181,25 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
-export function generarPDFCotizacion(orden) {
+export async function generarPDFCotizacion(orden) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+
+  const logoBase64 = await new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      canvas.getContext('2d').drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => resolve(null)
+    img.src = '/logo-packtech.png'
+  })
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+  const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
+  const unidadTabla = orden.unidad_precio === 'millares' ? 'millares' : orden.unidad
   const M = 12
   const ANCHO = 210 - M * 2
 
@@ -3195,37 +3211,37 @@ export function generarPDFCotizacion(orden) {
 
   let y = 14
 
-  // ---- Encabezado: logo/nombre a la izquierda, pedido/fecha a la derecha ----
+  // ---- Encabezado: logo a la izquierda, Pedido/Fecha alineados a la derecha ----
   doc.setDrawColor(...slate900)
-  doc.setLineWidth(0.4)
-  doc.rect(M, y, ANCHO, 16)
-  doc.line(M + 120, y, M + 120, y + 16)
-  doc.line(M + 120, y + 8, M + 186, y + 8)
+  doc.setLineWidth(0.3)
+  doc.line(M, y + 16, M + ANCHO, y + 16)
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(15)
-  doc.setTextColor(...azul)
-  doc.text('PACKTECH', M + 4, y + 7)
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...slate600)
-  doc.text('S.A.C.', M + 4, y + 12)
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', M, y - 2, 66, 18)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(16)
+    doc.setTextColor(...azul)
+    doc.text('PACKTECH', M, y + 6)
+  }
 
   doc.setFontSize(8)
   doc.setTextColor(...slate600)
-  doc.text('PEDIDO', M + 122, y + 5.5)
-  doc.text('FECHA', M + 122, y + 13.5)
+  doc.text('PEDIDO', M + 130, y + 4)
+  doc.text('FECHA', M + 130, y + 11)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(...slate900)
-  doc.text(String(orden.codigo), M + 182, y + 5.5, { align: 'right' })
-  doc.text(formatearFecha(orden.fecha), M + 182, y + 13.5, { align: 'right' })
+  doc.text(String(orden.codigo), M + ANCHO, y + 4, { align: 'right' })
+  doc.text(formatearFecha(orden.fecha), M + ANCHO, y + 11, { align: 'right' })
 
-  y += 16
+  y += 20
 
   // ---- Bloque cliente / condición comercial ----
   const alturaBloque = 30
+  doc.setDrawColor(...slate900)
+  doc.setLineWidth(0.4)
   doc.rect(M, y, ANCHO, alturaBloque)
   doc.line(M + 130, y, M + 130, y + alturaBloque)
 
@@ -3263,7 +3279,7 @@ export function generarPDFCotizacion(orden) {
 
   y += alturaBloque
 
-  // ---- Tabla de producto (estilo cuadrícula, como el papel) ----
+  // ---- Tabla de producto ----
   const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
   const filaAltura = 8
 
@@ -3287,8 +3303,8 @@ export function generarPDFCotizacion(orden) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...slate900)
-  doc.text(String(orden.cantidad), colX[0] + 2, y + 5.5)
-  doc.text(orden.unidad, colX[1] + 2, y + 5.5)
+  doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
+  doc.text(unidadTabla, colX[1] + 2, y + 5.5)
   doc.text(orden.descripcion || '-', colX[2] + 2, y + 5.5)
   doc.text(
     orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
@@ -3301,21 +3317,13 @@ export function generarPDFCotizacion(orden) {
 
   y += filaAltura
 
-  // Filas vacías, como en el papel original (para que se vea igual de "formulario")
   for (let i = 0; i < 3; i++) {
     doc.rect(M, y, ANCHO, filaAltura)
     colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
     y += filaAltura
   }
 
-  if (orden.millares) {
-    doc.setFontSize(7.5)
-    doc.setTextColor(...slate600)
-    doc.text(`Millares de referencia: ${orden.millares}`, M, y + 4)
-    y += 8
-  } else {
-    y += 3
-  }
+  y += 4
 
   // ---- Totales ----
   const anchoTotales = 55
@@ -3372,7 +3380,6 @@ export function generarPDFCotizacion(orden) {
 
   doc.save(`Cotizacion_${orden.codigo}.pdf`)
 }
-
 
 index.css
 
@@ -5461,6 +5468,8 @@ const formatearFecha = (fecha) => {
 
 function VistaCotizacion({ orden, onCerrar }) {
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+  const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
+  const unidadTabla = orden.unidad_precio === 'millares' ? 'millares' : orden.unidad
 
   const Celda = ({ label, valor, borde = true }) => (
     <div className={`px-3 py-1.5 ${borde ? 'border-b border-slate-200' : ''}`}>
@@ -5480,21 +5489,16 @@ function VistaCotizacion({ orden, onCerrar }) {
         <div className="p-5">
           <div className="border border-slate-800 rounded-md overflow-hidden text-slate-800">
             {/* Encabezado */}
-            <div className="grid grid-cols-2 border-b border-slate-800">
-              <div className="px-3 py-2 border-r border-slate-800">
-                <p className="text-blue-800 font-bold text-lg leading-none">PACKTECH</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">S.A.C.</p>
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-slate-800">
-                <div className="px-3 py-2 border-b border-slate-800 col-span-2 grid grid-cols-2 divide-x divide-slate-800">
-                  <div className="px-0 py-0">
-                    <p className="text-[10px] text-slate-500">PEDIDO</p>
-                    <p className="text-sm font-bold">{orden.codigo}</p>
-                  </div>
-                  <div className="px-3">
-                    <p className="text-[10px] text-slate-500">FECHA</p>
-                    <p className="text-sm font-bold">{formatearFecha(orden.fecha)}</p>
-                  </div>
+            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+              <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
+              <div className="flex items-center gap-6 text-right">
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">Pedido</p>
+                  <p className="text-sm font-bold text-slate-900">{orden.codigo}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">Fecha</p>
+                  <p className="text-sm font-bold text-slate-900">{formatearFecha(orden.fecha)}</p>
                 </div>
               </div>
             </div>
@@ -5528,8 +5532,8 @@ function VistaCotizacion({ orden, onCerrar }) {
               </thead>
               <tbody>
                 <tr className="border-t border-slate-200">
-                  <td className="px-2 py-2">{orden.cantidad}</td>
-                  <td className="px-2 py-2">{orden.unidad}</td>
+                  <td className="px-2 py-2">{cantidadTabla || '-'}</td>
+                  <td className="px-2 py-2">{unidadTabla}</td>
                   <td className="px-2 py-2">{orden.descripcion || '-'}</td>
                   <td className="px-2 py-2">
                     {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}/${orden.unidad_precio}` : '-'}
@@ -5538,13 +5542,6 @@ function VistaCotizacion({ orden, onCerrar }) {
                     {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'}
                   </td>
                 </tr>
-                {orden.millares && (
-                  <tr className="border-t border-slate-100">
-                    <td colSpan={5} className="px-2 py-1.5 text-xs text-slate-500">
-                      Millares de referencia: {orden.millares}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
 

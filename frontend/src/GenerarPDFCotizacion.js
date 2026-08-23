@@ -6,9 +6,25 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
-export function generarPDFCotizacion(orden) {
+export async function generarPDFCotizacion(orden) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+
+  const logoBase64 = await new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      canvas.getContext('2d').drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => resolve(null)
+    img.src = '/logo-packtech.png'
+  })
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+  const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
+  const unidadTabla = orden.unidad_precio === 'millares' ? 'millares' : orden.unidad
   const M = 12
   const ANCHO = 210 - M * 2
 
@@ -20,37 +36,37 @@ export function generarPDFCotizacion(orden) {
 
   let y = 14
 
-  // ---- Encabezado: logo/nombre a la izquierda, pedido/fecha a la derecha ----
+  // ---- Encabezado: logo a la izquierda, Pedido/Fecha alineados a la derecha ----
   doc.setDrawColor(...slate900)
-  doc.setLineWidth(0.4)
-  doc.rect(M, y, ANCHO, 16)
-  doc.line(M + 120, y, M + 120, y + 16)
-  doc.line(M + 120, y + 8, M + 186, y + 8)
+  doc.setLineWidth(0.3)
+  doc.line(M, y + 16, M + ANCHO, y + 16)
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(15)
-  doc.setTextColor(...azul)
-  doc.text('PACKTECH', M + 4, y + 7)
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...slate600)
-  doc.text('S.A.C.', M + 4, y + 12)
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', M, y - 2, 66, 18)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(16)
+    doc.setTextColor(...azul)
+    doc.text('PACKTECH', M, y + 6)
+  }
 
   doc.setFontSize(8)
   doc.setTextColor(...slate600)
-  doc.text('PEDIDO', M + 122, y + 5.5)
-  doc.text('FECHA', M + 122, y + 13.5)
+  doc.text('PEDIDO', M + 130, y + 4)
+  doc.text('FECHA', M + 130, y + 11)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(...slate900)
-  doc.text(String(orden.codigo), M + 182, y + 5.5, { align: 'right' })
-  doc.text(formatearFecha(orden.fecha), M + 182, y + 13.5, { align: 'right' })
+  doc.text(String(orden.codigo), M + ANCHO, y + 4, { align: 'right' })
+  doc.text(formatearFecha(orden.fecha), M + ANCHO, y + 11, { align: 'right' })
 
-  y += 16
+  y += 20
 
   // ---- Bloque cliente / condición comercial ----
   const alturaBloque = 30
+  doc.setDrawColor(...slate900)
+  doc.setLineWidth(0.4)
   doc.rect(M, y, ANCHO, alturaBloque)
   doc.line(M + 130, y, M + 130, y + alturaBloque)
 
@@ -88,7 +104,7 @@ export function generarPDFCotizacion(orden) {
 
   y += alturaBloque
 
-  // ---- Tabla de producto (estilo cuadrícula, como el papel) ----
+  // ---- Tabla de producto ----
   const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
   const filaAltura = 8
 
@@ -112,8 +128,8 @@ export function generarPDFCotizacion(orden) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...slate900)
-  doc.text(String(orden.cantidad), colX[0] + 2, y + 5.5)
-  doc.text(orden.unidad, colX[1] + 2, y + 5.5)
+  doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
+  doc.text(unidadTabla, colX[1] + 2, y + 5.5)
   doc.text(orden.descripcion || '-', colX[2] + 2, y + 5.5)
   doc.text(
     orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
@@ -126,21 +142,13 @@ export function generarPDFCotizacion(orden) {
 
   y += filaAltura
 
-  // Filas vacías, como en el papel original (para que se vea igual de "formulario")
   for (let i = 0; i < 3; i++) {
     doc.rect(M, y, ANCHO, filaAltura)
     colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
     y += filaAltura
   }
 
-  if (orden.millares) {
-    doc.setFontSize(7.5)
-    doc.setTextColor(...slate600)
-    doc.text(`Millares de referencia: ${orden.millares}`, M, y + 4)
-    y += 8
-  } else {
-    y += 3
-  }
+  y += 4
 
   // ---- Totales ----
   const anchoTotales = 55

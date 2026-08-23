@@ -8,6 +8,8 @@ const formatearFecha = (fecha) => {
 
 function VistaCotizacion({ orden, onCerrar }) {
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+  const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
+  const unidadTabla = orden.unidad_precio === 'millares' ? 'millares' : orden.unidad
 
   const Celda = ({ label, valor, borde = true }) => (
     <div className={`px-3 py-1.5 ${borde ? 'border-b border-slate-200' : ''}`}>
@@ -27,21 +29,16 @@ function VistaCotizacion({ orden, onCerrar }) {
         <div className="p-5">
           <div className="border border-slate-800 rounded-md overflow-hidden text-slate-800">
             {/* Encabezado */}
-            <div className="grid grid-cols-2 border-b border-slate-800">
-              <div className="px-3 py-2 border-r border-slate-800">
-                <p className="text-blue-800 font-bold text-lg leading-none">PACKTECH</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">S.A.C.</p>
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-slate-800">
-                <div className="px-3 py-2 border-b border-slate-800 col-span-2 grid grid-cols-2 divide-x divide-slate-800">
-                  <div className="px-0 py-0">
-                    <p className="text-[10px] text-slate-500">PEDIDO</p>
-                    <p className="text-sm font-bold">{orden.codigo}</p>
-                  </div>
-                  <div className="px-3">
-                    <p className="text-[10px] text-slate-500">FECHA</p>
-                    <p className="text-sm font-bold">{formatearFecha(orden.fecha)}</p>
-                  </div>
+            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+              <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
+              <div className="flex items-center gap-6 text-right">
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">Pedido</p>
+                  <p className="text-sm font-bold text-slate-900">{orden.codigo}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">Fecha</p>
+                  <p className="text-sm font-bold text-slate-900">{formatearFecha(orden.fecha)}</p>
                 </div>
               </div>
             </div>
@@ -75,8 +72,8 @@ function VistaCotizacion({ orden, onCerrar }) {
               </thead>
               <tbody>
                 <tr className="border-t border-slate-200">
-                  <td className="px-2 py-2">{orden.cantidad}</td>
-                  <td className="px-2 py-2">{orden.unidad}</td>
+                  <td className="px-2 py-2">{cantidadTabla || '-'}</td>
+                  <td className="px-2 py-2">{unidadTabla}</td>
                   <td className="px-2 py-2">{orden.descripcion || '-'}</td>
                   <td className="px-2 py-2">
                     {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}/${orden.unidad_precio}` : '-'}
@@ -85,13 +82,6 @@ function VistaCotizacion({ orden, onCerrar }) {
                     {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'}
                   </td>
                 </tr>
-                {orden.millares && (
-                  <tr className="border-t border-slate-100">
-                    <td colSpan={5} className="px-2 py-1.5 text-xs text-slate-500">
-                      Millares de referencia: {orden.millares}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
 
