@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import axios from './api'
 import { esVendedorOMas } from './roles'
+import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -8,7 +10,7 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
-function FormularioCotizacion({ onCreada }) {
+function FormularioCotizacion({ onCreada, duplicarDesde }) {
   const [form, setForm] = useState({
     codigo: '',
     ruc: '',
@@ -40,6 +42,31 @@ function FormularioCotizacion({ onCreada }) {
   const manejarCambio = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
+
+  useEffect(() => {
+    if (duplicarDesde) {
+      setForm({
+        codigo: '',
+        ruc: duplicarDesde.ruc || '',
+        nombre_cliente: duplicarDesde.cliente || '',
+        numero_std: duplicarDesde.numero_std || '',
+        descripcion: duplicarDesde.descripcion || '',
+        cantidad: duplicarDesde.cantidad || '',
+        unidad: duplicarDesde.unidad || 'kg',
+        moneda: duplicarDesde.moneda || 'Soles',
+        vendedor: duplicarDesde.vendedor || '',
+        fecha_entrega: '',
+        precio_unitario: duplicarDesde.precio_unitario || '',
+        unidad_precio: duplicarDesde.unidad_precio || 'kg',
+        millares: duplicarDesde.millares || '',
+        direccion_entrega: duplicarDesde.direccion_entrega || '',
+        numero_contacto: duplicarDesde.numero_contacto || '',
+        email_cliente: duplicarDesde.email_cliente || '',
+        telefono_cliente: duplicarDesde.telefono_cliente || ''
+      })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [duplicarDesde])
 
   useEffect(() => {
     if (clienteSeleccionado) {
@@ -308,6 +335,9 @@ function Cotizaciones() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [aprobando, setAprobando] = useState(null)
+  const [duplicarDesde, setDuplicarDesde] = useState(null)
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
   const vendedorOAdmin = esVendedorOMas()
 
   const cargar = () => {
@@ -341,6 +371,75 @@ function Cotizaciones() {
     }
   }
 
+  const duplicar = (orden) => {
+    setDuplicarDesde({ ...orden, timestamp: Date.now() })
+  }
+
+  const abrirEdicion = (orden) => {
+    setEditando({
+      id: orden.id,
+      codigo: orden.codigo,
+      ruc: orden.ruc || '',
+      nombre_cliente: orden.cliente,
+      numero_std: orden.numero_std,
+      descripcion: orden.descripcion || '',
+      cantidad: orden.cantidad,
+      unidad: orden.unidad,
+      moneda: orden.moneda || 'Soles',
+      vendedor: orden.vendedor || '',
+      fecha_entrega: orden.fecha_entrega || '',
+      precio_unitario: orden.precio_unitario || '',
+      unidad_precio: orden.unidad_precio || 'kg',
+      millares: orden.millares || '',
+      direccion_entrega: orden.direccion_entrega || '',
+      numero_contacto: orden.numero_contacto || '',
+      email_cliente: orden.email_cliente || '',
+      telefono_cliente: orden.telefono_cliente || ''
+    })
+  }
+
+  const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+      await axios.put(`https://packtech-production.up.railway.app/ordenes-produccion/${editando.id}`, {
+        codigo: editando.codigo,
+        ruc: editando.ruc || null,
+        nombre_cliente: editando.nombre_cliente,
+        numero_std: parseInt(editando.numero_std) || 0,
+        descripcion: editando.descripcion,
+        cantidad: parseFloat(editando.cantidad),
+        unidad: editando.unidad,
+        estado: 'Preaprobada',
+        moneda: editando.moneda,
+        vendedor: editando.vendedor || null,
+        fecha_entrega: editando.fecha_entrega || null,
+        precio_unitario: editando.precio_unitario ? parseFloat(editando.precio_unitario) : null,
+        unidad_precio: editando.unidad_precio,
+        millares: editando.millares ? parseFloat(editando.millares) : null,
+        direccion_entrega: editando.direccion_entrega || null,
+        numero_contacto: editando.numero_contacto || null,
+        email_cliente: editando.email_cliente || null,
+        telefono_cliente: editando.telefono_cliente || null
+      })
+      setEditando(null)
+      cargar()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al editar la cotización.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const eliminar = async (id) => {
+    if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
+      cargar()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar la cotización.')
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -352,7 +451,7 @@ function Cotizaciones() {
         </p>
       </div>
 
-      {vendedorOAdmin && <FormularioCotizacion onCreada={cargar} />}
+      {vendedorOAdmin && <FormularioCotizacion onCreada={cargar} duplicarDesde={duplicarDesde} />}
 
       <div>
         {cargando && <p className="text-slate-500">Cargando...</p>}
@@ -371,6 +470,7 @@ function Cotizaciones() {
                   {vendedorOAdmin && <th className="px-4 py-3">Precio</th>}
                   {vendedorOAdmin && <th className="px-4 py-3">Total</th>}
                   <th className="px-4 py-3">Vendedor</th>
+                  {vendedorOAdmin && <th className="px-4 py-3 text-right"></th>}
                   {vendedorOAdmin && <th className="px-4 py-3 text-right"></th>}
                 </tr>
               </thead>
@@ -404,11 +504,20 @@ function Cotizaciones() {
                         </button>
                       </td>
                     )}
+                    {vendedorOAdmin && (
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <MenuAcciones
+                          onEditar={() => abrirEdicion(o)}
+                          onDuplicar={() => duplicar(o)}
+                          onEliminar={() => eliminar(o.id)}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {ordenes.length === 0 && (
                   <tr>
-                    <td colSpan={vendedorOAdmin ? 9 : 6} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={vendedorOAdmin ? 10 : 6} className="px-4 py-6 text-center text-slate-400">
                       No hay cotizaciones pendientes.
                     </td>
                   </tr>
@@ -418,6 +527,36 @@ function Cotizaciones() {
           </div>
         )}
       </div>
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Cotización"
+          campos={[
+            { name: 'codigo', label: 'N° de Pedido' },
+            { name: 'ruc', label: 'RUC' },
+            { name: 'nombre_cliente', label: 'Cliente' },
+            { name: 'numero_std', label: 'N° Estándar', type: 'number' },
+            { name: 'descripcion', label: 'Producto / Descripción' },
+            { name: 'cantidad', label: 'Cantidad', type: 'number' },
+            { name: 'unidad', label: 'Unidad' },
+            { name: 'moneda', label: 'Moneda' },
+            { name: 'vendedor', label: 'Vendedor' },
+            { name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date' },
+            { name: 'precio_unitario', label: 'Precio unitario', type: 'number' },
+            { name: 'unidad_precio', label: 'Precio por (kg / millares)' },
+            { name: 'millares', label: 'Millares', type: 'number' },
+            { name: 'direccion_entrega', label: 'Dirección de entrega' },
+            { name: 'numero_contacto', label: 'N° de contacto' },
+            { name: 'email_cliente', label: 'Email del cliente' },
+            { name: 'telefono_cliente', label: 'Teléfono del cliente' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
     </div>
   )
 }

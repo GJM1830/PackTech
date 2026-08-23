@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
 import crud
 import schemas
 
-from dependencias import obtener_db, requiere_rol
-from pydantic import BaseModel  
+from dependencias import obtener_db, requiere_rol, requiere_alguno_de, obtener_usuario_por_clave, SessionLocal
+from pydantic import BaseModel
 
 
 router = APIRouter(
@@ -35,9 +35,17 @@ def listar_ordenes(
 def eliminar_orden(
     orden_id: int,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("admin"))
+    x_clave: str = Header(None),
+    _: None = Depends(requiere_alguno_de("admin", "vendedor"))
 ):
-    crud.eliminar_orden_produccion(db, orden_id)
+    db_auth = SessionLocal()
+    try:
+        usuario = obtener_usuario_por_clave(db_auth, x_clave)
+        rol_usuario = usuario.rol if usuario else ""
+    finally:
+        db_auth.close()
+
+    crud.eliminar_orden_produccion(db, orden_id, rol_usuario)
     return {"mensaje": "Orden eliminada correctamente."}
 
 class ProcesosUpdate(BaseModel):

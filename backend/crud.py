@@ -322,7 +322,8 @@ def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | Non
 
 def eliminar_orden_produccion(
     db: Session,
-    orden_id: int
+    orden_id: int,
+    rol_usuario: str
 ):
     orden = db.get(models.OrdenProduccion, orden_id)
 
@@ -330,6 +331,12 @@ def eliminar_orden_produccion(
         raise HTTPException(
             status_code=404,
             detail="La Orden de Producción no existe."
+        )
+
+    if orden.estado != "Preaprobada" and rol_usuario != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede eliminar una orden que ya está en producción."
         )
 
     movimientos_ids = [
