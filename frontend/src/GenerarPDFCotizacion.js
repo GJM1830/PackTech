@@ -42,7 +42,7 @@ export async function generarPDFCotizacion(orden) {
   doc.line(M, y + 16, M + ANCHO, y + 16)
 
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', M, y - 2, 66, 18)
+    doc.addImage(logoBase64, 'PNG', M, y - 2, 66, 16)
   } else {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(16)
