@@ -3,6 +3,7 @@ import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
+import VistaCotizacion from './VistaCotizacion'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -338,6 +339,7 @@ function Cotizaciones() {
   const [duplicarDesde, setDuplicarDesde] = useState(null)
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [vistaAbierta, setVistaAbierta] = useState(null)
   const vendedorOAdmin = esVendedorOMas()
 
   const cargar = () => {

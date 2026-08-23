@@ -1072,7 +1072,7 @@ function App() {
 export default App
 
 
-Clientes.jsx
+Clientes.jsx:
 
 import { useEffect, useState } from 'react'
 import axios from './api'
@@ -1302,6 +1302,7 @@ import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
+import VistaCotizacion from './VistaCotizacion'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -1637,6 +1638,7 @@ function Cotizaciones() {
   const [duplicarDesde, setDuplicarDesde] = useState(null)
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [vistaAbierta, setVistaAbierta] = useState(null)
   const vendedorOAdmin = esVendedorOMas()
 
   const cargar = () => {
@@ -3160,6 +3162,151 @@ function FiltroDesplegable({ etiqueta, opciones, seleccionado, onSeleccionar }) 
 }
 
 export default FiltroDesplegable
+
+GenerarPDFCotizacion.js:
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return '-'
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+export function generarPDFCotizacion(orden) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+
+  // Encabezado con marco
+  doc.setDrawColor(30, 41, 59)
+  doc.setLineWidth(0.5)
+  doc.rect(10, 10, 190, 20)
+
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(30, 64, 175)
+  doc.text('PACKTECH', 15, 22)
+
+  doc.setFontSize(9)
+  doc.setTextColor(100, 116, 139)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Sistema de Gestión de Producción', 15, 27)
+
+  doc.setDrawColor(30, 41, 59)
+  doc.line(130, 10, 130, 30)
+
+  doc.setFontSize(9)
+  doc.setTextColor(71, 85, 105)
+  doc.text('PEDIDO', 135, 15)
+  doc.text('FECHA', 135, 22)
+
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(15, 23, 42)
+  doc.text(String(orden.codigo), 165, 15)
+  doc.text(formatearFecha(orden.fecha), 165, 22)
+
+  // Datos del cliente
+  let y = 38
+  const filaDatos = (label, valor) => {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(71, 85, 105)
+    doc.text(label, 12, y)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(15, 23, 42)
+    doc.text(valor || '-', 55, y)
+    y += 6
+  }
+
+  filaDatos('CLIENTE:', orden.cliente)
+  filaDatos('RUC / DNI:', orden.ruc)
+  filaDatos('DIRECCIÓN DE ENTREGA:', orden.direccion_entrega)
+  filaDatos('N° DE CONTACTO:', orden.numero_contacto)
+  filaDatos('EMAIL:', orden.email_cliente)
+  filaDatos('FECHA DE ENTREGA:', formatearFecha(orden.fecha_entrega))
+
+  // Datos comerciales, columna derecha
+  let y2 = 38
+  const filaDerecha = (label, valor) => {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(71, 85, 105)
+    doc.text(label, 130, y2)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(15, 23, 42)
+    doc.text(valor || '-', 165, y2)
+    y2 += 6
+  }
+
+  filaDerecha('MONEDA:', orden.moneda)
+  filaDerecha('VENDEDOR:', orden.vendedor)
+
+  y = Math.max(y, y2) + 4
+
+  // Tabla del producto
+  autoTable(doc, {
+    startY: y,
+    head: [['CANT.', 'UNIDAD', 'DESCRIPCIÓN', 'PRECIO UNIT.', 'TOTAL']],
+    body: [[
+      String(orden.cantidad),
+      orden.unidad,
+      orden.descripcion || '-',
+      orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)} / ${orden.unidad_precio}` : '-',
+      orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    margin: { left: 10, right: 10 }
+  })
+
+  let yFinal = doc.lastAutoTable.finalY + 6
+
+  if (orden.millares) {
+    doc.setFontSize(9)
+    doc.setTextColor(71, 85, 105)
+    doc.text(`Millares de referencia: ${orden.millares}`, 12, yFinal)
+    yFinal += 8
+  }
+
+  // Total destacado
+  doc.setFillColor(30, 41, 59)
+  doc.rect(130, yFinal, 70, 12, 'F')
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+  doc.text('TOTAL', 135, yFinal + 8)
+  doc.text(
+    orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
+    195, yFinal + 8, { align: 'right' }
+  )
+
+  yFinal += 24
+
+  // Condiciones
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(100, 116, 139)
+  const condiciones = [
+    'El comprador se declara estar legalmente autorizado para la marca que tiene en este pedido',
+    'y exime al fabricante de toda responsabilidad sobre registro y marcas.',
+    '',
+    'Para asegurar la máxima vida útil del producto, manténgalo en el empaque original,',
+    'considerando la manipulación y condición del almacenado del material.'
+  ]
+  condiciones.forEach((linea) => {
+    doc.text(linea, 12, yFinal)
+    yFinal += 4.5
+  })
+
+  yFinal += 15
+  doc.setDrawColor(148, 163, 184)
+  doc.line(12, yFinal, 80, yFinal)
+  doc.text('Firma / Huella', 12, yFinal + 4)
+
+  doc.save(`Cotizacion_${orden.codigo}.pdf`)
+}
 
 
 index.css
@@ -5235,6 +5382,114 @@ export const esAdmin = () => obtenerRol() === 'admin'
 export const esVendedorOMas = () => ['admin', 'vendedor'].includes(obtenerRol())
 export const esProduccionOMas = () => ['admin', 'vendedor', 'produccion'].includes(obtenerRol())
 export const puedeCrear = () => obtenerRol() !== 'observador'
+
+
+VistaCotizacion.jsx:
+
+import { generarPDFCotizacion } from './GenerarPDFCotizacion'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return '—'
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+function VistaCotizacion({ orden, onCerrar }) {
+  const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
+
+  const Fila = ({ label, valor }) => (
+    <div className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
+      <span className="text-slate-500">{label}</span>
+      <span className="font-medium text-slate-800">{valor || '—'}</span>
+    </div>
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-start mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Vista previa — {orden.codigo}</h3>
+            <p className="text-sm text-slate-500">Esto es lo que se enviará al cliente.</p>
+          </div>
+          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+        </div>
+
+        <div className="bg-slate-900 text-white rounded-lg px-4 py-3 mb-5 flex justify-between items-center">
+          <span className="font-bold tracking-tight">PACKTECH</span>
+          <div className="text-right text-sm">
+            <p className="text-slate-400">PEDIDO {orden.codigo}</p>
+            <p className="text-slate-400">{formatearFecha(orden.fecha)}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6 mb-5">
+          <div>
+            <Fila label="Cliente" valor={orden.cliente} />
+            <Fila label="RUC / DNI" valor={orden.ruc} />
+            <Fila label="Dirección de entrega" valor={orden.direccion_entrega} />
+            <Fila label="N° de contacto" valor={orden.numero_contacto} />
+            <Fila label="Email" valor={orden.email_cliente} />
+          </div>
+          <div>
+            <Fila label="Moneda" valor={orden.moneda} />
+            <Fila label="Vendedor" valor={orden.vendedor} />
+            <Fila label="Fecha de entrega" valor={formatearFecha(orden.fecha_entrega)} />
+            {orden.millares && <Fila label="Millares de referencia" valor={orden.millares} />}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100 mb-5">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-2">Cant.</th>
+                <th className="px-4 py-2">Unidad</th>
+                <th className="px-4 py-2">Descripción</th>
+                <th className="px-4 py-2">Precio Unit.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-slate-200">
+                <td className="px-4 py-2">{orden.cantidad}</td>
+                <td className="px-4 py-2">{orden.unidad}</td>
+                <td className="px-4 py-2">{orden.descripcion || '—'}</td>
+                <td className="px-4 py-2">
+                  {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario} / ${orden.unidad_precio}` : '—'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-slate-900 text-white rounded-lg px-4 py-3 flex justify-between items-center mb-6">
+          <span className="text-sm text-slate-300">Total</span>
+          <span className="text-xl font-bold">
+            {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '—'}
+          </span>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onCerrar}
+            className="flex-1 border border-slate-300 rounded-lg py-2.5 font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Cerrar
+          </button>
+          <button
+            onClick={() => generarPDFCotizacion(orden)}
+            className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
+          >
+            ⬇ Descargar PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default VistaCotizacion
+
 
 .gitignore
 
