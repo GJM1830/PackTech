@@ -1,0 +1,5127 @@
+src:
+
+Aglomerado.jsx
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import { puedeCrear } from './roles'
+import MenuAcciones from './MenuAcciones'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+const PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte']
+
+function Aglomerado() {
+  const rol = localStorage.getItem('packtech_rol')
+  const esAdmin = rol === 'admin'
+
+  const [saldo, setSaldo] = useState(0)
+  const [movimientos, setMovimientos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+
+  const [tipo, setTipo] = useState('entrada')
+
+  const [cantidad, setCantidad] = useState('')
+  const [procesoOrigen, setProcesoOrigen] = useState('')
+  const [productoOrigen, setProductoOrigen] = useState('')
+  const [sugerenciasProducto, setSugerenciasProducto] = useState([])
+
+  const [busquedaOrden, setBusquedaOrden] = useState('')
+  const [sugerenciasOrdenes, setSugerenciasOrdenes] = useState([])
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
+
+  const [clasificacion, setClasificacion] = useState('')
+  const [sugerenciasClasificacion, setSugerenciasClasificacion] = useState([])
+
+  const [busquedaOperario, setBusquedaOperario] = useState('')
+  const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
+  const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
+
+  const [observacion, setObservacion] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [errorForm, setErrorForm] = useState(null)
+
+  const cargarDatos = async () => {
+    setCargando(true)
+    try {
+      const [saldoRes, movRes] = await Promise.all([
+        axios.get('https://packtech-production.up.railway.app/aglomerado/saldo'),
+        axios.get('https://packtech-production.up.railway.app/aglomerado/movimientos')
+      ])
+      setSaldo(saldoRes.data.saldo)
+      setMovimientos(movRes.data)
+      setError(null)
+    } catch (err) {
+      console.error(err)
+      setError('No se pudo conectar con el backend.')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  useEffect(() => {
+    if (productoOrigen.trim().length < 2) {
+      setSugerenciasProducto([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/aglomerado/productos/buscar?q=${productoOrigen}`)
+        .then((res) => setSugerenciasProducto(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [productoOrigen])
+
+  useEffect(() => {
+    if (clasificacion.trim().length < 2) {
+      setSugerenciasClasificacion([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/aglomerado/clasificaciones/buscar?q=${clasificacion}`)
+        .then((res) => setSugerenciasClasificacion(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [clasificacion])
+
+  useEffect(() => {
+    if (busquedaOrden.trim().length < 2 || ordenSeleccionada) {
+      setSugerenciasOrdenes([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
+        .then((res) => setSugerenciasOrdenes(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [busquedaOrden, ordenSeleccionada])
+
+  useEffect(() => {
+    if (busquedaOperario.trim().length < 2 || operarioSeleccionado) {
+      setSugerenciasOperarios([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/operarios/buscar?q=${busquedaOperario}`)
+        .then((res) => setSugerenciasOperarios(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [busquedaOperario, operarioSeleccionado])
+
+  const limpiarFormulario = () => {
+    setCantidad('')
+    setProcesoOrigen('')
+    setProductoOrigen('')
+    setBusquedaOrden('')
+    setOrdenSeleccionada(null)
+    setClasificacion('')
+    setBusquedaOperario('')
+    setOperarioSeleccionado(null)
+    setObservacion('')
+  }
+
+  const manejarEnvio = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setErrorForm(null)
+
+    const payload = {
+      tipo,
+      cantidad: parseFloat(cantidad) || 0,
+      proceso_origen: tipo === 'entrada' ? procesoOrigen : null,
+      producto_origen: tipo === 'entrada' ? (productoOrigen.trim() || null) : null,
+      codigo_orden: tipo === 'salida' ? (busquedaOrden.trim() || null) : null,
+      clasificacion: (tipo === 'salida' || tipo === 'entrada') ? (clasificacion.trim() || null) : null,
+      nombre_operario: busquedaOperario.trim(),
+      observacion: observacion || null
+    }
+
+    try {
+      await axios.post('https://packtech-production.up.railway.app/aglomerado/movimientos', payload)
+      limpiarFormulario()
+      cargarDatos()
+    } catch (err) {
+      setErrorForm(err.response?.data?.detail || 'Error al registrar el movimiento.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const eliminarMovimiento = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este movimiento de aglomerado?')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/aglomerado/movimientos/${id}`)
+      cargarDatos()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
+    }
+  }
+
+  const estiloInput =
+    "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Aglomerado</h1>
+        <p className="text-slate-500 text-sm mt-1">Control tipo estado de cuenta: entradas de merma y salidas de aglomerado.</p>
+      </div>
+
+      <div className="bg-slate-900 text-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-400">Saldo actual</p>
+          <p className="text-3xl font-bold mt-1">{Number(saldo).toFixed(2)} kg</p>
+        </div>
+        <div className="text-right text-xs text-slate-400">
+          <p>Entradas suman</p>
+          <p>Salidas restan</p>
+          <p>Ajuste fija el saldo</p>
+        </div>
+      </div>
+
+      {puedeCrear() && (
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Movimiento</h2>
+
+        <div className="flex gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setTipo('entrada')}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium border transition-colors ${
+              tipo === 'entrada' ? 'bg-green-700 text-white border-green-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            + Entrada (merma)
+          </button>
+          <button
+            type="button"
+            onClick={() => setTipo('salida')}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium border transition-colors ${
+              tipo === 'salida' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            − Salida (aglomerado)
+          </button>
+          {esAdmin && (
+            <button
+              type="button"
+              onClick={() => setTipo('ajuste')}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium border transition-colors ${
+                tipo === 'ajuste' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+              }`}
+            >
+              ⚙ Ajuste (admin)
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={manejarEnvio} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">
+              {tipo === 'ajuste' ? 'Cantidad real (kg)' : 'Cantidad (kg)'}
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              required
+              className={estiloInput}
+            />
+          </div>
+
+          {tipo === 'entrada' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Proceso de origen</label>
+                <select
+                  value={procesoOrigen}
+                  onChange={(e) => setProcesoOrigen(e.target.value)}
+                  required
+                  className={estiloInput}
+                >
+                  <option value="">Seleccionar...</option>
+                  {PROCESOS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
+                <input
+                  type="text"
+                  value={productoOrigen}
+                  onChange={(e) => setProductoOrigen(e.target.value)}
+                  autoComplete="off"
+                  required
+                  className={estiloInput}
+                  placeholder="Escribe o elige uno ya usado"
+                />
+                {sugerenciasProducto.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {sugerenciasProducto.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { setProductoOrigen(p.nombre); setSugerenciasProducto([]) }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                      >
+                        {p.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Clasificación (opcional)</label>
+                <input
+                  type="text"
+                  value={clasificacion}
+                  onChange={(e) => setClasificacion(e.target.value)}
+                  autoComplete="off"
+                  className={estiloInput}
+                  placeholder="Ej. Alta, Baja, Blanco..."
+                />
+                {sugerenciasClasificacion.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {sugerenciasClasificacion.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => { setClasificacion(c.nombre); setSugerenciasClasificacion([]) }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                      >
+                        {c.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {tipo === 'salida' && (
+            <>
+              <div className="relative">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Orden destino (opcional)</label>
+                <input
+                  type="text"
+                  value={busquedaOrden}
+                  onChange={(e) => { setBusquedaOrden(e.target.value); setOrdenSeleccionada(null) }}
+                  autoComplete="off"
+                  className={estiloInput}
+                  placeholder="Escribe el código (ej. OP-100)"
+                />
+                {sugerenciasOrdenes.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {sugerenciasOrdenes.map((orden) => (
+                      <button
+                        key={orden.id}
+                        type="button"
+                        onClick={() => {
+                          setOrdenSeleccionada(orden)
+                          setBusquedaOrden(orden.codigo)
+                          setSugerenciasOrdenes([])
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0"
+                      >
+                        <span className="font-medium text-slate-800">{orden.codigo}</span>
+                        <span className="text-slate-400"> · {orden.cliente}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Clasificación</label>
+                <input
+                  type="text"
+                  value={clasificacion}
+                  onChange={(e) => setClasificacion(e.target.value)}
+                  autoComplete="off"
+                  className={estiloInput}
+                  placeholder="Ej. Alta, Baja, Blanco..."
+                />
+                {sugerenciasClasificacion.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {sugerenciasClasificacion.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => { setClasificacion(c.nombre); setSugerenciasClasificacion([]) }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                      >
+                        {c.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {tipo === 'ajuste' && (
+            <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+              Esto fija el saldo actual a la cantidad indicada (conteo físico). Queda registrado en el historial.
+            </p>
+          )}
+
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-600 mb-1">Operario</label>
+            <input
+              type="text"
+              value={busquedaOperario}
+              onChange={(e) => { setBusquedaOperario(e.target.value); setOperarioSeleccionado(null) }}
+              autoComplete="off"
+              required
+              className={estiloInput}
+              placeholder="Escribe un nombre"
+            />
+            {sugerenciasOperarios.length > 0 && (
+              <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {sugerenciasOperarios.map((op) => (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => {
+                      setOperarioSeleccionado(op)
+                      setBusquedaOperario(op.nombre)
+                      setSugerenciasOperarios([])
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                  >
+                    {op.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Observación</label>
+            <input
+              type="text"
+              value={observacion}
+              onChange={(e) => setObservacion(e.target.value)}
+              className={estiloInput}
+              placeholder="Opcional"
+            />
+          </div>
+
+          {errorForm && <p className="text-red-600 text-sm">{errorForm}</p>}
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className={`w-full text-white rounded-lg py-2.5 font-medium transition-all disabled:opacity-50 ${
+              tipo === 'salida' ? 'bg-blue-700 hover:bg-blue-800' : tipo === 'ajuste' ? 'bg-slate-800 hover:bg-slate-900' : 'bg-green-700 hover:bg-green-800'
+            }`}
+          >
+            {enviando ? 'Guardando...' : 'Registrar'}
+          </button>
+        </form>
+      </div>
+      )}
+
+      <div>
+        {cargando && <p className="text-slate-500">Cargando...</p>}
+        {error && <p className="text-red-600">{error}</p>}
+
+        {!cargando && !error && (
+          <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Cantidad</th>
+                  <th className="px-4 py-3">Proceso / Orden</th>
+                  <th className="px-4 py-3">Detalle</th>
+                  <th className="px-4 py-3">Operario</th>
+                  <th className="px-4 py-3">Fecha</th>
+                  <th className="px-4 py-3">Hora</th>
+                  <th className="px-4 py-3">Origen</th>
+                  <th className="px-4 py-3 text-right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {movimientos.map((mov) => (
+                  <tr key={mov.id} className="border-t border-slate-100">
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        mov.tipo === 'entrada' ? 'bg-green-100 text-green-700' :
+                        mov.tipo === 'salida' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>
+                        {mov.tipo === 'entrada' ? 'Entrada' : mov.tipo === 'salida' ? 'Salida' : 'Ajuste'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-800">{mov.cantidad} kg</td>
+                    <td className="px-4 py-3">
+                      {mov.tipo === 'entrada' ? (mov.proceso_origen || '—') : (mov.codigo_orden || '—')}
+                    </td>
+                    <td className="px-4 py-3">
+                      {mov.tipo === 'entrada' ? (mov.producto_origen || '—') : (mov.clasificacion || '—')}
+                    </td>
+                    <td className="px-4 py-3">{mov.nombre_operario}</td>
+                    <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
+                    <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        mov.origen_automatico ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        {mov.origen_automatico ? 'Automático' : 'Manual'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      {esAdmin && (
+                        <MenuAcciones onEliminar={() => eliminarMovimiento(mov.id)} />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {movimientos.length === 0 && (
+                  <tr>
+                    <td colSpan="8" className="px-4 py-4 text-center text-slate-400">
+                      Sin movimientos todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default Aglomerado
+
+
+api.js:
+
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: 'https://packtech-production.up.railway.app',
+  timeout: 20000
+})
+
+
+api.interceptors.request.use((config) => {
+  const clave = localStorage.getItem('packtech_clave')
+  if (clave) {
+    config.headers['X-Clave'] = clave
+  }
+  return config
+})
+
+export default api
+
+App.css:
+
+.counter {
+  font-size: 16px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 2px solid transparent;
+  transition: border-color 0.3s;
+  margin-bottom: 24px;
+
+  &:hover {
+    border-color: var(--accent-border);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.hero {
+  position: relative;
+
+  .base,
+  .framework,
+  .vite {
+    inset-inline: 0;
+    margin: 0 auto;
+  }
+
+  .base {
+    width: 170px;
+    position: relative;
+    z-index: 0;
+  }
+
+  .framework,
+  .vite {
+    position: absolute;
+  }
+
+  .framework {
+    z-index: 1;
+    top: 34px;
+    height: 28px;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
+      scale(1.4);
+  }
+
+  .vite {
+    z-index: 0;
+    top: 107px;
+    height: 26px;
+    width: auto;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
+      scale(0.8);
+  }
+}
+
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+
+  @media (max-width: 1024px) {
+    padding: 32px 20px 24px;
+    gap: 18px;
+  }
+}
+
+#next-steps {
+  display: flex;
+  border-top: 1px solid var(--border);
+  text-align: left;
+
+  & > div {
+    flex: 1 1 0;
+    padding: 32px;
+    @media (max-width: 1024px) {
+      padding: 24px 20px;
+    }
+  }
+
+  .icon {
+    margin-bottom: 16px;
+    width: 22px;
+    height: 22px;
+  }
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+#docs {
+  border-right: 1px solid var(--border);
+
+  @media (max-width: 1024px) {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  margin: 32px 0 0;
+
+  .logo {
+    height: 18px;
+  }
+
+  a {
+    color: var(--text-h);
+    font-size: 16px;
+    border-radius: 6px;
+    background: var(--social-bg);
+    display: flex;
+    padding: 6px 12px;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: box-shadow 0.3s;
+
+    &:hover {
+      box-shadow: var(--shadow);
+    }
+    .button-icon {
+      height: 18px;
+      width: 18px;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    li {
+      flex: 1 1 calc(50% - 8px);
+    }
+
+    a {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+  }
+}
+
+#spacer {
+  height: 88px;
+  border-top: 1px solid var(--border);
+  @media (max-width: 1024px) {
+    height: 48px;
+  }
+}
+
+.ticks {
+  position: relative;
+  width: 100%;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: -4.5px;
+    border: 5px solid transparent;
+  }
+
+  &::before {
+    left: 0;
+    border-left-color: var(--border);
+  }
+  &::after {
+    right: 0;
+    border-right-color: var(--border);
+  }
+}
+
+
+App.jsx:
+
+import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
+import axios from './api'
+import CrearOrden from './CrearOrden'
+import Movimientos from './Movimientos'
+import OrdenDetalle from './OrdenDetalle'
+import Clientes from './Clientes'
+import Operarios from './Operarios'
+import Aglomerado from './Aglomerado'
+import Reportes from './Reportes'
+import Cotizaciones from './Cotizaciones'
+import MenuAcciones from './MenuAcciones'
+import FiltroDesplegable from './FiltroDesplegable'
+import Login from './Login'
+import ModalEditar from './ModalEditar'
+
+function Ordenes() {
+  const [ordenes, setOrdenes] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const navegar = useNavigate()
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+  const [duplicarDesde, setDuplicarDesde] = useState(null)
+  const [filtroCliente, setFiltroCliente] = useState(null)
+  const [filtroEstado, setFiltroEstado] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [filtroCodigo, setFiltroCodigo] = useState('')
+  const rol = localStorage.getItem('packtech_rol')
+
+  const [hayMasOrdenes, setHayMasOrdenes] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
+  const cargarOrdenes = () => {
+    setCargando(true)
+    axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=20')
+      .then((respuesta) => {
+        setOrdenes(respuesta.data)
+        setHayMasOrdenes(respuesta.data.length === 20)
+        setCargando(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError('No se pudo conectar con el backend.')
+        setCargando(false)
+      })
+  }
+
+  const cargarMasOrdenes = () => {
+    if (ordenes.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = ordenes[ordenes.length - 1].id
+    axios.get(`https://packtech-production.up.railway.app/ordenes-produccion?limit=20&antes_de=${ultimoId}`)
+      .then((respuesta) => {
+        setOrdenes((actual) => [...actual, ...respuesta.data])
+        setHayMasOrdenes(respuesta.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
+  }
+
+  useEffect(() => {
+    cargarOrdenes()
+  }, [])
+
+  const eliminarOrden = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar esta orden? Se borrarán también todos sus movimientos.')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
+      cargarOrdenes()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar la orden.')
+    }
+  }
+
+  const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+  }
+
+  const duplicarOrden = (orden) => {
+  setDuplicarDesde({ ...orden, timestamp: Date.now() })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const abrirEdicion = (orden) => {
+  setEditando({
+    id: orden.id,
+    codigo: orden.codigo,
+    ruc: orden.ruc,
+    nombre_cliente: orden.cliente,
+    numero_std: orden.numero_std,
+    descripcion: orden.descripcion || '',
+    cantidad: orden.cantidad,
+    unidad: orden.unidad,
+    estado: orden.estado
+  })
+}
+
+const guardarEdicion = async () => {
+  setGuardando(true)
+  try {
+    await axios.put(`https://packtech-production.up.railway.app/ordenes-produccion/${editando.id}`, {
+      codigo: editando.codigo,
+      ruc: editando.ruc,
+      nombre_cliente: editando.nombre_cliente,
+      numero_std: parseInt(editando.numero_std),
+      descripcion: editando.descripcion,
+      cantidad: parseFloat(editando.cantidad),
+      unidad: editando.unidad,
+      estado: editando.estado
+    })
+
+    setEditando(null)
+    cargarOrdenes()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar la orden.')
+  } finally {
+    setGuardando(false)
+  }
+}
+
+  const clientesUnicos = [...new Set(ordenes.map(o => o.cliente))].sort()
+  const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
+
+  const ordenesFiltradas = ordenes.filter((orden) => {
+    if (filtroCodigo && !orden.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
+    if (filtroCliente && orden.cliente !== filtroCliente) return false
+    if (filtroEstado && orden.estado !== filtroEstado) return false
+    if (fechaDesde && orden.fecha < fechaDesde) return false
+    if (fechaHasta && orden.fecha > fechaHasta) return false
+    return true
+  })
+
+  return (
+  <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Órdenes de Producción</h1>
+        <p className="text-slate-500 text-sm mt-1">Crea, filtra y da seguimiento a cada orden en planta.</p>
+      </div>
+
+      <CrearOrden onCreada={cargarOrdenes} duplicarDesde={duplicarDesde} />
+
+      <div>
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!cargando && !error && (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <input
+              type="text"
+              value={filtroCodigo}
+              onChange={(e) => setFiltroCodigo(e.target.value)}
+              placeholder="Buscar N° Pedido..."
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+            />
+            <FiltroDesplegable
+              etiqueta="Cliente"
+              opciones={clientesUnicos}
+              seleccionado={filtroCliente}
+              onSeleccionar={setFiltroCliente}
+            />
+            <FiltroDesplegable
+              etiqueta="Estado"
+              opciones={estadosUnicos}
+              seleccionado={filtroEstado}
+              onSeleccionar={setFiltroEstado}
+            />
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <span>Desde</span>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+              />
+              <span>hasta</span>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+              />
+            </div>
+            {(filtroCodigo || filtroCliente || filtroEstado || fechaDesde || fechaHasta) && (
+              <button
+                onClick={() => { setFiltroCodigo(''); setFiltroCliente(null); setFiltroEstado(null); setFechaDesde(''); setFechaHasta('') }}
+                className="text-sm text-slate-400 hover:text-slate-700 underline"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-3">N° Pedido</th>
+                <th className="px-4 py-3">Cliente</th>
+                <th className="px-4 py-3">N° Std</th>
+                <th className="px-4 py-3">Producto</th>
+                <th className="px-4 py-3">Cantidad</th>
+                <th className="px-4 py-3">Unidad</th>
+                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Hora</th>
+                <th className="px-4 py-3 text-right"></th>
+              </tr>
+            </thead>
+              <tbody>
+                {ordenesFiltradas.map((orden) => (
+                  <tr
+                    key={orden.id}
+                    onClick={() => navegar(`/ordenes/${orden.id}`)}
+                    className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                  >
+                    <td className="px-4 py-3 font-medium text-slate-800">{orden.codigo}</td>
+                    <td className="px-4 py-3">{orden.cliente}</td>
+                    <td className="px-4 py-3">{orden.numero_std}</td>
+                    <td className="px-4 py-3">{orden.descripcion}</td>
+                    <td className="px-4 py-3">{orden.cantidad}</td>
+                    <td className="px-4 py-3">{orden.unidad}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
+                        orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
+                        orden.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                        'bg-slate-100 text-slate-500'
+                      }`}>
+                        {orden.estado}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{formatearFecha(orden.fecha)}</td>
+                    <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <MenuAcciones
+                        onEditar={() => abrirEdicion(orden)}
+                        onDuplicar={() => duplicarOrden(orden)}
+                        onEliminar={() => eliminarOrden(orden.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+
+            {hayMasOrdenes && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={cargarMasOrdenes}
+                  disabled={cargandoMas}
+                  className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {cargandoMas ? 'Cargando...' : 'Cargar más órdenes'}
+                </button>
+              </div>
+            )}
+        </>
+      )}
+    </div>
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Orden de Producción"
+          campos={[
+            { name: 'codigo', label: 'N° Pedido' },
+            { name: 'ruc', label: 'RUC del Cliente' },
+            { name: 'nombre_cliente', label: 'Nombre del Cliente' },
+            { name: 'numero_std', label: 'Número Estándar', type: 'number' },
+            { name: 'descripcion', label: 'Producto' },
+            { name: 'cantidad', label: 'Cantidad', type: 'number' },
+            { name: 'unidad', label: 'Unidad' },
+            { name: 'estado', label: 'Estado' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
+    </div>
+  )
+}
+
+function App() {
+  const [autenticado, setAutenticado] = useState(
+    !!localStorage.getItem('packtech_clave')
+  )
+
+  const rol = localStorage.getItem('packtech_rol')
+
+  if (!autenticado) {
+    return <Login onIngresar={() => setAutenticado(true)} />
+  }
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-50">
+        <nav className="bg-slate-900 text-white px-4 sm:px-8 py-4 flex flex-wrap gap-3 sm:gap-6 items-center shadow-md">
+          <span className="font-bold text-lg tracking-tight">PackTech</span>
+          <div className="h-5 w-px bg-slate-700" />
+        <Link to="/" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Órdenes</Link>
+        <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
+        <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
+        <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
+        <Link to="/aglomerado" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Aglomerado</Link>
+        <Link to="/reportes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Reportes</Link>
+        {rol !== 'observador' && (
+          <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Cotizaciones</Link>
+        )}
+  
+        <button
+        onClick={() => {
+          localStorage.removeItem('packtech_clave')
+          localStorage.removeItem('packtech_rol')
+          localStorage.removeItem('packtech_nombre')
+          window.location.reload()
+        }}
+        className="ml-auto text-slate-300 hover:text-white text-sm"
+      >
+        Salir
+      </button>
+    </nav>
+        <div className="p-8">
+          <Routes>
+            <Route path="/" element={<Ordenes />} />
+            <Route path="/movimientos" element={<Movimientos />} />
+            <Route path="/ordenes/:id" element={<OrdenDetalle />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/operarios" element={<Operarios />} />
+            <Route path="/aglomerado" element={<Aglomerado />} />
+            <Route path="/reportes" element={<Reportes />} />
+            <Route path="/cotizaciones" element={<Cotizaciones />} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
+  )
+}
+
+export default App
+
+
+Clientes.jsx
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
+import { esVendedorOMas, puedeCrear } from './roles'
+
+function Clientes()   {
+  const [clientes, setClientes] = useState([])
+  const [form, setForm] = useState({ ruc: '', nombre: '' })
+  const [error, setError] = useState(null)
+  const [errorCarga, setErrorCarga] = useState(null)
+  const [enviando, setEnviando] = useState(false)
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+  const [filtro, setFiltro] = useState('')
+
+  const abrirEdicion = (cliente) => {
+    setEditando({ id: cliente.id, ruc: cliente.ruc, nombre: cliente.nombre })
+  }
+
+  const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+      await axios.put(`https://packtech-production.up.railway.app/clientes/${editando.id}`, {
+        ruc: editando.ruc,
+        nombre: editando.nombre
+      })
+      setEditando(null)
+      cargarClientes()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al editar el cliente.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const [hayMas, setHayMas] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
+  const cargarClientes = () => {
+    axios.get('https://packtech-production.up.railway.app/clientes?limit=20')
+      .then((res) => {
+        setClientes(res.data)
+        setHayMas(res.data.length === 20)
+        setErrorCarga(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setErrorCarga('No se pudo conectar con el backend.')
+      })
+  }
+
+  const cargarMasClientes = () => {
+    if (clientes.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = clientes[clientes.length - 1].id
+    axios.get(`https://packtech-production.up.railway.app/clientes?limit=20&antes_de=${ultimoId}`)
+      .then((res) => {
+        setClientes((actual) => [...actual, ...res.data])
+        setHayMas(res.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
+  }
+
+  useEffect(() => {
+    cargarClientes()
+  }, [])
+
+  const crearCliente = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+
+    try {
+      await axios.post('https://packtech-production.up.railway.app/clientes', form)
+      setForm({ ruc: '', nombre: '' })
+      cargarClientes()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al crear el cliente.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const eliminarCliente = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este cliente?')) return
+
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/clientes/${id}`)
+      cargarClientes()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el cliente.')
+    }
+  }
+
+  const clientesFiltrados = clientes.filter((c) =>
+    c.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+    c.ruc.includes(filtro)
+  )
+
+  return (
+  <div className="space-y-8">
+    <div>
+      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clientes</h1>
+      <p className="text-slate-500 text-sm mt-1">Administra los clientes registrados en el sistema.</p>
+    </div>
+      {puedeCrear() && (
+      <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Cliente</h2>
+
+        <form onSubmit={crearCliente} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">RUC</label>
+            <input
+              type="text"
+              value={form.ruc}
+              onChange={(e) => setForm({ ...form, ruc: e.target.value })}
+              className="w-full border border-slate-300 rounded px-3 py-2"
+              placeholder="20100070970 (opcional)"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Nombre</label>
+            <input
+              type="text"
+              value={form.nombre}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              required
+              className="w-full border border-slate-300 rounded px-3 py-2"
+              placeholder="Alicorp"
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {enviando ? 'Creando...' : 'Registrar Cliente'}
+          </button>
+                </form>
+      </div>
+      )}
+
+      <div>
+
+        <input
+          type="text"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por nombre o RUC..."
+          className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm w-64 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+        />
+
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-3">ID</th> 
+                <th className="px-4 py-3">RUC</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientesFiltrados.map((c) => (
+                <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3">{c.id}</td>
+                  <td className="px-4 py-3">{c.ruc || '—'}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
+                  <td className="px-4 py-3 text-right">
+                    {esVendedorOMas() && (
+                      <MenuAcciones
+                        onEditar={() => abrirEdicion(c)}
+                        onEliminar={() => eliminarCliente(c.id)}
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {hayMas && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={cargarMasClientes}
+              disabled={cargandoMas}
+              className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {cargandoMas ? 'Cargando...' : 'Cargar más clientes'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Cliente"
+          campos={[
+            { name: 'ruc', label: 'RUC' },
+            { name: 'nombre', label: 'Nombre' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
+    </div>
+  )
+}
+
+export default Clientes
+
+Cotizaciones.jsx:
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import { esVendedorOMas } from './roles'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+function FormularioCotizacion({ onCreada }) {
+  const [form, setForm] = useState({
+    codigo: '',
+    ruc: '',
+    nombre_cliente: '',
+    numero_std: '',
+    descripcion: '',
+    cantidad: '',
+    unidad: 'kg',
+    moneda: 'Soles',
+    vendedor: '',
+    fecha_entrega: '',
+    precio_unitario: '',
+    unidad_precio: 'kg',
+    millares: '',
+    direccion_entrega: '',
+    numero_contacto: '',
+    email_cliente: '',
+    telefono_cliente: ''
+  })
+
+  const [sugerenciasClientes, setSugerenciasClientes] = useState([])
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
+  const [sugerenciasVendedores, setSugerenciasVendedores] = useState([])
+
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState(null)
+  const [exito, setExito] = useState(false)
+
+  const manejarCambio = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  useEffect(() => {
+    if (clienteSeleccionado) {
+      setSugerenciasClientes([])
+      return
+    }
+    const query = form.ruc.trim() || form.nombre_cliente.trim()
+    if (query.length < 2) {
+      setSugerenciasClientes([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/clientes/buscar?q=${query}`)
+        .then((res) => setSugerenciasClientes(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [form.ruc, form.nombre_cliente, clienteSeleccionado])
+
+  useEffect(() => {
+    if (form.vendedor.trim().length < 2) {
+      setSugerenciasVendedores([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/vendedores/buscar?q=${form.vendedor}`)
+        .then((res) => setSugerenciasVendedores(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [form.vendedor])
+
+  const costoEstimado = (() => {
+    const precio = parseFloat(form.precio_unitario)
+    if (!precio) return null
+    const base = form.unidad_precio === 'millares' ? parseFloat(form.millares) : parseFloat(form.cantidad)
+    if (!base) return null
+    return (precio * base).toFixed(2)
+  })()
+
+  const manejarEnvio = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+    setExito(false)
+
+    if (form.unidad_precio === 'millares' && !form.millares) {
+      setError('Debes indicar los millares si el precio es por millar.')
+      setEnviando(false)
+      return
+    }
+
+    try {
+      await axios.post('https://packtech-production.up.railway.app/ordenes-produccion', {
+        codigo: form.codigo,
+        ruc: form.ruc || null,
+        nombre_cliente: form.nombre_cliente,
+        numero_std: parseInt(form.numero_std) || 0,
+        descripcion: form.descripcion,
+        cantidad: parseFloat(form.cantidad),
+        unidad: form.unidad,
+        estado: 'Preaprobada',
+        moneda: form.moneda,
+        vendedor: form.vendedor || null,
+        fecha_entrega: form.fecha_entrega || null,
+        precio_unitario: form.precio_unitario ? parseFloat(form.precio_unitario) : null,
+        unidad_precio: form.unidad_precio,
+        millares: form.millares ? parseFloat(form.millares) : null,
+        direccion_entrega: form.direccion_entrega || null,
+        numero_contacto: form.numero_contacto || null,
+        email_cliente: form.email_cliente || null,
+        telefono_cliente: form.telefono_cliente || null
+      })
+
+      setExito(true)
+      setForm({
+        codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '',
+        cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
+        precio_unitario: '', unidad_precio: 'kg', millares: '',
+        direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: ''
+      })
+      setClienteSeleccionado(null)
+      if (onCreada) onCreada()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al crear la cotización.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const estilo = "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+
+  return (
+    <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h2 className="text-xl font-bold text-slate-800 mb-4">Nueva Cotización</h2>
+
+      <form onSubmit={manejarEnvio} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">N° de Pedido</label>
+            <input type="text" name="codigo" value={form.codigo} onChange={manejarCambio} required className={estilo} placeholder="OP-118" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">N° Estándar</label>
+            <input type="number" name="numero_std" value={form.numero_std} onChange={manejarCambio} className={estilo} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 relative">
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-600 mb-1">RUC (opcional)</label>
+            <input
+              type="text" name="ruc" value={form.ruc}
+              onChange={(e) => { manejarCambio(e); setClienteSeleccionado(null) }}
+              autoComplete="off" className={estilo} placeholder="20100070970"
+            />
+          </div>
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-600 mb-1">Cliente</label>
+            <input
+              type="text" name="nombre_cliente" value={form.nombre_cliente}
+              onChange={(e) => { manejarCambio(e); setClienteSeleccionado(null) }}
+              autoComplete="off" required className={estilo} placeholder="Namder"
+            />
+            {sugerenciasClientes.length > 0 && (
+              <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {sugerenciasClientes.map((c) => (
+                  <button key={c.id} type="button"
+                    onClick={() => {
+                      setClienteSeleccionado(c)
+                      setForm({ ...form, ruc: c.ruc || '', nombre_cliente: c.nombre })
+                      setSugerenciasClientes([])
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0"
+                  >
+                    <span className="font-medium text-slate-800">{c.nombre}</span>
+                    {c.ruc && <span className="text-slate-500"> · {c.ruc}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
+          <input type="text" name="descripcion" value={form.descripcion} onChange={manejarCambio} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad</label>
+            <input type="number" step="0.01" name="cantidad" value={form.cantidad} onChange={manejarCambio} required className={estilo} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Unidad</label>
+            <select name="unidad" value={form.unidad} onChange={manejarCambio} className={estilo}>
+              <option value="kg">kg</option>
+              <option value="unidades">unidades</option>
+              <option value="rollos">rollos</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Moneda</label>
+            <select name="moneda" value={form.moneda} onChange={manejarCambio} className={estilo}>
+              <option value="Soles">Soles</option>
+              <option value="Dólares">Dólares</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio (obligatorio para cotización)</p>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
+              <input type="number" step="0.01" name="precio_unitario" value={form.precio_unitario} onChange={manejarCambio} required className={estilo} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Precio por</label>
+              <select name="unidad_precio" value={form.unidad_precio} onChange={manejarCambio} className={estilo}>
+                <option value="kg">kg</option>
+                <option value="millares">millares</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Millares {form.unidad_precio === 'millares' ? '' : '(opcional)'}
+              </label>
+              <input
+                type="number" step="0.01" name="millares" value={form.millares} onChange={manejarCambio}
+                required={form.unidad_precio === 'millares'} className={estilo}
+              />
+            </div>
+          </div>
+          {costoEstimado && (
+            <p className="text-sm text-slate-600">
+              Costo total estimado: <span className="font-bold text-slate-800">{form.moneda === 'Dólares' ? '$' : 'S/'} {costoEstimado}</span>
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 relative">
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
+            <input
+              type="text" name="vendedor" value={form.vendedor} onChange={manejarCambio}
+              autoComplete="off" required className={estilo}
+            />
+            {sugerenciasVendedores.length > 0 && (
+              <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {sugerenciasVendedores.map((v) => (
+                  <button key={v.id} type="button"
+                    onClick={() => { setForm({ ...form, vendedor: v.nombre }); setSugerenciasVendedores([]) }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                  >
+                    {v.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Fecha de entrega</label>
+            <input type="date" name="fecha_entrega" value={form.fecha_entrega} onChange={manejarCambio} required className={estilo} />
+          </div>
+        </div>
+
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
+            + Datos opcionales (dirección, contacto)
+          </summary>
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Dirección de entrega</label>
+              <input type="text" name="direccion_entrega" value={form.direccion_entrega} onChange={manejarCambio} className={estilo} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">N° de contacto</label>
+              <input type="text" name="numero_contacto" value={form.numero_contacto} onChange={manejarCambio} className={estilo} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Email del cliente</label>
+              <input type="email" name="email_cliente" value={form.email_cliente} onChange={manejarCambio} className={estilo} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Teléfono del cliente</label>
+              <input type="text" name="telefono_cliente" value={form.telefono_cliente} onChange={manejarCambio} className={estilo} />
+            </div>
+          </div>
+        </details>
+
+        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {exito && <p className="text-green-700 text-sm font-medium">Cotización creada correctamente.</p>}
+
+        <button type="submit" disabled={enviando} className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 disabled:opacity-50">
+          {enviando ? 'Creando...' : 'Crear Cotización'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function Cotizaciones() {
+  const [ordenes, setOrdenes] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const [aprobando, setAprobando] = useState(null)
+  const vendedorOAdmin = esVendedorOMas()
+
+  const cargar = () => {
+    setCargando(true)
+    axios.get('https://packtech-production.up.railway.app/ordenes-produccion/preaprobadas/listar')
+      .then((res) => {
+        setOrdenes(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError('No se pudo conectar con el backend.')
+      })
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  const aprobar = async (id) => {
+    if (!confirm('¿Aprobar esta cotización y enviarla a producción?')) return
+    setAprobando(id)
+    try {
+      await axios.post(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/aprobar`)
+      cargar()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al aprobar la cotización.')
+    } finally {
+      setAprobando(null)
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Cotizaciones</h1>
+        <p className="text-slate-500 text-sm mt-1">
+          {vendedorOAdmin
+            ? 'Crea cotizaciones y apruébalas para enviarlas a producción.'
+            : 'Seguimiento de cotizaciones pendientes de aprobación.'}
+        </p>
+      </div>
+
+      {vendedorOAdmin && <FormularioCotizacion onCreada={cargar} />}
+
+      <div>
+        {cargando && <p className="text-slate-500">Cargando...</p>}
+        {error && <p className="text-red-600">{error}</p>}
+
+        {!cargando && !error && (
+          <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3">N° Pedido</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Producto</th>
+                  <th className="px-4 py-3">Cantidad</th>
+                  <th className="px-4 py-3">Fecha entrega</th>
+                  {vendedorOAdmin && <th className="px-4 py-3">Precio</th>}
+                  {vendedorOAdmin && <th className="px-4 py-3">Total</th>}
+                  <th className="px-4 py-3">Vendedor</th>
+                  {vendedorOAdmin && <th className="px-4 py-3 text-right"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {ordenes.map((o) => (
+                  <tr key={o.id} className="border-t border-slate-100">
+                    <td className="px-4 py-3 font-medium text-slate-800">{o.codigo}</td>
+                    <td className="px-4 py-3">{o.cliente}</td>
+                    <td className="px-4 py-3">{o.descripcion}</td>
+                    <td className="px-4 py-3">{o.cantidad} {o.unidad}</td>
+                    <td className="px-4 py-3">{formatearFecha(o.fecha_entrega)}</td>
+                    {vendedorOAdmin && (
+                      <td className="px-4 py-3">
+                        {o.precio_unitario ? `${o.moneda === 'Dólares' ? '$' : 'S/'} ${o.precio_unitario} / ${o.unidad_precio}` : '—'}
+                      </td>
+                    )}
+                    {vendedorOAdmin && (
+                      <td className="px-4 py-3 font-medium text-slate-800">
+                        {o.costo_total ? `${o.moneda === 'Dólares' ? '$' : 'S/'} ${o.costo_total}` : '—'}
+                      </td>
+                    )}
+                    <td className="px-4 py-3">{o.vendedor || '—'}</td>
+                    {vendedorOAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => aprobar(o.id)}
+                          disabled={aprobando === o.id}
+                          className="bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-green-800 disabled:opacity-50"
+                        >
+                          {aprobando === o.id ? 'Aprobando...' : '✓ Aprobar'}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {ordenes.length === 0 && (
+                  <tr>
+                    <td colSpan={vendedorOAdmin ? 9 : 6} className="px-4 py-6 text-center text-slate-400">
+                      No hay cotizaciones pendientes.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default Cotizaciones
+
+
+CrearOrden.jsx:
+
+import { useState, useEffect } from 'react'
+import axios from './api'
+
+function CrearOrden({ onCreada, duplicarDesde }) {
+  const [form, setForm] = useState({
+    codigo: '',
+    ruc: '',
+    nombre_cliente: '',
+    numero_std: '',
+    descripcion: '',
+    cantidad: '',
+    unidad: 'kg',
+    estado: 'Pendiente'
+  })
+
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState(null)
+  const [exito, setExito] = useState(false)
+
+  const [sugerenciasClientes, setSugerenciasClientes] = useState([])
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
+
+  const manejarCambio = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    })
+  }
+
+    useEffect(() => {
+    if (duplicarDesde) {
+      setForm({
+        codigo: '',
+        ruc: duplicarDesde.ruc || '',
+        nombre_cliente: duplicarDesde.cliente || '',
+        numero_std: duplicarDesde.numero_std,
+        descripcion: duplicarDesde.descripcion || '',
+        cantidad: duplicarDesde.cantidad,
+        unidad: duplicarDesde.unidad,
+        estado: 'Pendiente'
+      })
+
+      setClienteSeleccionado({
+        ruc: duplicarDesde.ruc || '',
+        nombre: duplicarDesde.cliente || ''
+      })
+    }
+  }, [duplicarDesde])
+
+  useEffect(() => {
+    if (clienteSeleccionado) {
+      setSugerenciasClientes([])
+      return
+    }
+
+    const query = form.ruc.trim() || form.nombre_cliente.trim()
+    if (query.length < 2) {
+      setSugerenciasClientes([])
+      return
+    }
+
+    const temporizador = setTimeout(() => {
+      axios.get(
+        `https://packtech-production.up.railway.app/clientes/buscar?q=${query}`
+      )
+        .then((res) => setSugerenciasClientes(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+
+    return () => clearTimeout(temporizador)
+  }, [form.ruc, form.nombre_cliente, clienteSeleccionado])
+
+  const manejarEnvio = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+    setExito(false)
+
+    try {
+      await axios.post('/ordenes-produccion', {
+        codigo: form.codigo,
+        ruc: form.ruc,
+        nombre_cliente: form.nombre_cliente,
+        numero_std: parseInt(form.numero_std),
+        descripcion: form.descripcion,
+        cantidad: parseFloat(form.cantidad),
+        unidad: form.unidad,
+        estado: form.estado
+      })
+
+      setExito(true)
+
+      setForm({
+        codigo: '',
+        ruc: '',
+        nombre_cliente: '',
+        numero_std: '',
+        descripcion: '',
+        cantidad: '',
+        unidad: 'kg',
+        estado: 'Pendiente'
+      })
+
+      setClienteSeleccionado(null)
+
+      if (onCreada) onCreada()
+
+    } catch (err) {
+      if (err.response) {
+        setError(err.response.data?.detail || 'Error al crear la orden.')
+      } else {
+        setExito(true)
+
+        setForm({
+          codigo: '',
+          ruc: '',
+          nombre_cliente: '',
+          numero_std: '',
+          descripcion: '',
+          cantidad: '',
+          unidad: 'kg',
+          estado: 'Pendiente'
+        })
+
+        setClienteSeleccionado(null)
+
+        if (onCreada) onCreada()
+      }
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const estiloInput =
+    "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-slate-800">
+          Registrar Orden de Producción
+        </h2>
+      </div>
+
+      <form onSubmit={manejarEnvio} className="space-y-5">
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Número de Pedido
+          </label>
+
+          <input
+            type="text"
+            name="codigo"
+            value={form.codigo}
+            onChange={manejarCambio}
+            required
+            className={estiloInput}
+            placeholder="OP-002"
+          />
+        </div>
+
+        <div className="relative">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            RUC
+          </label>
+
+          <input
+            type="text"
+            name="ruc"
+            value={form.ruc}
+            maxLength={11}
+            onChange={(e) => {
+              manejarCambio(e)
+              setClienteSeleccionado(null)
+            }}
+            autoComplete="off"
+            className={estiloInput}
+            placeholder="20100070970 (opcional)"
+          />
+
+          {sugerenciasClientes.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+
+              {sugerenciasClientes.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setClienteSeleccionado(c)
+                    setForm({
+                      ...form,
+                      ruc: c.ruc,
+                      nombre_cliente: c.nombre
+                    })
+                    setSugerenciasClientes([])
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0 transition"
+                >
+                  <span className="font-medium text-slate-800">
+                    {c.ruc}
+                  </span>
+
+                  <span className="text-slate-500">
+                    {' · '}{c.nombre}
+                  </span>
+                </button>
+              ))}
+
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Cliente
+          </label>
+
+          <input
+            type="text"
+            name="nombre_cliente"
+            value={form.nombre_cliente}
+            onChange={(e) => {
+              manejarCambio(e)
+              setClienteSeleccionado(null)
+            }}
+            autoComplete="off"
+            className={estiloInput}
+            placeholder="Escribe el nombre, o el RUC arriba si lo tienes"
+          />
+
+          {sugerenciasClientes.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {sugerenciasClientes.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setClienteSeleccionado(c)
+                    setForm({
+                      ...form,
+                      ruc: c.ruc || '',
+                      nombre_cliente: c.nombre
+                    })
+                    setSugerenciasClientes([])
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0 transition"
+                >
+                  <span className="font-medium text-slate-800">{c.nombre}</span>
+                  {c.ruc && <span className="text-slate-500"> · {c.ruc}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Número Estándar
+          </label>
+
+          <input
+            type="number"
+            name="numero_std"
+            value={form.numero_std}
+            onChange={manejarCambio}
+            required
+            className={estiloInput}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Producto / Descripción
+          </label>
+
+          <input
+            type="text"
+            name="descripcion"
+            value={form.descripcion}
+            onChange={manejarCambio}
+            className={estiloInput}
+            placeholder="Hielo PackTech / Bolsa camiseta blanca 18x30"
+          />
+        </div>
+
+        <div className="flex gap-4">
+
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Cantidad
+            </label>
+
+            <input
+              type="number"
+              step="0.01"
+              name="cantidad"
+              value={form.cantidad}
+              onChange={manejarCambio}
+              required
+              className={estiloInput}
+            />
+          </div>
+
+          <div className="w-32">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Unidad
+            </label>
+
+            <select
+              name="unidad"
+              value={form.unidad}
+              onChange={manejarCambio}
+              className={estiloInput}
+            >
+              <option value="kg">kg</option>
+              <option value="unidades">unidades</option>
+              <option value="rollos">rollos</option>
+            </select>
+          </div>
+
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2.5 text-sm">
+            {error}
+          </div>
+        )}
+
+        {exito && (
+          <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2.5 text-sm font-medium">
+            Orden creada correctamente.
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={enviando}
+          className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {enviando ? 'Registrando...' : 'Registrar Orden'}
+        </button>
+
+      </form>
+    </div>
+  )
+}
+
+export default CrearOrden
+
+
+DetalleMovimiento.jsx:
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
+import { esProduccionOMas } from './roles'
+
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_SALIDA_FARDO = ['Sellado']
+
+function DetalleMovimiento({ movimiento, orden, onCerrar }) {
+  const esExtrusion = movimiento.proceso === 'Extrusión'
+  const esDobleLado = PROCESOS_DOBLE_LADO.includes(movimiento.proceso)
+  const esProcesoEspecial = PROCESOS_ESPECIALES.includes(movimiento.proceso)  
+
+  const [detallesMerma, setDetallesMerma] = useState([])
+  const [pesoMerma, setPesoMerma] = useState('')
+  const [tipoMermaInput, setTipoMermaInput] = useState('')
+  const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
+  const [enviandoMerma, setEnviandoMerma] = useState(false)
+  const [editandoMerma, setEditandoMerma] = useState(null)
+  const [guardandoMerma, setGuardandoMerma] = useState(false)
+  const [ladoActivo, setLadoActivo] = useState('salida')
+  const [tipo, setTipo] = useState('bobina')
+  const [detalles, setDetalles] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [pesoBruto, setPesoBruto] = useState('')
+  const [pesoTuco, setPesoTuco] = useState('')
+  const [peso, setPeso] = useState('')
+  const [pesoFardo, setPesoFardo] = useState('')
+  const [millaresFardo, setMillaresFardo] = useState('')
+  const [millares, setMillares] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState(null)
+  const salidaEsFardo = PROCESOS_SALIDA_FARDO.includes(movimiento.proceso)
+  const [importando, setImportando] = useState(false)
+  const [tipoMaterial, setTipoMaterial] = useState('')
+  const [sugerenciasTipoMaterial, setSugerenciasTipoMaterial] = useState([])
+
+  const cargarDetallesMerma = () => {
+    axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`)
+      .then((res) => setDetallesMerma(res.data))
+      .catch((err) => console.error(err))
+  }
+
+  const cargarDetalles = () => {
+    setCargando(true)
+    axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`)
+      .then((res) => {
+        setDetalles(res.data)
+        if (!esProcesoEspecial && res.data.length > 0) setTipo(res.data[0].tipo)
+        setCargando(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        setCargando(false)
+      })
+  }
+  
+  useEffect(() => {
+    if (movimiento.proceso !== 'Laminado' || tipoMaterial.trim().length < 2) {
+      setSugerenciasTipoMaterial([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/materiales/buscar?q=${tipoMaterial}`)
+        .then((res) => setSugerenciasTipoMaterial(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [tipoMaterial, movimiento.proceso])
+
+  useEffect(() => {
+  if (!esProcesoEspecial || tipoMermaInput.trim().length < 2) {
+    setSugerenciasTipoMerma([])
+    return
+  }
+  const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${encodeURIComponent(movimiento.proceso)}&q=${tipoMermaInput}`)
+        .then((res) => setSugerenciasTipoMerma(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [tipoMermaInput, esProcesoEspecial])
+
+    useEffect(() => {
+      cargarDetalles()
+      if (esProcesoEspecial) cargarDetallesMerma()
+    }, []) 
+
+  const detallesLado = (lado) => detalles.filter(d => d.lado === lado)
+  const sumaNeto = (lista) => lista.reduce((s, d) => s + Number(d.peso_neto), 0)
+
+  const entradaBobinas = detallesLado('entrada')
+  const salidaBobinas = detallesLado('salida')
+
+  const entradaCalculada = esDobleLado ? sumaNeto(entradaBobinas) : Number(movimiento.entrada)
+  const salidaCalculada = esProcesoEspecial ? sumaNeto(salidaBobinas) : Number(movimiento.salida)
+  const totalMermaDetallada = detallesMerma.reduce((s, d) => s + Number(d.peso), 0)
+  const diferenciaReal = entradaCalculada - (salidaCalculada + totalMermaDetallada)
+
+  const agregarFardoSalida = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+
+    const siguienteNumero = salidaBobinas.length + 1
+
+    try {
+      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+        tipo: 'fardo',
+        lado: 'salida',
+        numero: siguienteNumero,
+        peso_bruto: parseFloat(pesoFardo),
+        peso_tuco: 0,
+        millares: parseFloat(millaresFardo)
+      })
+      setPesoFardo('')
+      setMillaresFardo('')
+      cargarDetalles()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al agregar el fardo.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const agregarDetalleEspecial = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+
+    const lado = esDobleLado ? ladoActivo : 'salida'
+    const siguienteNumero = detallesLado(lado).length + 1
+    const esMaterialAplicable = movimiento.proceso === 'Laminado' && lado === 'entrada'
+
+    try {
+      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+        tipo: 'bobina',
+        lado,
+        numero: siguienteNumero,
+        peso_bruto: parseFloat(pesoBruto),
+        peso_tuco: parseFloat(pesoTuco) || 0,
+        millares: null,
+        tipo_material: esMaterialAplicable ? (tipoMaterial.trim() || null) : null
+      })
+      setPesoBruto('')
+      setPesoTuco('')
+      setTipoMaterial('')
+      cargarDetalles()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al agregar la bobina.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const agregarDetalleSimple = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+
+    const siguienteNumero = detalles.length + 1
+
+    try {
+      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+        tipo,
+        lado: 'salida',
+        numero: siguienteNumero,
+        peso_bruto: parseFloat(peso),
+        peso_tuco: 0,
+        millares: tipo === 'fardo' ? parseFloat(millares) : null
+      })
+      setPeso('')
+      setMillares('')
+      cargarDetalles()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al agregar el detalle.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const importarBobinasAnteriores = async () => {
+    setImportando(true)
+    setError(null)
+    try {
+      const res = await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles/importar-anteriores`)
+      cargarDetalles()
+      alert(`Se importaron ${res.data.importadas} bobina(s) del proceso anterior.`)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudieron importar las bobinas del proceso anterior.')
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  const eliminarDetalle = async (id) => {
+    if (!confirm('¿Eliminar este registro?')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/detalles/${id}`)
+      cargarDetalles()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar.')
+    }
+  }
+
+  const agregarMerma = async (e) => {
+  e.preventDefault()
+  setEnviandoMerma(true)
+  try {
+    await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`, {
+      peso: parseFloat(pesoMerma),
+      tipo_merma: tipoMermaInput.trim() || null
+    })
+    setPesoMerma('')
+    setTipoMermaInput('')
+    cargarDetallesMerma()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al agregar la merma.')
+  } finally {
+    setEnviandoMerma(false)
+  }
+}
+
+const eliminarMerma = async (id) => {
+  if (!confirm('¿Eliminar este registro de merma?')) return
+  try {
+    await axios.delete(`https://packtech-production.up.railway.app/mermas/${id}`)
+    cargarDetallesMerma()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al eliminar.')
+  }
+}
+
+const abrirEdicionMerma = (detalle) => {
+  setEditandoMerma({ id: detalle.id, peso: detalle.peso, tipo_merma: detalle.tipo_merma || '' })
+}
+
+const guardarEdicionMerma = async () => {
+  setGuardandoMerma(true)
+  try {
+    await axios.put(`https://packtech-production.up.railway.app/mermas/${editandoMerma.id}`, {
+      peso: parseFloat(editandoMerma.peso),
+      tipo_merma: editandoMerma.tipo_merma || null
+    })
+    setEditandoMerma(null)
+    cargarDetallesMerma()
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Error al editar la merma.')
+  } finally {
+    setGuardandoMerma(false)
+  }
+}
+
+const duplicarMerma = (detalle) => {
+  setPesoMerma(String(detalle.peso))
+  setTipoMermaInput(detalle.tipo_merma || '')
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+  const totalPesoSimple = detalles.reduce((s, d) => s + Number(d.peso_neto), 0)
+  const totalMillaresSimple = detalles.reduce((s, d) => s + Number(d.millares || 0), 0)
+  const etiqueta = tipo === 'bobina' ? 'Bobina' : 'Fardo'
+  const etiquetaPlural = tipo === 'bobina' ? 'Bobinas' : 'Fardos'
+
+  const TablaBobinas = ({ lista, titulo, mostrarMillares, mostrarMaterial }) => (
+    <div className="mb-5">
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="text-sm font-semibold text-slate-700">{titulo}</h4>
+        <span className="text-xs text-slate-400">
+          {lista.length} {mostrarMillares ? 'fardo' : 'bobina'}{lista.length !== 1 ? 's' : ''} · {sumaNeto(lista).toFixed(2)} kg neto
+        </span>
+      </div>
+      <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+            <tr>
+              <th className="px-4 py-2">N°</th>
+              {mostrarMillares ? (
+                <>
+                  <th className="px-4 py-2">Peso</th>
+                  <th className="px-4 py-2">Millares</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-4 py-2">Bruto</th>
+                  <th className="px-4 py-2">Tuco</th>
+                  <th className="px-4 py-2">Peso Neto</th>
+                  {mostrarMaterial && <th className="px-4 py-2">Material</th>}
+                </>
+              )}
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {lista.map((d) => (
+              <tr key={d.id} className="border-t border-slate-200">
+                <td className="px-4 py-2">{d.numero}</td>
+                {mostrarMillares ? (
+                  <>
+                    <td className="px-4 py-2 font-medium text-slate-800">{d.peso_neto}</td>
+                    <td className="px-4 py-2">{d.millares}</td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-2">{d.peso_bruto}</td>
+                    <td className="px-4 py-2">{d.peso_tuco}</td>
+                    <td className="px-4 py-2 font-medium text-slate-800">{d.peso_neto}</td>
+                    {mostrarMaterial && <td className="px-4 py-2">{d.tipo_material || '—'}</td>}
+                  </>
+                )}
+                <td className="px-4 py-2 text-right">
+                  {esProduccionOMas() && (
+                    <button
+                      onClick={() => eliminarDetalle(d.id)}
+                      className="text-red-600 hover:text-red-800 text-xs"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {lista.length === 0 && (
+              <tr>
+                <td colSpan={mostrarMillares ? 4 : (mostrarMaterial ? 6 : 5)} className="px-4 py-4 text-center text-slate-400">
+                  Sin registros todavía.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Detalle del Movimiento</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              {orden?.cliente || 'Cliente desconocido'} · N° Std {orden?.numero_std ?? '-'} · {movimiento.proceso}
+            </p>
+          </div>
+          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-700 text-xl leading-none">
+            ×
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">{esDobleLado ? 'Entrada (neto)' : 'Entrada'}</p>
+            <p className="text-sm font-semibold text-slate-800">{entradaCalculada.toFixed(2)} {movimiento.unidad}</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">{esProcesoEspecial ? 'Salida (neto)' : 'Salida'}</p>
+            <p className="text-sm font-semibold text-slate-800">{salidaCalculada.toFixed(2)} {movimiento.unidad}</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+            <p className="text-xs text-blue-500 uppercase tracking-wide">Faltante/Sobrante</p>
+            <p className="text-sm font-semibold text-blue-800">
+              {diferenciaReal.toFixed(2)} {movimiento.unidad}
+            </p>
+            <p className="text-[11px] text-blue-400 mt-0.5">Entrada − (Salida + Merma real)</p>
+          </div>
+          <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+          <p className="text-xs text-green-600 uppercase tracking-wide">Merma real</p>
+          <p className="text-sm font-semibold text-green-800">
+            {totalMermaDetallada > 0 ? `${totalMermaDetallada.toFixed(2)} ${movimiento.unidad}` : '—'}
+          </p>
+        </div>
+      </div>
+
+        {esProcesoEspecial && (
+          <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-5">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Observación</p>
+            <p className="text-sm font-medium text-slate-700 truncate">
+              {movimiento.observacion?.trim() ? movimiento.observacion : 'Sin observación'}
+            </p>
+          </div>
+        )}
+
+        {!esProcesoEspecial && (
+          <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-5">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Observación</p>
+            <p className="text-sm font-medium text-slate-700 truncate">
+              {movimiento.observacion?.trim() ? movimiento.observacion : 'Sin observación'}
+            </p>
+          </div>
+        )}
+
+        {esProcesoEspecial ? (
+          <>
+            {esProduccionOMas() && esDobleLado && (
+              <div className="flex justify-between items-center mb-4 border-b border-slate-200">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setLadoActivo('entrada')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      ladoActivo === 'entrada' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Bobinas de Entrada
+                  </button>
+                  <button
+                    onClick={() => setLadoActivo('salida')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      ladoActivo === 'salida' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    {salidaEsFardo ? 'Fardos de Salida' : 'Bobinas de Salida'}
+                  </button>
+                </div>
+
+                {esProduccionOMas() && ladoActivo === 'entrada' && entradaBobinas.length === 0 && (
+                  <button
+                    onClick={importarBobinasAnteriores}
+                    disabled={importando}
+                    className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 mb-2"
+                  >
+                    {importando ? 'Trayendo...' : '↓ Traer bobinas del proceso anterior'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {esProduccionOMas() && (salidaEsFardo && ladoActivo === 'salida' ? (
+  <form onSubmit={agregarFardoSalida} className="flex flex-col sm:flex-row gap-3 mb-6">
+    <div className="flex-1">
+      <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
+      <input
+        type="number"
+        step="0.01"
+        value={pesoFardo}
+        onChange={(e) => setPesoFardo(e.target.value)}
+        required
+        className="w-full border border-slate-300 rounded px-3 py-2"
+      />
+    </div>
+    <div className="flex-1">
+      <label className="block text-sm font-medium text-slate-600 mb-1">Millares</label>
+      <input
+        type="number"
+        step="0.01"
+        value={millaresFardo}
+        onChange={(e) => setMillaresFardo(e.target.value)}
+        required
+        className="w-full border border-slate-300 rounded px-3 py-2"
+      />
+    </div>
+    <div className="flex items-end">
+      <button
+        type="submit"
+        disabled={enviando}
+        className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+      >
+        {enviando ? 'Agregando...' : '+ Fardo'}
+      </button>
+    </div>
+  </form>
+) : (
+  <form onSubmit={agregarDetalleEspecial} className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso bruto (kg)</label>
+        <input
+          type="number"
+          step="0.01"
+          value={pesoBruto}
+          onChange={(e) => setPesoBruto(e.target.value)}
+          required
+          className="w-full border border-slate-300 rounded px-3 py-2"
+        />
+      </div>
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso del tuco (kg)</label>
+        <input
+          type="number"
+          step="0.01"
+          value={pesoTuco}
+          onChange={(e) => setPesoTuco(e.target.value)}
+          required
+          className="w-full border border-slate-300 rounded px-3 py-2"
+        />
+      </div>
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso Neto</label>
+        <input
+          type="text"
+          readOnly
+          value={
+            pesoBruto !== '' && pesoTuco !== ''
+              ? (parseFloat(pesoBruto) - parseFloat(pesoTuco)).toFixed(2)
+              : ''
+          }
+          className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
+        />
+      </div>
+      {movimiento.proceso === 'Laminado' && ladoActivo === 'entrada' && (
+  <div className="flex-1 relative">
+    <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
+    <input
+      type="text"
+      value={tipoMaterial}
+      onChange={(e) => setTipoMaterial(e.target.value)}
+      autoComplete="off"
+      className="w-full border border-slate-300 rounded px-3 py-2"
+      placeholder="Ej. PET, Uso pesado, Baja..."
+    />
+    {sugerenciasTipoMaterial.length > 0 && (
+      <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        {sugerenciasTipoMaterial.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => {
+              setTipoMaterial(m.nombre)
+              setSugerenciasTipoMaterial([])
+            }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+          >
+            {m.nombre}
+          </button>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+<div className="flex items-end">
+  <button
+    type="submit"
+    disabled={enviando}
+    className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+  >
+    {enviando ? 'Agregando...' : '+ Bobina'}
+  </button>
+</div>
+</form>
+  ))}
+
+            {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+
+            {cargando ? (
+              <p className="text-slate-500 text-sm">Cargando...</p>
+            ) : esDobleLado ? (
+              ladoActivo === 'entrada'
+                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} mostrarMaterial={movimiento.proceso === 'Laminado'} />
+                : <TablaBobinas lista={salidaBobinas} titulo="Fardos de Salida" mostrarMillares={salidaEsFardo} />
+            ) : (
+              <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" mostrarMillares={false} />
+            )}
+  <div className="mt-6 pt-5 border-t border-slate-200">
+    <h4 className="text-sm font-semibold text-slate-700 mb-3">Detalle de Merma (opcional)</h4>
+
+    {esProduccionOMas() && (
+    <form onSubmit={agregarMerma} className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="flex-1">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
+        <input
+          type="number"
+          step="0.01"
+          value={pesoMerma}
+          onChange={(e) => setPesoMerma(e.target.value)}
+          required
+          className="w-full border border-slate-300 rounded px-3 py-2"
+        />
+      </div>
+      <div className="flex-1 relative">
+        <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de merma</label>
+        <input
+          type="text"
+          value={tipoMermaInput}
+          onChange={(e) => setTipoMermaInput(e.target.value)}
+          autoComplete="off"
+          className="w-full border border-slate-300 rounded px-3 py-2"
+          placeholder="Ej. Refil, Rebaba... "
+        />
+        {sugerenciasTipoMerma.length > 0 && (
+          <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {sugerenciasTipoMerma.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTipoMermaInput(t.nombre)
+                  setSugerenciasTipoMerma([])
+                }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+              >
+                {t.nombre}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex items-end">
+        <button
+          type="submit"
+          disabled={enviandoMerma}
+          className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+        >
+          {enviandoMerma ? 'Agregando...' : '+ Agregar merma'}
+        </button>
+      </div>
+    </form>
+    )}
+
+    {detallesMerma.length > 0 && (
+      <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+            <tr>
+              <th className="px-4 py-2">Peso</th>
+              <th className="px-4 py-2">Tipo de merma</th>
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {detallesMerma.map((d) => (
+              <tr key={d.id} className="border-t border-slate-200">
+                <td className="px-4 py-2">{d.peso} kg</td>
+                <td className="px-4 py-2">{d.tipo_merma || 'Sin especificar'}</td>
+                <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                  {esProduccionOMas() && (
+                    <MenuAcciones
+                      onEditar={() => abrirEdicionMerma(d)}
+                      onDuplicar={() => duplicarMerma(d)}
+                      onEliminar={() => eliminarMerma(d.id)}
+                    />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+  </>
+        ) : (
+          <>
+            {esProduccionOMas() && detalles.length === 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Tipo</label>
+                <select
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                >
+                  <option value="bobina">Bobinas</option>
+                  <option value="fardo">Fardos</option>
+                </select>
+              </div>
+            )}
+
+            {esProduccionOMas() && (
+            <form onSubmit={agregarDetalleSimple} className="flex flex-col sm:flex-row gap-3 mb-6">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Peso (kg)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={peso}
+                  onChange={(e) => setPeso(e.target.value)}
+                  required
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              </div>
+              {tipo === 'fardo' && (
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Millares</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={millares}
+                    onChange={(e) => setMillares(e.target.value)}
+                    required
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                  />
+                </div>
+              )}
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  disabled={enviando}
+                  className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {enviando ? 'Agregando...' : `+ ${etiqueta}`}
+                </button>
+              </div>
+            </form>
+            )}
+
+            {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+
+            {cargando ? (
+              <p className="text-slate-500 text-sm">Cargando...</p>
+            ) : (
+              <div className="overflow-x-auto bg-slate-50 rounded-lg border border-slate-100">
+                <table className="min-w-full text-sm text-left">
+                  <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-2">N°</th>
+                      <th className="px-4 py-2">Peso</th>
+                      <th className="px-4 py-2">Millares</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detalles.map((d) => (
+                      <tr key={d.id} className="border-t border-slate-200">
+                        <td className="px-4 py-2">{d.numero}</td>
+                        <td className="px-4 py-2">{d.peso_neto}</td>
+                        <td className="px-4 py-2">{d.millares ?? '—'}</td>
+                        <td className="px-4 py-2 text-right">
+                          {esProduccionOMas() && (
+                            <button
+                              onClick={() => eliminarDetalle(d.id)}
+                              className="text-red-600 hover:text-red-800 text-xs"
+                            >
+                              Eliminar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {detalles.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-4 py-4 text-center text-slate-400">
+                          Sin registros todavía.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {detalles.length > 0 && (
+              <>
+                <div className="mt-4 bg-slate-800 text-white rounded-lg px-4 py-3 flex flex-wrap justify-between gap-2 text-sm font-medium">
+                  <span>Total: {detalles.length} {etiquetaPlural.toLowerCase()}</span>
+                  <span>Peso: {totalPesoSimple.toFixed(2)} kg</span>
+                  <span>Millares: {totalMillaresSimple.toFixed(2)}</span>
+                </div>
+
+                {(() => {
+                  const diferencia = totalPesoSimple - Number(movimiento.salida)
+                  const porcentaje = movimiento.salida > 0 ? (diferencia / movimiento.salida) * 100 : 0
+                  const esAlarmante = Math.abs(porcentaje) > 5
+
+                  return (
+                    <div className={`mt-3 rounded-lg px-4 py-3 text-sm font-medium border ${
+                      esAlarmante
+                        ? 'bg-red-50 border-red-200 text-red-700'
+                        : 'bg-green-50 border-green-200 text-green-700'
+                    }`}>
+                      <div className="flex justify-between items-center">
+                        <span>Diferencia vs. salida declarada</span>
+                        <span className="font-bold">
+                          {diferencia > 0 ? '+' : ''}{diferencia.toFixed(2)} kg ({porcentaje.toFixed(1)}%)
+                        </span>
+                      </div>
+                      {esAlarmante && (
+                        <p className="text-xs mt-1 text-red-600">
+                          La diferencia supera el 5% — revisar el registro o la salida declarada.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {editandoMerma && (
+        <ModalEditar
+          titulo="Editar Merma"
+          campos={[
+            { name: 'peso', label: 'Peso (kg)', type: 'number' },
+            { name: 'tipo_merma', label: 'Tipo de merma' }
+          ]}
+          valores={editandoMerma}
+          onCambio={(campo, valor) => setEditandoMerma({ ...editandoMerma, [campo]: valor })}
+          onGuardar={guardarEdicionMerma}
+          onCerrar={() => setEditandoMerma(null)}
+          guardando={guardandoMerma}
+        />
+      )}
+    </div>
+  )
+}
+
+export default DetalleMovimiento
+
+
+Entorno.gitignore:
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Variables de entorno
+.env
+
+# VS Code
+.vscode/
+
+ErrorBoundar.jsx:
+
+import { Component } from 'react'
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('Error capturado:', error, info)
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-red-200 p-6 text-center">
+            <h2 className="text-lg font-bold text-red-700 mb-2">Ocurrió un error inesperado</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Algo falló al mostrar esta pantalla. Intenta recargar la página; si el problema sigue, avisa al administrador.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-800"
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+export default ErrorBoundary
+
+
+FiltroDesplegable.jsx:
+
+import { useState, useRef, useEffect } from 'react'
+
+function FiltroDesplegable({ etiqueta, opciones, seleccionado, onSeleccionar }) {
+  const [abierto, setAbierto] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const cerrarSiClickAfuera = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setAbierto(false)
+        setBusqueda('')
+      }
+    }
+    document.addEventListener('mousedown', cerrarSiClickAfuera)
+    return () => document.removeEventListener('mousedown', cerrarSiClickAfuera)
+  }, [])
+
+  const opcionesFiltradas = opciones.filter((op) =>
+    op.toLowerCase().includes(busqueda.toLowerCase())
+  )
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setAbierto(!abierto)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+          seleccionado
+            ? 'bg-slate-900 text-white border-slate-900'
+            : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+        }`}
+      >
+        {seleccionado || etiqueta}
+        <span className="text-xs">▾</span>
+      </button>
+
+      {abierto && (
+        <div className="absolute z-30 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-slate-100">
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              autoFocus
+              placeholder={`Buscar ${etiqueta.toLowerCase()}...`}
+              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm"
+            />
+          </div>
+
+          <div className="max-h-48 overflow-y-auto">
+            <button
+              onClick={() => { onSeleccionar(null); setAbierto(false); setBusqueda('') }}
+              className="w-full text-left px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 border-b border-slate-100"
+            >
+              Todos
+            </button>
+            {opcionesFiltradas.map((op) => (
+              <button
+                key={op}
+                onClick={() => { onSeleccionar(op); setAbierto(false); setBusqueda('') }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${
+                  seleccionado === op ? 'bg-slate-100 font-medium text-slate-800' : 'text-slate-600'
+                }`}
+              >
+                {op}
+              </button>
+            ))}
+            {opcionesFiltradas.length === 0 && (
+              <p className="px-3 py-2 text-sm text-slate-400">Sin resultados</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default FiltroDesplegable
+
+
+index.css
+
+@import "tailwindcss";
+
+
+Login.jsx
+
+import { useState } from 'react'
+import axios from 'axios'
+
+function Login({ onIngresar }) {
+  const [clave, setClave] = useState('')
+  const [error, setError] = useState(null)
+  const [verificando, setVerificando] = useState(false)
+
+  const manejarEnvio = async (e) => {
+    e.preventDefault()
+    setVerificando(true)
+    setError(null)
+
+    try {
+      const res = await axios.post('https://packtech-production.up.railway.app/login', { clave })
+
+      localStorage.setItem('packtech_clave', clave)
+      localStorage.setItem('packtech_rol', res.data.rol)
+      localStorage.setItem('packtech_nombre', res.data.nombre || '')
+
+      onIngresar()
+    } catch (err) {
+      setError('Clave incorrecta, intenta de nuevo.')
+    } finally {
+      setVerificando(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="max-w-sm w-full bg-white rounded-xl shadow-sm border border-slate-100 p-8">
+        <h1 className="text-2xl font-bold text-slate-900 mb-1 tracking-tight">PackTech</h1>
+        <p className="text-slate-500 text-sm mb-6">Sistema de Gestión de Producción</p>
+
+        <form onSubmit={manejarEnvio} className="space-y-4">
+          <input
+            type="password"
+            value={clave}
+            onChange={(e) => setClave(e.target.value)}
+            required
+            autoFocus
+            className="w-full border border-slate-300 rounded-lg px-3 py-2.5"
+            placeholder="Clave"
+          />
+
+          {error && (
+            <p className="text-red-600 text-sm">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={verificando}
+            className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 transition-all disabled:opacity-50"
+          >
+            {verificando ? 'Verificando...' : 'Ingresar'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default Login
+
+
+main.jsx:
+
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
+
+document.addEventListener('wheel', () => {
+  if (document.activeElement && document.activeElement.type === 'number') {
+    document.activeElement.blur()
+  }
+}, { passive: true })
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>,
+)
+
+
+MenuAcciones.jsx:
+
+import { useState, useRef, useEffect } from 'react'
+
+function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {
+  const [abierto, setAbierto] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    const cerrarSiClickAfuera = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setAbierto(false)
+      }
+    }
+    document.addEventListener('mousedown', cerrarSiClickAfuera)
+    return () => document.removeEventListener('mousedown', cerrarSiClickAfuera)
+  }, [])
+
+  return (
+    <div className="relative inline-block" ref={menuRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          setAbierto(!abierto)
+        }}
+        className="text-slate-400 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
+      >
+        ⋮
+      </button>
+
+      {abierto && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden"
+        >
+          {onEditar && (
+            <button
+              onClick={() => { setAbierto(false); onEditar() }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+            >
+              Editar
+            </button>
+          )}
+          {onDuplicar && (
+            <button
+              onClick={() => { setAbierto(false); onDuplicar() }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+            >
+              Duplicar
+            </button>
+          )}
+          {onEliminar && (
+            <button
+              onClick={() => { setAbierto(false); onEliminar() }}
+              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              Eliminar
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default MenuAcciones
+
+
+ModalEditar.jsx:
+
+function ModalEditar({ titulo, campos, valores, onCambio, onGuardar, onCerrar, guardando }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-bold text-slate-800 mb-4">{titulo}</h3>
+
+        <div className="space-y-4">
+          {campos.map((campo) => (
+            <div key={campo.name}>
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                {campo.label}
+              </label>
+              <input
+                type={campo.type || 'text'}
+                value={valores[campo.name] ?? ''}
+                onChange={(e) => onCambio(campo.name, e.target.value)}
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onCerrar}
+            className="flex-1 border border-slate-300 rounded-lg py-2 font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onGuardar}
+            disabled={guardando}
+            className="flex-1 bg-green-700 text-white rounded-lg py-2 font-medium hover:bg-green-800 disabled:opacity-50"
+          >
+            {guardando ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default ModalEditar
+
+
+Movimientos.jsx:
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
+import DetalleMovimiento from './DetalleMovimiento'
+import FiltroDesplegable from './FiltroDesplegable'
+import { puedeCrear, esProduccionOMas } from './roles'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+const MAQUINAS_POR_PROCESO = {
+  'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
+  'Laminado': ['Laminadora-01', 'Laminadora-02'],
+  'Impresión': ['Impresora-01', 'Impresora-02', 'Impresora-03'],
+  'Sellado': [
+    'Selladora-01', 'Selladora-02', 'Selladora-03',
+    'Selladora-04', 'Selladora-05', 'Selladora-06', 'Selladora-07', 'Selladora-08'
+  ],
+  'Corte': ['Cortadora-01', 'Cortadora-02'],
+  'Almacén': ['Almacén'],
+  'Despacho': ['Almacén']
+}
+
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+
+function Movimientos() {
+  const [movimientos, setMovimientos] = useState([])
+  const [ordenes, setOrdenes] = useState([])
+  const [operarios, setOperarios] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const [busquedaOrden, setBusquedaOrden] = useState('')
+  const [sugerenciasOrdenes, setSugerenciasOrdenes] = useState([])
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
+  const [busquedaOperario, setBusquedaOperario] = useState('')
+  const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
+  const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+  const [filtroCodigo, setFiltroCodigo] = useState('')
+  const [filtroProceso, setFiltroProceso] = useState(null)
+  const [filtroOperario, setFiltroOperario] = useState(null)
+  const [filtroMaquina, setFiltroMaquina] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [filtroCliente, setFiltroCliente] = useState('')
+  const [sugerenciasTipoLaminado, setSugerenciasTipoLaminado] = useState([])
+  const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
+
+  const [form, setForm] = useState({
+    orden_id: '',
+    proceso: '',
+    nombre_operario: '',
+    maquina: '',
+    entrada: '',
+    salida: '',
+    unidad: 'kg',
+    tipo_laminado: '',
+    observacion: ''
+  })
+
+  const [enviando, setEnviando] = useState(false)
+  const [errorForm, setErrorForm] = useState(null)
+  const [movimientoAbierto, setMovimientoAbierto] = useState(null)
+
+  const esProcesoEspecial = PROCESOS_ESPECIALES.includes(form.proceso)
+
+  const [hayMasMovimientos, setHayMasMovimientos] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
+  const cargarDatos = async () => {
+    setCargando(true)
+    try {
+      const [movRes, ordRes, opRes] = await Promise.all([
+        axios.get('https://packtech-production.up.railway.app/movimientos?limit=20'),
+        axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=500'),
+        axios.get('https://packtech-production.up.railway.app/operarios')
+      ])
+
+      setMovimientos(movRes.data)
+      setHayMasMovimientos(movRes.data.length === 20)
+      setOrdenes(ordRes.data)
+      setOperarios(opRes.data)
+      setError(null)
+    } catch (err) {
+      console.error(err)
+      setError('No se pudo conectar con el backend.')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  const cargarMasMovimientos = async () => {
+    if (movimientos.length === 0) return
+    setCargandoMas(true)
+    try {
+      const ultimoId = movimientos[movimientos.length - 1].id
+      const res = await axios.get(`https://packtech-production.up.railway.app/movimientos?limit=20&antes_de=${ultimoId}`)
+      setMovimientos((actual) => [...actual, ...res.data])
+      setHayMasMovimientos(res.data.length === 20)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setCargandoMas(false)
+    }
+  }
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  const nombreOperario = (id) => {
+    if (!id) return ''
+    return operarios.find(o => o.id === id)?.nombre || ''
+  }
+
+  const eliminarMovimiento = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
+      cargarDatos()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
+    }
+  }
+
+  const duplicarMovimiento = (mov) => {
+    const codigoOrden = ordenes.find(o => o.id === mov.orden_id)?.codigo || ''
+    const nombreOp = nombreOperario(mov.operario_id)
+
+    setForm({
+      orden_id: mov.orden_id,
+      proceso: mov.proceso,
+      nombre_operario: nombreOp,
+      maquina: mov.maquina || '',
+      entrada: mov.entrada || '',
+      salida: mov.salida || '',
+      unidad: mov.unidad || 'kg',
+      tipo_laminado: mov.tipo_laminado || '',
+      observacion: mov.observacion || ''
+    })
+
+    setBusquedaOrden(codigoOrden)
+    setOrdenSeleccionada(codigoOrden ? { id: mov.orden_id, codigo: codigoOrden } : null)
+    setBusquedaOperario(nombreOp)
+    setOperarioSeleccionado(nombreOp ? { nombre: nombreOp } : null)
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const abrirEdicion = (mov) => {
+    setEditando({
+      id: mov.id,
+      orden_id: ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id,
+      proceso: mov.proceso,
+      nombre_operario: nombreOperario(mov.operario_id),
+      maquina: mov.maquina,
+      entrada: mov.entrada,
+      salida: mov.salida,
+      unidad: mov.unidad,
+      observacion: mov.observacion || '',
+      esEspecial: PROCESOS_ESPECIALES.includes(mov.proceso)
+    })
+  }
+
+const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+      await axios.put(`https://packtech-production.up.railway.app/movimientos/${editando.id}`, {
+        codigo_orden: editando.orden_id,
+        proceso: editando.proceso,
+        nombre_operario: editando.nombre_operario,
+        maquina: editando.maquina,
+        unidad: editando.unidad,
+        entrada: editando.esEspecial ? null : (parseFloat(editando.entrada) || 0),
+        salida: editando.esEspecial ? null : (parseFloat(editando.salida) || 0),
+        observacion: editando.observacion || null
+      })
+
+      setEditando(null)
+      cargarDatos()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al editar el movimiento.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const manejarCambio = (e) => {
+    const { name, value } = e.target
+
+    if (name === 'proceso') {
+      setForm({ ...form, proceso: value, maquina: '', entrada: '', salida: '', tipo_laminado: '' })
+      return
+    }
+
+    setForm({ ...form, [name]: value })
+  }
+
+  const manejarEnvio = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setErrorForm(null)
+
+    const payload = {
+      orden_id: parseInt(form.orden_id),
+      proceso: form.proceso,
+      nombre_operario: form.nombre_operario.trim(),
+      maquina: form.maquina,
+      entrada: esProcesoEspecial
+        ? (form.proceso === 'Extrusión' ? parseFloat(form.entrada) || 0 : 0)
+        : parseFloat(form.entrada) || 0,
+      salida: esProcesoEspecial ? 0 : (parseFloat(form.salida) || 0),
+      unidad: form.unidad,
+      tipo_laminado: form.proceso === 'Laminado' ? (form.tipo_laminado?.trim() || null) : null,
+      observacion: form.observacion || null
+    }
+
+    try {
+      const respuesta = await axios.post('https://packtech-production.up.railway.app/movimientos', payload)
+
+      setForm({
+        orden_id: '',
+        proceso: '',
+        nombre_operario: '',
+        maquina: '',
+        entrada: '',
+        salida: '',
+        unidad: 'kg',
+        tipo_laminado: '',
+        observacion: ''
+      })
+      setBusquedaOrden('')
+      setOrdenSeleccionada(null)
+      setBusquedaOperario('')
+      setOperarioSeleccionado(null)
+
+      cargarDatos()
+
+      if (esProcesoEspecial) {
+        setMovimientoAbierto(respuesta.data)
+      }
+    } catch (err) {
+      const mensaje = err.response?.data?.detail || 'Error al registrar el movimiento.'
+      setErrorForm(mensaje)
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
+
+  useEffect(() => {
+    if (form.proceso !== 'Laminado' || form.tipo_laminado.trim().length < 2) {
+      setSugerenciasTipoLaminado([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=Laminado&q=${form.tipo_laminado}`)
+        .then((res) => setSugerenciasTipoLaminado(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [form.tipo_laminado, form.proceso])
+
+  useEffect(() => {
+    if (busquedaOrden.trim().length < 2 || ordenSeleccionada) {
+      setSugerenciasOrdenes([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
+        .then((res) => setSugerenciasOrdenes(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [busquedaOrden, ordenSeleccionada])
+
+  useEffect(() => {
+    if (busquedaOperario.trim().length < 2 || operarioSeleccionado) {
+      setSugerenciasOperarios([])
+      return
+    }
+    const temporizador = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/operarios/buscar?q=${busquedaOperario}`)
+        .then((res) => setSugerenciasOperarios(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(temporizador)
+  }, [busquedaOperario, operarioSeleccionado])
+
+  useEffect(() => {
+    if (!esProcesoEspecial || form.proceso === 'Laminado') {
+      setSugerenciasTipoMerma([])
+      return
+    }
+    return
+  }, [form.proceso, esProcesoEspecial])
+
+  const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
+  const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
+  const maquinasUnicas = [...new Set(movimientos.filter(m => m.maquina).map(m => m.maquina))].sort()
+
+  const movimientosFiltrados = movimientos.filter((mov) => {
+    const codigo = ordenes.find(o => o.id === mov.orden_id)?.codigo || String(mov.orden_id)
+    const cliente = ordenes.find(o => o.id === mov.orden_id)?.cliente || ''
+    if (filtroCodigo && !codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
+    if (filtroCliente && !cliente.toLowerCase().includes(filtroCliente.toLowerCase())) return false
+    if (filtroProceso && mov.proceso !== filtroProceso) return false
+    if (filtroOperario && nombreOperario(mov.operario_id) !== filtroOperario) return false
+    if (filtroMaquina && mov.maquina !== filtroMaquina) return false
+    if (fechaDesde && mov.fecha < fechaDesde) return false
+    if (fechaHasta && mov.fecha > fechaHasta) return false
+    return true
+  })
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Movimientos</h1>
+        <p className="text-slate-500 text-sm mt-1">Registra y consulta el avance de producción por proceso.</p>
+      </div>
+
+      {puedeCrear() && (
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-4">
+          Registrar Movimiento
+        </h2>
+
+        <form onSubmit={manejarEnvio} className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Número de Pedido
+              </label>
+              <input
+                type="text"
+                value={busquedaOrden}
+                onChange={(e) => {
+                  setBusquedaOrden(e.target.value)
+                  setOrdenSeleccionada(null)
+                  setForm({ ...form, orden_id: '' })
+                }}
+                required
+                autoComplete="off"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                placeholder="Escribe el código (ej. OP-001)"
+              />
+              {sugerenciasOrdenes.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {sugerenciasOrdenes.map((orden) => (
+                    <button
+                      key={orden.id}
+                      type="button"
+                      onClick={() => {
+                        setOrdenSeleccionada(orden)
+                        setBusquedaOrden(orden.codigo)
+                        setForm({ ...form, orden_id: orden.id })
+                        setSugerenciasOrdenes([])
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0 transition-colors"
+                    >
+                      <span className="font-medium text-slate-800">{orden.codigo}</span>
+                      <span className="text-slate-400"> · {orden.cliente}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 relative">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Operario
+              </label>
+              <input
+                type="text"
+                value={busquedaOperario}
+                onChange={(e) => {
+                  setBusquedaOperario(e.target.value)
+                  setOperarioSeleccionado(null)
+                  setForm({ ...form, nombre_operario: e.target.value })
+                }}
+                required
+                autoComplete="off"
+                className="w-full border border-slate-300 rounded px-3 py-2"
+                placeholder="Escribe un nombre"
+              />
+              {sugerenciasOperarios.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {sugerenciasOperarios.map((op) => (
+                    <button
+                      key={op.id}
+                      type="button"
+                      onClick={() => {
+                        setOperarioSeleccionado(op)
+                        setBusquedaOperario(op.nombre)
+                        setForm({ ...form, nombre_operario: op.nombre })
+                        setSugerenciasOperarios([])
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-medium text-slate-800">{op.nombre}</span>
+                      {op.cargo && <span className="text-slate-400"> · {op.cargo}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Proceso
+              </label>
+              <select
+                name="proceso"
+                value={form.proceso}
+                onChange={manejarCambio}
+                required
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              >
+                <option value="">Seleccionar...</option>
+                <option value="Extrusión">Extrusión</option>
+                <option value="Laminado">Laminado</option>
+                <option value="Impresión">Impresión</option>
+                <option value="Sellado">Sellado</option>
+                <option value="Corte">Corte</option>
+                <option value="Almacén">Almacén</option>
+                <option value="Despacho">Despacho</option>
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Máquina
+              </label>
+              <select
+                name="maquina"
+                value={form.maquina}
+                onChange={manejarCambio}
+                required
+                disabled={!form.proceso}
+                className="w-full border border-slate-300 rounded px-3 py-2 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">
+                  {form.proceso ? 'Seleccionar...' : 'Elige un proceso primero'}
+                </option>
+                {maquinasDisponibles.map((maquina) => (
+                  <option key={maquina} value={maquina}>{maquina}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {esProcesoEspecial ? (
+            <>
+              {form.proceso === 'Extrusión' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Entrada (kg, sacos)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="entrada"
+                    value={form.entrada}
+                    onChange={manejarCambio}
+                    required
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                  />
+                </div>
+              )}
+
+              {PROCESOS_DOBLE_LADO.includes(form.proceso) && (
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  La entrada y salida se calculan a partir de las bobinas que registres en el siguiente paso.
+                </p>
+              )}
+
+              {form.proceso === 'Laminado' && (
+                <div className="relative">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Tipo de laminado
+                  </label>
+                  <input
+                    type="text"
+                    value={form.tipo_laminado}
+                    onChange={(e) => setForm({ ...form, tipo_laminado: e.target.value })}
+                    autoComplete="off"
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                    placeholder="Ej. BOPP/PE, Metalizado..."
+                  />
+                  {sugerenciasTipoLaminado.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                      {sugerenciasTipoLaminado.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, tipo_laminado: t.nombre })
+                            setSugerenciasTipoLaminado([])
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                        >
+                          {t.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                La merma se registra en detalle (por tipo) en el siguiente paso.
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Entrada
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="entrada"
+                  value={form.entrada}
+                  onChange={manejarCambio}
+                  required
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Salida
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="salida"
+                  value={form.salida}
+                  onChange={manejarCambio}
+                  required
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Faltante/Sobrante
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={
+                    form.entrada !== '' && form.salida !== ''
+                      ? (parseFloat(form.entrada) - parseFloat(form.salida)).toFixed(2)
+                      : ''
+                  }
+                  className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
+                />
+              </div>
+
+              <div className="w-28">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Unidad
+                </label>
+                <select
+                  name="unidad"
+                  value={form.unidad}
+                  onChange={manejarCambio}
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                >
+                  <option value="kg">kg</option>
+                  <option value="unidades">unidades</option>
+                  <option value="rollos">rollos</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">
+              Observación
+            </label>
+            <input
+              type="text"
+              name="observacion"
+              value={form.observacion}
+              onChange={manejarCambio}
+              className="w-full border border-slate-300 rounded px-3 py-2"
+              placeholder="Fallo de máquina / Cambio de bobina / Otro"
+            />
+          </div>
+
+          {errorForm && <p className="text-red-600 text-sm">{errorForm}</p>}
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {enviando ? 'Guardando...' : esProcesoEspecial ? 'Continuar a Bobinas' : 'Registrar Movimiento'}
+          </button>
+        </form>
+      </div>
+      )}
+
+      <div>
+        {cargando && <p className="text-slate-500">Cargando...</p>}
+        {error && <p className="text-red-600">{error}</p>}
+
+        {!cargando && !error && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <input
+                type="text"
+                value={filtroCodigo}
+                onChange={(e) => setFiltroCodigo(e.target.value)}
+                placeholder="Buscar N° Pedido..."
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+              />
+              <input
+                type="text"
+                value={filtroCliente}
+                onChange={(e) => setFiltroCliente(e.target.value)}
+                placeholder="Buscar Cliente..."
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+              />
+              <FiltroDesplegable
+                etiqueta="Proceso"
+                opciones={procesosUnicos}
+                seleccionado={filtroProceso}
+                onSeleccionar={setFiltroProceso}
+              />
+              <FiltroDesplegable
+                etiqueta="Operario"
+                opciones={operariosUnicos}
+                seleccionado={filtroOperario}
+                onSeleccionar={setFiltroOperario}
+              />
+              <FiltroDesplegable
+                etiqueta="Máquina"
+                opciones={maquinasUnicas}
+                seleccionado={filtroMaquina}
+                onSeleccionar={setFiltroMaquina}
+              />
+              <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                <span>Desde</span>
+                <input
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+                />
+                <span>hasta</span>
+                <input
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+                />
+              </div>
+              {(filtroCodigo || filtroCliente || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
+                <button
+                  onClick={() => {
+                    setFiltroCodigo('')
+                    setFiltroCliente('')
+                    setFiltroProceso(null)
+                    setFiltroOperario(null)
+                    setFiltroMaquina(null)
+                    setFechaDesde('')
+                    setFechaHasta('')
+                  }}
+                  className="text-sm text-slate-400 hover:text-slate-700 underline"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-600 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3">N° Pedido</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Proceso</th>
+                    <th className="px-4 py-3">Máquina</th>
+                    <th className="px-4 py-3">Operario</th>
+                    <th className="px-4 py-3">Entrada</th>
+                    <th className="px-4 py-3">Salida</th>
+                    <th className="px-4 py-3">Unidad</th>
+                    <th className="px-4 py-3">Fecha</th>
+                    <th className="px-4 py-3">Hora</th>
+                    <th className="px-4 py-3 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimientosFiltrados.map((mov) => (
+                    <tr
+                      key={mov.id}
+                      onClick={() => setMovimientoAbierto(mov)}
+                      className={`border-t border-slate-100 cursor-pointer hover:bg-blue-50/50 ${
+                        (!mov.operario_id || !mov.maquina) ? 'bg-red-50' : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-800">
+                        {ordenes.find(o => o.id === mov.orden_id)?.codigo || mov.orden_id}
+                      </td>
+                      <td className="px-4 py-3">
+                        {ordenes.find(o => o.id === mov.orden_id)?.cliente || '—'}
+                      </td>
+                      <td className="px-4 py-3">{mov.proceso}</td>
+                      <td className="px-4 py-3">
+                        {mov.maquina || <span className="text-red-600 font-medium">Falta máquina</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {mov.operario_id ? nombreOperario(mov.operario_id) : <span className="text-red-600 font-medium">Falta operario</span>}
+                      </td>
+                      <td className="px-4 py-3">{mov.entrada}</td>
+                      <td className="px-4 py-3">{mov.salida}</td>
+                      <td className="px-4 py-3">{mov.unidad}</td>
+                      <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
+                      <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        {puedeCrear() && (
+                          <MenuAcciones
+                            onEditar={esProduccionOMas() ? () => abrirEdicion(mov) : undefined}
+                            onDuplicar={() => duplicarMovimiento(mov)}
+                            onEliminar={esProduccionOMas() ? () => eliminarMovimiento(mov.id) : undefined}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {hayMasMovimientos && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={cargarMasMovimientos}
+                  disabled={cargandoMas}
+                  className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {cargandoMas ? 'Cargando...' : 'Cargar más movimientos'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {movimientoAbierto && (
+        <DetalleMovimiento
+          movimiento={movimientoAbierto}
+          orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
+          onCerrar={() => { setMovimientoAbierto(null); cargarDatos() }}
+        />
+      )}
+
+      {editando && (
+        <ModalEditar
+          titulo="Editar Movimiento"
+          campos={[
+            { name: 'orden_id', label: 'Código de Orden' },
+            { name: 'proceso', label: 'Proceso' },
+            { name: 'nombre_operario', label: 'Operario' },
+            { name: 'maquina', label: 'Máquina' },
+            { name: 'unidad', label: 'Unidad' },
+            ...(editando.esEspecial ? [] : [
+              { name: 'entrada', label: 'Entrada', type: 'number' },
+              { name: 'salida', label: 'Salida', type: 'number' }
+            ]),
+            { name: 'observacion', label: 'Observación' }
+          ]}
+          valores={editando}
+          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditando(null)}
+          guardando={guardando}
+        />
+      )}
+    </div>
+  )
+}
+
+export default Movimientos
+
+
+Operarios.jsx
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import MenuAcciones from './MenuAcciones'
+import ModalEditar from './ModalEditar'
+import { esVendedorOMas, puedeCrear } from './roles'
+
+function Operarios() {
+  const [operarios, setOperarios] = useState([])
+  const [form, setForm] = useState({ nombre: '', cargo: '' })
+  const [error, setError] = useState(null)
+  const [enviando, setEnviando] = useState(false)
+  const [editando, setEditando] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+  const [filtro, setFiltro] = useState('')  
+
+
+  const abrirEdicion = (operario) => {
+    setEditando({ id: operario.id, nombre: operario.nombre, cargo: operario.cargo })
+  }
+
+  const guardarEdicion = async () => {
+    setGuardando(true)
+    try {
+      await axios.put(`https://packtech-production.up.railway.app/operarios/${editando.id}`, {
+        nombre: editando.nombre,
+        cargo: editando.cargo
+      })
+      setEditando(null)
+      cargarOperarios()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al editar el operario.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const [hayMas, setHayMas] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
+
+  const cargarOperarios = () => {
+    axios.get('https://packtech-production.up.railway.app/operarios?limit=20')
+      .then((res) => {
+        setOperarios(res.data)
+        setHayMas(res.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+  }
+
+  const cargarMasOperarios = () => {
+    if (operarios.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = operarios[operarios.length - 1].id
+    axios.get(`https://packtech-production.up.railway.app/operarios?limit=20&antes_de=${ultimoId}`)
+      .then((res) => {
+        setOperarios((actual) => [...actual, ...res.data])
+        setHayMas(res.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
+  }
+
+  useEffect(() => {
+    cargarOperarios()
+  }, [])
+
+  const crearOperario = async (e) => {
+    e.preventDefault()
+    setEnviando(true)
+    setError(null)
+
+    try {
+      await axios.post('https://packtech-production.up.railway.app/operarios', form)
+      setForm({ nombre: '', cargo: '' })
+      cargarOperarios()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al crear el operario.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const eliminarOperario = async (id) => {
+    if (!confirm('¿Seguro que quieres eliminar este operario?')) return
+
+    try {
+      await axios.delete(`https://packtech-production.up.railway.app/operarios/${id}`)
+      cargarOperarios()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al eliminar el operario.')
+    }
+  }
+
+  const operariosFiltrados = operarios.filter((o) =>
+  o.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+  (o.cargo || '').toLowerCase().includes(filtro.toLowerCase())
+  )
+
+  return (
+  <div className="space-y-8">
+    <div>
+      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Operarios</h1>
+      <p className="text-slate-500 text-sm mt-1">Administra el personal de planta registrado en el sistema.</p>
+    </div>
+      {puedeCrear() && (
+      <div className="max-w-lg mx-auto bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-4">Registrar Operario</h2>
+
+        <form onSubmit={crearOperario} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Nombre</label>
+            <input
+              type="text"
+              value={form.nombre}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              required
+              className="w-full border border-slate-300 rounded px-3 py-2"
+              placeholder="Juan Perez"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Cargo</label>
+            <input
+              type="text"
+              value={form.cargo}
+              onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+              className="w-full border border-slate-300 rounded px-3 py-2"
+              placeholder="Operario de máquina"
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {enviando ? 'Creando...' : 'Registrar Operario'}
+          </button>
+        </form>
+      </div>
+      )}
+
+      <div>
+
+        <input
+          type="text"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por nombre o cargo..."
+          className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-64 mb-4"
+        />
+
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Cargo</th>
+                <th className="px-4 py-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {operariosFiltrados.map((o) => (
+                <tr key={o.id} className="border-t border-slate-100">
+                  <td className="px-4 py-3">{o.id}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{o.nombre}</td>
+                  <td className="px-4 py-3">{o.cargo}</td>
+                  <td className="px-4 py-3 text-right">
+                    {esVendedorOMas() && (
+                      <MenuAcciones
+                        onEditar={() => abrirEdicion(o)}
+                        onEliminar={() => eliminarOperario(o.id)}
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {hayMas && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={cargarMasOperarios}
+              disabled={cargandoMas}
+              className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {cargandoMas ? 'Cargando...' : 'Cargar más operarios'}
+            </button>
+          </div>
+        )}
+      </div>
+      {editando && (
+      <ModalEditar
+        titulo="Editar Operario"
+        campos={[
+          { name: 'nombre', label: 'Nombre' },
+          { name: 'cargo', label: 'Cargo' }
+        ]}
+        valores={editando}
+        onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
+        onGuardar={guardarEdicion}
+        onCerrar={() => setEditando(null)}
+        guardando={guardando}
+      />
+    )}
+    </div>
+  )
+}
+
+export default Operarios
+
+
+OrdenDetalle.jsx:
+
+import { useEffect, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import axios from './api'
+import DetalleMovimiento from './DetalleMovimiento'
+
+const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+function OrdenDetalle() {
+  const { id } = useParams()
+  const [orden, setOrden] = useState(null)
+  const [movimientos, setMovimientos] = useState([])
+  const [operarios, setOperarios] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const [editandoPlan, setEditandoPlan] = useState(false)
+  const [seleccionados, setSeleccionados] = useState([])
+  const [guardando, setGuardando] = useState(false)
+  const [movimientoAbierto, setMovimientoAbierto] = useState(null)
+
+  const cargar = async () => {
+    try {
+      const [ordenesRes, movRes, opRes] = await Promise.all([
+        axios.get('https://packtech-production.up.railway.app/ordenes-produccion'),
+        axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`),
+        axios.get('https://packtech-production.up.railway.app/operarios')
+      ])
+
+      const ordenEncontrada = ordenesRes.data.find(o => o.id === parseInt(id))
+      setOrden(ordenEncontrada)
+      setMovimientos(movRes.data)
+      setOperarios(opRes.data)
+      setCargando(false)
+    } catch (err) {
+      console.error(err)
+      setError('No se pudo cargar el historial.')
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [id])
+
+  const nombreOperario = (opId) => {
+    if (!opId) return ''
+    return operarios.find(o => o.id === opId)?.nombre || ''
+  }
+
+  const abrirPlanificador = () => {
+    const actuales = orden?.procesos_plan ? orden.procesos_plan.split(',') : []
+    setSeleccionados(actuales)
+    setEditandoPlan(true)
+  }
+
+  const guardarPlan = async () => {
+    setGuardando(true)
+    try {
+      await axios.put(
+        `https://packtech-production.up.railway.app/ordenes-produccion/${id}/procesos`,
+        { procesos_plan: seleccionados.join(',') }
+      )
+      setEditandoPlan(false)
+      cargar()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error al guardar el plan de procesos.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const agregarProceso = (proceso) => {
+    setSeleccionados((actual) => [...actual, proceso])
+  }
+
+  const quitarProceso = (index) => {
+    setSeleccionados((actual) => actual.filter((_, i) => i !== index))
+  }
+
+  const moverProceso = (index, direccion) => {
+    setSeleccionados((actual) => {
+      const nuevo = [...actual]
+      const destino = index + direccion
+      if (destino < 0 || destino >= nuevo.length) return actual
+      ;[nuevo[index], nuevo[destino]] = [nuevo[destino], nuevo[index]]
+      return nuevo
+    })
+  }
+
+  const procesosPlan = orden?.procesos_plan ? orden.procesos_plan.split(',') : []
+  const procesosCompletados = new Set(movimientos.map((m) => m.proceso))
+
+  return (
+    <div className="space-y-6">
+      <Link to="/" className="text-slate-600 hover:text-slate-800 text-sm">
+        ← Volver a Órdenes
+      </Link>
+
+      <div>
+        <h2 className="text-xl font-bold text-slate-800">
+          {orden ? `${orden.codigo} · ${orden.cliente}` : `Orden #${id}`}
+        </h2>
+        {orden?.descripcion && (
+          <p className="text-slate-500 text-sm mt-1">{orden.descripcion}</p>
+        )}
+      </div>
+
+      {orden && (
+        <div className="flex flex-wrap gap-3">
+          <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+            orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
+            orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
+            orden.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+            'bg-slate-100 text-slate-500'
+          }`}>
+            Estado: {orden.estado}
+          </span>
+          <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            Último proceso: {orden.ultimo_proceso}
+          </span>
+        </div>
+      )}
+
+      {/* PLAN DE PROCESOS */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-slate-800">Ruta de Producción</h3>
+          <button
+            onClick={abrirPlanificador}
+            className="text-sm text-slate-600 hover:text-slate-900 underline"
+          >
+            {procesosPlan.length > 0 ? 'Editar ruta' : 'Definir ruta'}
+          </button>
+        </div>
+
+        {procesosPlan.length === 0 && (
+          <p className="text-slate-400 text-sm">Aún no se ha definido por qué procesos pasará esta orden.</p>
+        )}
+
+        {procesosPlan.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {procesosPlan.map((proceso, i) => {
+              const completado = procesosCompletados.has(proceso)
+              const esActual = !completado && orden?.ultimo_proceso !== 'Sin iniciar' &&
+                procesosPlan.findIndex(p => !procesosCompletados.has(p)) === i
+
+              return (
+                <div key={proceso} className="flex items-center gap-2">
+                  <div className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                    completado ? 'bg-green-100 text-green-700 border-green-200' :
+                    esActual ? 'bg-blue-50 text-blue-700 border-blue-300' :
+                    'bg-slate-50 text-slate-400 border-slate-200'
+                  }`}>
+                    {completado ? '✓ ' : esActual ? '● ' : ''}{proceso}
+                  </div>
+                  {i < procesosPlan.length - 1 && (
+                    <span className="text-slate-300">→</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!cargando && !error && movimientos.length === 0 && (
+        <p className="text-slate-500">Esta orden aún no tiene movimientos registrados.</p>
+      )}
+
+      {!cargando && !error && movimientos.length > 0 && (
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+              <tr>
+                <th className="px-4 py-3">Proceso</th>
+                <th className="px-4 py-3">Máquina</th>
+                <th className="px-4 py-3">Operario</th>
+                <th className="px-4 py-3">Entrada</th>
+                <th className="px-4 py-3">Salida</th>
+                <th className="px-4 py-3">Unidad</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Hora</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movimientos.map((mov) => (
+                <tr
+                  key={mov.id}
+                  onClick={() => setMovimientoAbierto(mov)}
+                  className={`border-t border-slate-100 cursor-pointer hover:bg-slate-50 ${
+                    (!mov.operario_id || !mov.maquina) ? 'bg-red-50' : ''
+                  }`}
+                >
+                  <td className="px-4 py-3 font-medium text-slate-800">{mov.proceso}</td>
+                  <td className="px-4 py-3">
+                    {mov.maquina || <span className="text-red-600 font-medium">Falta máquina</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {mov.operario_id ? nombreOperario(mov.operario_id) : <span className="text-red-600 font-medium">Falta operario</span>}
+                  </td>
+                  <td className="px-4 py-3">{mov.entrada}</td>
+                  <td className="px-4 py-3">{mov.salida}</td>
+                  <td className="px-4 py-3">{mov.unidad}</td>
+                  <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
+                  <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editandoPlan && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Definir Ruta de Producción</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Agrega los procesos en el orden que quieras. Puedes reordenarlos con las flechas.
+            </p>
+
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Procesos disponibles
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {TODOS_LOS_PROCESOS.filter((p) => !seleccionados.includes(p)).map((proceso) => (
+                  <button
+                    key={proceso}
+                    type="button"
+                    onClick={() => agregarProceso(proceso)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                  >
+                    + {proceso}
+                  </button>
+                ))}
+                {TODOS_LOS_PROCESOS.every((p) => seleccionados.includes(p)) && (
+                  <p className="text-sm text-slate-400">Ya agregaste todos los procesos.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Tu ruta ({seleccionados.length})
+              </p>
+
+              {seleccionados.length === 0 && (
+                <p className="text-sm text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-3 text-center">
+                  Agrega procesos arriba para armar la ruta.
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {seleccionados.map((proceso, index) => (
+                  <div
+                    key={`${proceso}-${index}`}
+                    className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+                  >
+                    <span className="text-xs font-bold text-blue-700 bg-white rounded-full w-5 h-5 flex items-center justify-center border border-blue-300">
+                      {index + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-blue-800">{proceso}</span>
+                    <button
+                      type="button"
+                      onClick={() => moverProceso(index, -1)}
+                      disabled={index === 0}
+                      className="text-blue-600 hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed px-1"
+                      title="Mover arriba"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moverProceso(index, 1)}
+                      disabled={index === seleccionados.length - 1}
+                      className="text-blue-600 hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed px-1"
+                      title="Mover abajo"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quitarProceso(index)}
+                      className="text-red-500 hover:text-red-700 px-1"
+                      title="Quitar"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditandoPlan(false)}
+                className="flex-1 border border-slate-300 rounded-lg py-2 font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarPlan}
+                disabled={guardando}
+                className="flex-1 bg-green-700 text-white rounded-lg py-2 font-medium hover:bg-green-800 disabled:opacity-50"
+              >
+                {guardando ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {movimientoAbierto && (
+        <DetalleMovimiento
+          movimiento={movimientoAbierto}
+          orden={orden}
+          onCerrar={() => setMovimientoAbierto(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+export default OrdenDetalle
+
+Reportes.jsx:
+
+import { useEffect, useState } from 'react'
+import axios from './api'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+const hoyISO = () => new Date().toISOString().slice(0, 10)
+
+const restarDias = (dias) => {
+  const d = new Date()
+  d.setDate(d.getDate() - dias)
+  return d.toISOString().slice(0, 10)
+}
+
+const PERIODOS = [
+  { id: 'dia', label: 'Hoy', desde: () => hoyISO() },
+  { id: 'semana', label: 'Última semana', desde: () => restarDias(7) },
+  { id: 'mes', label: 'Último mes', desde: () => restarDias(30) },
+  { id: 'anio', label: 'Último año', desde: () => restarDias(365) },
+  { id: 'todo', label: 'Todo', desde: () => '' }
+]
+
+const AGRUPACIONES = [
+  { id: 'proceso', label: 'Proceso' },
+  { id: 'maquina', label: 'Máquina' },
+  { id: 'operario', label: 'Operario' },
+  { id: 'cliente', label: 'Cliente' }
+]
+
+function VistaGeneral() {
+  const [periodo, setPeriodo] = useState('semana')
+  const [agrupacion, setAgrupacion] = useState('proceso')
+  const [datos, setDatos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+
+  const cargar = () => {
+    setCargando(true)
+    const p = PERIODOS.find((x) => x.id === periodo)
+    const desde = p.desde()
+
+    axios.get('https://packtech-production.up.railway.app/reportes/resumen', {
+      params: { agrupar_por: agrupacion, desde: desde || undefined }
+    })
+      .then((res) => {
+        setDatos(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError('No se pudo cargar el reporte.')
+      })
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [periodo, agrupacion])
+
+  const totalEntrada = datos.reduce((s, d) => s + d.entrada, 0)
+  const totalSalida = datos.reduce((s, d) => s + d.salida, 0)
+  const totalMerma = datos.reduce((s, d) => s + d.merma, 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {PERIODOS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPeriodo(p.id)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              periodo === p.id
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+
+        <div className="w-px bg-slate-200 mx-1" />
+
+        {AGRUPACIONES.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => setAgrupacion(a.id)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              agrupacion === a.id
+                ? 'bg-blue-700 text-white border-blue-700'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            Por {a.label}
+          </button>
+        ))}
+      </div>
+
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!cargando && !error && (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Entrada total</p>
+              <p className="text-xl font-bold text-slate-800">{totalEntrada.toFixed(2)} kg</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+              <p className="text-xs text-blue-500 uppercase tracking-wide">Salida total</p>
+              <p className="text-xl font-bold text-blue-800">{totalSalida.toFixed(2)} kg</p>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <p className="text-xs text-red-500 uppercase tracking-wide">Merma total</p>
+              <p className="text-xl font-bold text-red-700">{totalMerma.toFixed(2)} kg</p>
+            </div>
+          </div>
+
+          {datos.length === 0 ? (
+            <p className="text-slate-400 text-center py-8">Sin datos para este periodo.</p>
+          ) : (
+            <>
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">
+                  Entrada / Salida / Merma por {AGRUPACIONES.find((a) => a.id === agrupacion).label.toLowerCase()}
+                </h3>
+                <ResponsiveContainer width="100%" height={Math.max(280, datos.length * 50)}>
+                  <BarChart data={datos} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis type="number" tick={{ fontSize: 12 }} />
+                    <YAxis dataKey="etiqueta" type="category" width={120} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="entrada" name="Entrada" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="salida" name="Salida" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="merma" name="Merma" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+                <table className="min-w-full text-sm text-left">
+                  <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-3">{AGRUPACIONES.find((a) => a.id === agrupacion).label}</th>
+                      <th className="px-4 py-3">Entrada</th>
+                      <th className="px-4 py-3">Salida</th>
+                      <th className="px-4 py-3">Merma</th>
+                      <th className="px-4 py-3">% Merma</th>
+                      <th className="px-4 py-3">Movimientos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datos.map((d) => (
+                      <tr key={d.etiqueta} className="border-t border-slate-100">
+                        <td className="px-4 py-3 font-medium text-slate-800">{d.etiqueta}</td>
+                        <td className="px-4 py-3">{d.entrada.toFixed(2)}</td>
+                        <td className="px-4 py-3">{d.salida.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-red-600 font-medium">{d.merma.toFixed(2)}</td>
+                        <td className="px-4 py-3">
+                          {d.entrada > 0 ? `${((d.merma / d.entrada) * 100).toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{d.movimientos}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+const COLORES_MERMA = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#ec4899', '#64748b']
+
+function VistaTipoMerma() {
+  const [periodo, setPeriodo] = useState('semana')
+  const [datos, setDatos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+
+  const cargar = () => {
+    setCargando(true)
+    const p = PERIODOS.find((x) => x.id === periodo)
+    const desde = p.desde()
+
+    axios.get('https://packtech-production.up.railway.app/reportes/tipos-merma', {
+      params: { desde: desde || undefined }
+    })
+      .then((res) => {
+        setDatos(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError('No se pudo cargar el reporte.')
+      })
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [periodo])
+
+  const totalPeso = datos.reduce((s, d) => s + d.peso, 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {PERIODOS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPeriodo(p.id)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              periodo === p.id
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!cargando && !error && (
+        datos.length === 0 ? (
+          <p className="text-slate-400 text-center py-8">Sin mermas registradas para este periodo.</p>
+        ) : (
+          <>
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 w-fit">
+              <p className="text-xs text-red-500 uppercase tracking-wide">Merma total detallada</p>
+              <p className="text-xl font-bold text-red-700">{totalPeso.toFixed(2)} kg</p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-4">Merma por tipo</h3>
+              <ResponsiveContainer width="100%" height={Math.max(280, datos.length * 45)}>
+                <BarChart data={datos} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="etiqueta" type="category" width={140} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="peso" name="Merma (kg)" radius={[0, 4, 4, 0]}>
+                    {datos.map((_, i) => (
+                      <Cell key={i} fill={COLORES_MERMA[i % COLORES_MERMA.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3">Tipo de merma</th>
+                    <th className="px-4 py-3">Peso</th>
+                    <th className="px-4 py-3">% del total</th>
+                    <th className="px-4 py-3">Registros</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.map((d) => (
+                    <tr key={d.etiqueta} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-medium text-slate-800">{d.etiqueta}</td>
+                      <td className="px-4 py-3 text-red-600 font-medium">{d.peso.toFixed(2)} kg</td>
+                      <td className="px-4 py-3">{totalPeso > 0 ? `${((d.peso / totalPeso) * 100).toFixed(1)}%` : '—'}</td>
+                      <td className="px-4 py-3 text-slate-500">{d.registros}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )
+      )}
+    </div>
+  )
+}
+
+function VistaOrden() {
+  const [busqueda, setBusqueda] = useState('')
+  const [sugerencias, setSugerencias] = useState([])
+  const [reporte, setReporte] = useState(null)
+  const [cargando, setCargando] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (busqueda.trim().length < 2) {
+      setSugerencias([])
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busqueda}`)
+        .then((res) => setSugerencias(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [busqueda])
+
+  const seleccionarOrden = (codigo) => {
+    setBusqueda(codigo)
+    setSugerencias([])
+    setCargando(true)
+    setError(null)
+    axios.get(`https://packtech-production.up.railway.app/reportes/orden/${codigo}`)
+      .then((res) => setReporte(res.data))
+      .catch((err) => {
+        setError(err.response?.data?.detail || 'No se pudo cargar la orden.')
+        setReporte(null)
+      })
+      .finally(() => setCargando(false))
+  }
+
+  const datosGrafico = reporte
+    ? reporte.pasos.map((p) => ({
+        etiqueta: p.proceso,
+        entrada: p.entrada,
+        salida: p.salida,
+        merma: p.merma
+      }))
+    : []
+
+  return (
+    <div className="space-y-6">
+      <div className="max-w-md relative">
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => { setBusqueda(e.target.value); setReporte(null) }}
+          autoComplete="off"
+          placeholder="Escribe el código de la orden (ej. OP-001)"
+          className="w-full border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+        />
+        {sugerencias.length > 0 && (
+          <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {sugerencias.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => seleccionarOrden(o.codigo)}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0"
+              >
+                <span className="font-medium text-slate-800">{o.codigo}</span>
+                <span className="text-slate-400"> · {o.cliente}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {reporte && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">{reporte.codigo}</h3>
+                <p className="text-sm text-slate-500">
+                  {reporte.cliente} · {reporte.descripcion || 'Sin descripción'}
+                </p>
+              </div>
+              <span className="text-sm text-slate-400">
+                {reporte.cantidad} {reporte.unidad} planificado
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                <p className="text-xs text-slate-400 uppercase tracking-wide">Entrada total</p>
+                <p className="text-xl font-bold text-slate-800">{reporte.total_entrada.toFixed(2)}</p>
+              </div>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <p className="text-xs text-blue-500 uppercase tracking-wide">Salida total</p>
+                <p className="text-xl font-bold text-blue-800">{reporte.total_salida.toFixed(2)}</p>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                <p className="text-xs text-red-500 uppercase tracking-wide">Merma total</p>
+                <p className="text-xl font-bold text-red-700">{reporte.total_merma.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+
+          {reporte.pasos.length === 0 ? (
+            <p className="text-slate-400 text-center py-8">Esta orden aún no tiene movimientos registrados.</p>
+          ) : (
+            <>
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">Recorrido por proceso</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={datosGrafico}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="etiqueta" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="entrada" name="Entrada" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="salida" name="Salida" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="merma" name="Merma" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+                <table className="min-w-full text-sm text-left">
+                  <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-3">Proceso</th>
+                      <th className="px-4 py-3">Máquina</th>
+                      <th className="px-4 py-3">Operario</th>
+                      <th className="px-4 py-3">Entrada</th>
+                      <th className="px-4 py-3">Salida</th>
+                      <th className="px-4 py-3">Merma</th>
+                      <th className="px-4 py-3">Fecha</th>
+                      <th className="px-4 py-3">Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reporte.pasos.map((p, i) => (
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="px-4 py-3 font-medium text-slate-800">{p.proceso}</td>
+                        <td className="px-4 py-3">{p.maquina}</td>
+                        <td className="px-4 py-3">{p.operario}</td>
+                        <td className="px-4 py-3">{p.entrada}</td>
+                        <td className="px-4 py-3">{p.salida}</td>
+                        <td className="px-4 py-3 text-red-600 font-medium">{p.merma}</td>
+                        <td className="px-4 py-3">{formatearFecha(p.fecha)}</td>
+                        <td className="px-4 py-3">{p.hora?.slice(0, 5)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Reportes() {
+  const [vista, setVista] = useState('general')
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Reportes</h1>
+        <p className="text-slate-500 text-sm mt-1">Analiza la producción por periodo o revisa el recorrido completo de una orden.</p>
+      </div>
+
+      <div className="flex gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setVista('general')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'general' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Vista General
+        </button>
+        <button
+          onClick={() => setVista('orden')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'orden' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Por Orden
+        </button>
+        <button
+          onClick={() => setVista('tipoMerma')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'tipoMerma' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Por Tipo de Merma
+        </button>
+      </div>
+
+      {vista === 'general' && <VistaGeneral />}
+      {vista === 'orden' && <VistaOrden />}
+      {vista === 'tipoMerma' && <VistaTipoMerma />}
+    </div>
+  )
+}
+
+export default Reportes
+
+roles.jsx:
+
+export const obtenerRol = () => localStorage.getItem('packtech_rol')
+
+export const esAdmin = () => obtenerRol() === 'admin'
+export const esVendedorOMas = () => ['admin', 'vendedor'].includes(obtenerRol())
+export const esProduccionOMas = () => ['admin', 'vendedor', 'produccion'].includes(obtenerRol())
+export const puedeCrear = () => obtenerRol() !== 'observador'
+
+.gitignore
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+

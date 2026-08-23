@@ -1,3 +1,22 @@
+CODIGO_PREVIO_BACKEND
+================================================================================
+
+Snapshot del backend actual del repositorio GJM1830/PackTech.
+Generado a partir de los archivos presentes en GitHub (rama main).
+Se excluyen .venv y __pycache__.
+
+
+################################################################################
+backend/Procfile
+################################################################################
+
+web: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+
+################################################################################
+backend/crud.py
+################################################################################
+
 # =========================
 # IMPORTACIONES
 # =========================
@@ -1574,3 +1593,1463 @@ def obtener_ordenes_preaprobadas(db: Session):
         orden.ultimo_proceso = "Sin iniciar"
 
     return ordenes
+
+
+################################################################################
+backend/database.py
+################################################################################
+
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:packtech123@127.0.0.1:5432/PackTech"
+)
+
+engine = create_engine(DATABASE_URL)
+
+SessionLocal = sessionmaker(
+    autoflush=False,
+    autocommit=False,
+    bind=engine
+)
+
+class Base(DeclarativeBase):
+    pass
+
+################################################################################
+backend/dependencias.py
+################################################################################
+
+import os
+from fastapi import Header, HTTPException
+from sqlalchemy.orm import Session
+
+from database import SessionLocal
+import models
+
+# Jerarquía de mayor a menor. Se usa para reglas tipo "rol mínimo X y superiores".
+JERARQUIA = {"observador": 1, "produccion": 2, "vendedor": 3, "admin": 4}
+
+
+def obtener_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def obtener_usuario_por_clave(db: Session, clave: str):
+    return db.query(models.Usuario).filter(models.Usuario.clave == clave).first()
+
+
+def _validar_usuario(x_clave: str) -> models.Usuario:
+    db = SessionLocal()
+    try:
+        usuario = obtener_usuario_por_clave(db, x_clave)
+        if usuario is None:
+            raise HTTPException(status_code=401, detail="Clave incorrecta o faltante.")
+        return usuario
+    finally:
+        db.close()
+
+
+def requiere_rol(rol_minimo: str):
+    """
+    Uso normal: exige el rol indicado O CUALQUIERA superior en la jerarquía.
+    Ejemplo: requiere_rol("vendedor") deja pasar a vendedor y admin.
+    """
+    def verificador(x_clave: str = Header(None)):
+        usuario = _validar_usuario(x_clave)
+
+        if JERARQUIA.get(usuario.rol, 0) < JERARQUIA.get(rol_minimo, 99):
+            raise HTTPException(
+                status_code=403,
+                detail="No tienes permiso para realizar esta acción."
+            )
+
+    return verificador
+
+
+def requiere_alguno_de(*roles_permitidos: str):
+    """
+    Excepción a la jerarquía: solo deja pasar a los roles listados explícitamente,
+    sin importar su posición en JERARQUIA.
+    Ejemplo real: editar/eliminar Movimientos lo puede hacer Admin o Producción,
+    pero NO Vendedor, aunque Vendedor esté por encima de Producción en rango.
+    """
+    def verificador(x_clave: str = Header(None)):
+        usuario = _validar_usuario(x_clave)
+
+        if usuario.rol not in roles_permitidos:
+            raise HTTPException(
+                status_code=403,
+                detail="No tienes permiso para realizar esta acción."
+            )
+
+    return verificador
+
+
+# Compatibilidad: usado donde solo se necesita confirmar que hay clave válida (cualquier rol)
+def verificar_clave(x_clave: str = Header(None)):
+    return requiere_rol("observador")(x_clave)
+
+################################################################################
+backend/main.py
+################################################################################
+
+from fastapi import FastAPI
+
+from fastapi.middleware.cors import CORSMiddleware
+
+from database import Base, engine
+
+from routers.ordenes import router as ordenes_router
+from routers.movimientos import router as movimientos_router
+from routers.clientes import router as clientes_router
+from routers.operarios import router as operarios_router
+from routers.detalles import router as detalles_router
+from routers.auth import router as auth_router
+from routers.aglomerado import router as aglomerado_router
+from routers.reportes import router as reportes_router
+from routers.tipos_merma import router as tipos_merma_router
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title="Sistema de Gestión de Producción",
+    description="API para el registro y consulta del historial de producción de Pack Tech S.A.C.",
+    version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://pack-tech.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(ordenes_router)
+app.include_router(movimientos_router)
+app.include_router(clientes_router)
+app.include_router(operarios_router)
+app.include_router(detalles_router)
+app.include_router(auth_router)
+app.include_router(aglomerado_router)
+app.include_router(reportes_router)
+app.include_router(tipos_merma_router)
+
+@app.get("/")
+def root():
+    return {"mensaje": "PackTech funcionando"}
+
+
+
+################################################################################
+backend/models.py
+################################################################################
+
+# =========================
+# IMPORTACIONES
+# =========================
+
+from datetime import datetime, date, time
+
+from sqlalchemy import DateTime, Date, Time, Integer, String, Numeric, Text, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from database import Base
+
+
+# =========================
+# CLIENTES
+# =========================
+
+class Cliente(Base):
+    __tablename__ = "clientes"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    ruc: Mapped[str | None] = mapped_column(
+        String(11),
+        unique=True,
+        nullable=True
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(150),
+        nullable=False
+    )
+
+
+# =========================
+# PRODUCTOS
+# =========================
+
+class Producto(Base):
+    __tablename__ = "productos"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False
+    )
+
+    descripcion: Mapped[str | None] = mapped_column(
+        Text
+    )
+
+
+# =========================
+# OPERARIOS
+# =========================
+
+class Operario(Base):
+    __tablename__ = "operarios"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    cargo: Mapped[str | None] = mapped_column(
+        String(100)
+    )
+
+
+# =========================
+# ÓRDENES DE PRODUCCIÓN
+# =========================
+
+class OrdenProduccion(Base):
+    __tablename__ = "ordenes_produccion"
+    
+    procesos_plan: Mapped[str | None] = mapped_column(Text)
+
+    moneda: Mapped[str | None] = mapped_column(String(10))
+    vendedor: Mapped[str | None] = mapped_column(String(100))
+    fecha_entrega: Mapped[date | None] = mapped_column(Date)
+    precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    unidad_precio: Mapped[str | None] = mapped_column(String(20))
+    millares: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    direccion_entrega: Mapped[str | None] = mapped_column(String(200))
+    numero_contacto: Mapped[str | None] = mapped_column(String(50))
+    email_cliente: Mapped[str | None] = mapped_column(String(150))
+    telefono_cliente: Mapped[str | None] = mapped_column(String(50))
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    codigo: Mapped[str] = mapped_column(
+        String(20),
+        unique=True,
+        nullable=False
+    )
+
+    cliente_id: Mapped[int] = mapped_column(
+        ForeignKey("clientes.id")
+    )
+
+    numero_std: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    descripcion: Mapped[str | None] = mapped_column(
+        String(200)
+    )
+
+    cantidad: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    unidad: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    estado: Mapped[str | None] = mapped_column(
+        String(50)
+    )
+
+    fecha: Mapped[date] = mapped_column(
+        Date,
+        default=datetime.utcnow().date
+    )
+
+    hora: Mapped[time] = mapped_column(
+        Time,
+        default=datetime.utcnow().time
+    )
+
+    cliente_obj: Mapped["Cliente"] = relationship("Cliente")
+
+
+# =========================
+# MOVIMIENTOS
+# =========================
+
+class Movimiento(Base):
+    __tablename__ = "movimientos"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    orden_id: Mapped[int] = mapped_column(
+        ForeignKey("ordenes_produccion.id")
+    )
+
+    proceso: Mapped[str] = mapped_column(
+        String(50)
+    )
+
+    operario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("operarios.id")
+    )
+
+    maquina: Mapped[str | None] = mapped_column(
+        String(100)
+    )
+
+    entrada: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+
+    salida: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+    
+    tipo_laminado: Mapped[str | None] = mapped_column(String(100))
+
+    unidad: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    merma: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+    
+    merma_real: Mapped[float | None] = mapped_column(
+        Numeric(10, 2)
+    )
+    
+    tipo_merma: Mapped[str | None] = mapped_column(
+        String(100)
+    )
+
+    observacion: Mapped[str | None] = mapped_column(
+        Text
+    )
+
+    fecha: Mapped[date] = mapped_column(
+        Date,
+        default=datetime.utcnow().date
+    )
+
+    hora: Mapped[time] = mapped_column(
+        Time,
+        default=datetime.utcnow().time
+    )
+        
+
+# =========================
+# DETALLES DE MOVIMIENTO
+# =========================
+
+class TipoMerma(Base):
+    __tablename__ = "tipos_merma"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proceso: Mapped[str] = mapped_column(String(50))
+    nombre: Mapped[str] = mapped_column(String(100))
+class DetalleMerma(Base):
+    __tablename__ = "detalles_merma"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    movimiento_id: Mapped[int] = mapped_column(ForeignKey("movimientos.id"))
+    peso: Mapped[float] = mapped_column(Numeric(10, 2))
+    tipo_merma: Mapped[str | None] = mapped_column(String(100))
+
+class DetalleMovimiento(Base):
+    __tablename__ = "detalles_movimiento"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    movimiento_id: Mapped[int] = mapped_column(
+        ForeignKey("movimientos.id")
+    )
+
+    tipo: Mapped[str] = mapped_column(
+        String(20)
+    )  # "bobina" o "fardo"
+
+    numero: Mapped[int] = mapped_column(
+        Integer
+    )
+
+    peso: Mapped[float] = mapped_column(
+        Numeric(10, 2)
+    )
+    
+    lado: Mapped[str] = mapped_column(String(10), default="salida")  # "entrada" o "salida"
+    peso_bruto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    peso_tuco: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    peso_neto: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    tipo_material: Mapped[str | None] = mapped_column(String(100))
+
+    millares: Mapped[float | None] = mapped_column(
+        Numeric(10, 2)
+    )
+
+
+class TipoMaterial(Base):
+    __tablename__ = "tipos_material"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100))
+    
+    
+# =========================
+# AGLOMERADO
+# =========================
+
+class MovimientoAglomerado(Base):
+    __tablename__ = "movimientos_aglomerado"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    tipo: Mapped[str] = mapped_column(String(20))  # "entrada", "salida" o "ajuste"
+
+    cantidad: Mapped[float] = mapped_column(Numeric(10, 2))
+
+    proceso_origen: Mapped[str | None] = mapped_column(String(50))
+    producto_origen: Mapped[str | None] = mapped_column(String(200))
+
+    orden_id: Mapped[int | None] = mapped_column(ForeignKey("ordenes_produccion.id"))
+    clasificacion: Mapped[str | None] = mapped_column(String(100))
+
+    operario_id: Mapped[int | None] = mapped_column(ForeignKey("operarios.id"))
+
+    observacion: Mapped[str | None] = mapped_column(Text)
+
+    detalle_merma_id: Mapped[int | None] = mapped_column(ForeignKey("detalles_merma.id"))
+    origen_automatico: Mapped[bool] = mapped_column(default=False)
+
+    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
+    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+
+    orden_obj: Mapped["OrdenProduccion"] = relationship("OrdenProduccion")
+    operario_obj: Mapped["Operario"] = relationship("Operario")
+
+
+class ProductoAglomerado(Base):
+    __tablename__ = "productos_aglomerado"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(200))
+
+
+class ClasificacionAglomerado(Base):
+    __tablename__ = "clasificaciones_aglomerado"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100))
+    
+# =========================
+# USUARIOS  
+# =========================
+    
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    clave: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    rol: Mapped[str] = mapped_column(String(20), nullable=False)  # admin, operario, lector
+    nombre: Mapped[str | None] = mapped_column(String(100))
+    
+    
+class Vendedor(Base):
+    __tablename__ = "vendedores"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100))
+        
+    
+
+################################################################################
+backend/schemas.py
+################################################################################
+
+from datetime import date, time, datetime
+from pydantic import BaseModel
+
+class ClienteCreate(BaseModel):
+    ruc: str | None
+    nombre: str
+
+
+class ClienteResponse(BaseModel):
+    id: int
+    ruc: str | None
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+class OrdenProduccionCreate(BaseModel):
+    codigo: str
+    ruc: str | None = None
+    nombre_cliente: str | None = None
+    numero_std: int
+    descripcion: str | None = None
+    cantidad: float
+    unidad: str
+    estado: str | None = "Pendiente"
+    procesos_plan: str | None = None
+    moneda: str | None = None
+    vendedor: str | None = None
+    fecha_entrega: date | None = None
+    precio_unitario: float | None = None
+    unidad_precio: str | None = None
+    millares: float | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+
+class OrdenProduccionResponse(BaseModel):
+    id: int
+    codigo: str
+    cliente_id: int
+    numero_std: int
+    descripcion: str | None = None
+    cantidad: float
+    unidad: str
+    estado: str | None
+    fecha: date
+    hora: time
+    ruc: str | None
+    cliente: str
+    ultimo_proceso: str
+    procesos_plan: str | None = None
+    moneda: str | None = None
+    vendedor: str | None = None
+    fecha_entrega: date | None = None
+    precio_unitario: float | None = None
+    unidad_precio: str | None = None
+    millares: float | None = None
+    costo_total: float | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class VendedorResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
+class MovimientoCreate(BaseModel):
+    orden_id: int
+    proceso: str
+    nombre_operario: str
+    maquina: str
+    entrada: float = 0
+    salida: float = 0
+    unidad: str
+    merma_real: float | None = None
+    tipo_merma: str | None = None
+    tipo_laminado: str | None = None
+    observacion: str | None = None
+
+
+class MovimientoResponse(BaseModel):
+    id: int
+    orden_id: int
+    proceso: str
+    operario_id: int | None
+    maquina: str | None
+    entrada: float
+    salida: float
+    unidad: str
+    merma: float
+    merma_real: float | None
+    tipo_merma: str | None
+    tipo_laminado: str | None = None
+    observacion: str | None
+    fecha: date
+    hora: time
+
+    class Config:
+        from_attributes = True
+        
+class ProductoCreate(BaseModel):
+    nombre: str
+    descripcion: str | None = None
+
+
+class ProductoResponse(BaseModel):
+    id: int
+    nombre: str
+    descripcion: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class OperarioCreate(BaseModel):
+    nombre: str
+    cargo: str | None = None
+
+
+class OperarioResponse(BaseModel):
+    id: int
+    nombre: str
+    cargo: str | None
+
+    class Config:
+        from_attributes = True
+        
+class DetalleMovimientoCreate(BaseModel):
+    tipo: str
+    lado: str = "salida"
+    numero: int
+    peso_bruto: float
+    peso_tuco: float | None = 0
+    millares: float | None = None
+    tipo_material: str | None = None
+
+
+class DetalleMovimientoResponse(BaseModel):
+    id: int
+    movimiento_id: int
+    tipo: str
+    lado: str
+    numero: int
+    peso_bruto: float
+    peso_tuco: float | None
+    peso_neto: float
+    millares: float | None
+    tipo_material: str | None = None
+
+    class Config:
+        from_attributes = True
+
+class TipoMaterialResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+class TipoMermaResponse(BaseModel):
+    id: int
+    proceso: str
+    nombre: str
+
+    class Config:
+        from_attributes = True
+        
+        
+class LoginRequest(BaseModel):
+    clave: str
+
+
+class LoginResponse(BaseModel):
+    rol: str
+    nombre: str | None
+
+    class Config:
+        from_attributes = True
+        
+class DetalleMermaCreate(BaseModel):
+    peso: float
+    tipo_merma: str | None = None
+
+
+class DetalleMermaResponse(BaseModel):
+    id: int
+    movimiento_id: int
+    peso: float
+    tipo_merma: str | None
+
+    class Config:
+        from_attributes = True
+        
+        
+# =========================
+# AGLOMERADO
+# =========================
+
+class MovimientoAglomeradoCreate(BaseModel):
+    tipo: str  # "entrada", "salida" o "ajuste"
+    cantidad: float
+    proceso_origen: str | None = None
+    producto_origen: str | None = None
+    codigo_orden: str | None = None  # se busca la orden por código, no por id
+    clasificacion: str | None = None
+    nombre_operario: str
+    observacion: str | None = None
+
+
+class MovimientoAglomeradoResponse(BaseModel):
+    id: int
+    tipo: str
+    cantidad: float
+    proceso_origen: str | None
+    producto_origen: str | None
+    orden_id: int | None
+    codigo_orden: str | None = None
+    clasificacion: str | None
+    operario_id: int
+    nombre_operario: str | None = None
+    observacion: str | None
+    origen_automatico: bool
+    fecha: date
+    hora: time
+
+    class Config:
+        from_attributes = True
+
+
+class ProductoAglomeradoResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
+class ClasificacionAglomeradoResponse(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+        
+# =========================
+# REPORTES
+# =========================
+
+class ReporteGrupo(BaseModel):
+    etiqueta: str
+    entrada: float
+    salida: float
+    merma: float
+    movimientos: int
+
+
+class ReportePaso(BaseModel):
+    proceso: str
+    maquina: str
+    operario: str
+    entrada: float
+    salida: float
+    merma: float
+    observacion: str | None
+    fecha: date
+    hora: time
+
+
+class ReporteOrden(BaseModel):
+    codigo: str
+    cliente: str
+    descripcion: str | None
+    cantidad: float
+    unidad: str
+    pasos: list[ReportePaso]
+    total_entrada: float
+    total_salida: float
+    total_merma: float
+    
+class MovimientoEditar(BaseModel):
+    codigo_orden: str
+    proceso: str
+    nombre_operario: str
+    maquina: str
+    unidad: str
+    entrada: float | None = None
+    salida: float | None = None
+    observacion: str | None = None
+    
+class ReporteTipoMerma(BaseModel):
+    etiqueta: str
+    peso: float
+    registros: int
+    
+class SiguienteProcesoRequest(BaseModel):
+    orden_id: int
+
+class SiguienteProcesoResponse(BaseModel):
+    siguiente_proceso: str | None
+    movimiento: MovimientoResponse | None
+    mensaje: str | None = None
+    
+class ImportarBobinasResponse(BaseModel):
+    importadas: int
+
+
+################################################################################
+backend/test_db.py
+################################################################################
+
+import psycopg2
+
+conn = psycopg2.connect(
+    host="127.0.0.1",
+    port=5432,
+    dbname="PackTech",
+    user="postgres",
+    password="packtech123"
+)
+
+print("Conexión exitosa")
+
+conn.close()
+
+################################################################################
+backend/routers/aglomerado.py
+################################################################################
+
+from fastapi import APIRouter, Depends, Header
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db, requiere_rol, obtener_usuario_por_clave, SessionLocal
+
+router = APIRouter(
+    prefix="/aglomerado",
+    tags=["Aglomerado"]
+)
+
+
+@router.post("/movimientos", response_model=schemas.MovimientoAglomeradoResponse)
+def crear_movimiento(
+    movimiento: schemas.MovimientoAglomeradoCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.crear_movimiento_aglomerado(db, movimiento)
+
+
+@router.get("/movimientos", response_model=list[schemas.MovimientoAglomeradoResponse])
+def listar_movimientos(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos_aglomerado(db)
+
+
+@router.get("/saldo")
+def obtener_saldo(
+    db: Session = Depends(obtener_db)
+):
+    return {"saldo": crud.calcular_saldo_aglomerado(db)}
+
+
+@router.delete("/movimientos/{movimiento_id}")
+def eliminar_movimiento(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("admin"))
+):
+    crud.eliminar_movimiento_aglomerado(db, movimiento_id)
+    return {"mensaje": "Movimiento de aglomerado eliminado correctamente."}
+
+
+@router.get("/productos/buscar", response_model=list[schemas.ProductoAglomeradoResponse])
+def buscar_productos(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_productos_aglomerado(db, q)
+
+
+@router.get("/clasificaciones/buscar", response_model=list[schemas.ClasificacionAglomeradoResponse])
+def buscar_clasificaciones(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_clasificaciones_aglomerado(db, q)    
+
+
+################################################################################
+backend/routers/auth.py
+################################################################################
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+import schemas
+from dependencias import obtener_db, obtener_usuario_por_clave
+
+
+router = APIRouter(tags=["Autenticación"])
+
+
+@router.post("/login", response_model=schemas.LoginResponse)
+def login(datos: schemas.LoginRequest, db: Session = Depends(obtener_db)):
+    usuario = obtener_usuario_por_clave(db, datos.clave)
+    if usuario is None:
+        raise HTTPException(status_code=401, detail="Clave incorrecta.")
+    return usuario
+
+
+################################################################################
+backend/routers/clientes.py
+################################################################################
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+import models
+from dependencias import obtener_db, requiere_rol
+
+router = APIRouter(
+    prefix="/clientes",
+    tags=["Clientes"]
+)
+
+
+@router.post("", response_model=schemas.ClienteResponse)
+def crear_cliente(
+    cliente: schemas.ClienteCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.crear_cliente(db, cliente)
+
+
+@router.get("", response_model=list[schemas.ClienteResponse])
+def listar_clientes(
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_clientes(db, limit, antes_de)
+
+
+@router.get("/buscar", response_model=list[schemas.ClienteResponse])
+def buscar_clientes(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_clientes(db, q)
+
+
+@router.get("/ruc/{ruc}", response_model=schemas.ClienteResponse | None)
+def buscar_cliente_por_ruc(
+    ruc: str | None,
+    db: Session = Depends(obtener_db)
+):
+    return (
+        db.query(models.Cliente)
+        .filter(models.Cliente.ruc == ruc)
+        .first()
+    )
+
+
+@router.get("/{ruc}", response_model=schemas.ClienteResponse)
+def obtener_cliente(
+    ruc: str | None,
+    db: Session = Depends(obtener_db)
+):
+    cliente = crud.obtener_cliente_por_ruc(db, ruc)
+
+    if cliente is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Cliente no encontrado."
+        )
+
+    return cliente
+
+
+@router.delete("/{cliente_id}")
+def eliminar_cliente(
+    cliente_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    crud.eliminar_cliente(db, cliente_id)
+    return {"mensaje": "Cliente eliminado correctamente."}
+
+
+@router.put("/{cliente_id}", response_model=schemas.ClienteResponse)
+def editar_cliente(
+    cliente_id: int,
+    cliente: schemas.ClienteCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    return crud.editar_cliente(db, cliente_id, cliente)
+
+################################################################################
+backend/routers/detalles.py
+################################################################################
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db, requiere_rol, requiere_alguno_de
+
+router = APIRouter(
+    prefix="/movimientos/{movimiento_id}/detalles",
+    tags=["Detalles de Movimiento"]
+)
+
+
+@router.post("", response_model=schemas.DetalleMovimientoResponse)
+def crear_detalle(
+    movimiento_id: int,
+    detalle: schemas.DetalleMovimientoCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    return crud.crear_detalle_movimiento(db, movimiento_id, detalle)
+
+
+@router.get("", response_model=list[schemas.DetalleMovimientoResponse])
+def listar_detalles(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_detalles_movimiento(db, movimiento_id)
+
+
+@router.post("/importar-anteriores", response_model=schemas.ImportarBobinasResponse)
+def importar_bobinas_anteriores(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    return crud.importar_bobinas_anteriores(db, movimiento_id)
+
+
+################################################################################
+backend/routers/movimientos.py
+################################################################################
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db, requiere_rol, requiere_alguno_de
+
+router = APIRouter(
+    prefix="",
+    tags=["Movimientos"]
+)
+
+
+@router.post("/movimientos", response_model=schemas.MovimientoResponse)
+def crear_movimiento(
+    movimiento: schemas.MovimientoCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.crear_movimiento(db, movimiento)
+
+
+@router.get("/movimientos", response_model=list[schemas.MovimientoResponse])
+def listar_movimientos(
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos(db, limit, antes_de)
+
+
+@router.put("/movimientos/{movimiento_id}", response_model=schemas.MovimientoResponse)
+def editar_movimiento(
+    movimiento_id: int,
+    datos: schemas.MovimientoEditar,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    return crud.editar_movimiento(db, movimiento_id, datos)
+
+
+@router.get(
+    "/ordenes-produccion/{orden_id}/movimientos",
+    response_model=list[schemas.MovimientoResponse]
+)
+def listar_movimientos_por_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_movimientos_por_orden(db, orden_id)
+
+@router.delete("/movimientos/{movimiento_id}")
+def eliminar_movimiento(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    crud.eliminar_movimiento(db, movimiento_id)
+    return {"mensaje": "Movimiento eliminado correctamente."}
+
+@router.delete("/detalles/{detalle_id}")
+def eliminar_detalle(
+    detalle_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    crud.eliminar_detalle_movimiento(db, detalle_id)
+    return {"mensaje": "Detalle eliminado correctamente."}
+
+@router.post("/movimientos/{movimiento_id}/mermas", response_model=schemas.DetalleMermaResponse)
+def crear_detalle_merma(
+    movimiento_id: int,
+    detalle: schemas.DetalleMermaCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    return crud.crear_detalle_merma(db, movimiento_id, detalle)
+
+
+@router.get("/movimientos/{movimiento_id}/mermas", response_model=list[schemas.DetalleMermaResponse])
+def listar_detalles_merma(
+    movimiento_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_detalles_merma(db, movimiento_id)
+
+
+@router.put("/mermas/{detalle_id}", response_model=schemas.DetalleMermaResponse)
+def editar_detalle_merma(
+    detalle_id: int,
+    detalle: schemas.DetalleMermaCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    return crud.editar_detalle_merma(db, detalle_id, detalle)
+
+
+@router.delete("/mermas/{detalle_id}")
+def eliminar_detalle_merma(
+    detalle_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_alguno_de("admin", "produccion"))
+):
+    crud.eliminar_detalle_merma(db, detalle_id)
+    return {"mensaje": "Detalle de merma eliminado correctamente."}
+
+@router.post("/movimientos/siguiente-proceso", response_model=schemas.SiguienteProcesoResponse)
+def siguiente_proceso(
+    datos: schemas.SiguienteProcesoRequest,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.crear_siguiente_movimiento(db, datos.orden_id)
+
+
+################################################################################
+backend/routers/operarios.py
+################################################################################
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db, requiere_rol
+
+router = APIRouter(
+    prefix="/operarios",
+    tags=["Operarios"]
+)
+
+
+@router.post("", response_model=schemas.OperarioResponse)
+def crear_operario(
+    operario: schemas.OperarioCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.crear_operario(db, operario)
+
+
+@router.get("", response_model=list[schemas.OperarioResponse])
+def listar_operarios(
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_operarios(db, limit, antes_de)
+
+@router.put("/{operario_id}", response_model=schemas.OperarioResponse)
+def editar_operario(
+    operario_id: int,
+    operario: schemas.OperarioCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    crud.eliminar_operario(db, operario_id)
+    return {"mensaje": "Operario eliminado correctamente."}
+
+@router.put("/{operario_id}", response_model=schemas.OperarioResponse)
+def editar_operario(
+    operario_id: int,
+    operario: schemas.OperarioCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("operario"))
+):
+    return crud.editar_operario(db, operario_id, operario)
+
+@router.get("/buscar", response_model=list[schemas.OperarioResponse])
+def buscar_operarios(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_operarios(db, q)
+
+
+################################################################################
+backend/routers/ordenes.py
+################################################################################
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+
+from dependencias import obtener_db, requiere_rol
+from pydantic import BaseModel  
+
+
+router = APIRouter(
+    prefix="/ordenes-produccion",
+    tags=["Órdenes de Producción"]
+)
+
+
+@router.post("", response_model=schemas.OrdenProduccionResponse)
+def crear_orden(
+    orden: schemas.OrdenProduccionCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.crear_orden_produccion(db, orden)
+
+
+@router.get("", response_model=list[schemas.OrdenProduccionResponse])
+def listar_ordenes(
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_ordenes_produccion(db, limit, antes_de)
+
+@router.delete("/{orden_id}")
+def eliminar_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("admin"))
+):
+    crud.eliminar_orden_produccion(db, orden_id)
+    return {"mensaje": "Orden eliminada correctamente."}
+
+class ProcesosUpdate(BaseModel):
+    procesos_plan: str
+
+@router.get("/vendedores/buscar", response_model=list[schemas.VendedorResponse])
+def buscar_vendedores(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_vendedores(db, q)
+
+@router.get("/buscar", response_model=list[schemas.OrdenProduccionResponse])
+def buscar_ordenes(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_ordenes(db, q)
+
+@router.put("/{orden_id}/procesos", response_model=schemas.OrdenProduccionResponse)
+def actualizar_procesos(
+    orden_id: int,
+    datos: ProcesosUpdate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.actualizar_procesos_plan(db, orden_id, datos.procesos_plan)
+
+@router.put("/{orden_id}", response_model=schemas.OrdenProduccionResponse)
+def editar_orden(
+    orden_id: int,
+    orden: schemas.OrdenProduccionCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("admin"))
+):
+    return crud.editar_orden_produccion(db, orden_id, orden)
+
+@router.get("/preaprobadas/listar", response_model=list[schemas.OrdenProduccionResponse])
+def listar_preaprobadas(
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.obtener_ordenes_preaprobadas(db)
+
+
+@router.post("/{orden_id}/aprobar", response_model=schemas.OrdenProduccionResponse)
+def aprobar_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    return crud.aprobar_orden_preaprobada(db, orden_id)
+
+################################################################################
+backend/routers/productos.py
+################################################################################
+
+
+
+
+################################################################################
+backend/routers/reportes.py
+################################################################################
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db
+
+router = APIRouter(
+    prefix="/reportes",
+    tags=["Reportes"]
+)
+
+
+@router.get("/resumen", response_model=list[schemas.ReporteGrupo])
+def resumen(
+    agrupar_por: str,
+    desde: str | None = None,
+    hasta: str | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.reporte_resumen(db, desde, hasta, agrupar_por)
+
+
+@router.get("/orden/{codigo}", response_model=schemas.ReporteOrden)
+def orden(
+    codigo: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.reporte_orden(db, codigo)
+
+
+@router.get("/tipos-merma", response_model=list[schemas.ReporteTipoMerma])
+def tipos_merma(
+    desde: str | None = None,
+    hasta: str | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.reporte_por_tipo_merma(db, desde, hasta)
+
+################################################################################
+backend/routers/tipos_merma.py
+################################################################################
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db
+
+
+router = APIRouter(
+    prefix="/tipos-merma",
+    tags=["Tipos de Merma"]
+)
+
+
+@router.get("/buscar", response_model=list[schemas.TipoMermaResponse])
+def buscar_tipos_merma(
+    proceso: str,
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_tipos_merma(db, proceso, q)
+
+@router.get("/materiales/buscar", response_model=list[schemas.TipoMaterialResponse])
+def buscar_tipos_material(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_tipos_material(db, q)
+
+################################################################################
+backend/requirements.txt
+################################################################################
+
+﻿annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.14.2
+click==8.4.2
+colorama==0.4.6
+fastapi==0.139.2
+greenlet==3.5.3
+h11==0.16.0
+idna==3.18
+psycopg2-binary==2.9.12
+pydantic==2.13.4
+pydantic_core==2.46.4
+SQLAlchemy==2.0.51
+starlette==1.3.1
+typing-inspection==0.4.2
+typing_extensions==4.16.0
+uvicorn==0.51.0
+
+
+
+################################################################################
+backend/runtime.txt
+################################################################################
+
+python-3.12

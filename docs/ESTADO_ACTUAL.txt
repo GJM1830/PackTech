@@ -1,0 +1,105 @@
+from pathlib import Path
+
+contenido = """ESTADO ACTUAL DEL PROYECTO — PACKTECH
+
+1. FUNCIONALIDADES TERMINADAS
+
+Backend:
+- Conexión con PostgreSQL funcionando.
+- Modelos principales implementados: Cliente, Producto, Operario, OrdenProduccion, Movimiento y DetalleMovimiento.
+- Creación y consulta de Órdenes de Producción.
+- Registro y consulta de movimientos.
+- Consulta del historial de movimientos por OP.
+- Validaciones básicas de referencias y duplicados.
+- Gestión de clientes, incluyendo creación, búsqueda, edición y eliminación.
+- Gestión de operarios, incluyendo creación, edición y eliminación.
+- Gestión de productos mediante creación y consulta.
+- Registro de detalles asociados a movimientos.
+- Cálculo del estado actual de una OP a partir de su último movimiento.
+- Separación de rutas mediante routers.
+- Backend desplegado en Railway.
+
+Frontend:
+- Aplicación React funcionando y desplegada en Vercel.
+- Pantallas/componentes para:
+  - Crear órdenes.
+  - Consultar órdenes.
+  - Consultar movimientos.
+  - Consultar el detalle de una OP.
+  - Gestionar clientes.
+  - Gestionar operarios.
+  - Registrar detalles de movimientos.
+- Buscadores y filtros en distintas pantallas.
+- Búsqueda de clientes por RUC con sugerencias.
+- Búsqueda de órdenes por código para registrar movimientos.
+- Menú de acciones de tres puntos.
+- Edición y eliminación de clientes.
+- Funcionalidad de duplicar órdenes.
+- Modales reutilizables para edición.
+- Estilo visual basado en Tailwind con una paleta profesional de slate, azul y verde.
+
+2. FUNCIONALIDADES EN DESARROLLO
+
+- Seguir unificando y puliendo el diseño visual de todas las pantallas.
+- Mejorar la experiencia de búsqueda y selección cuando existan muchas órdenes.
+- Terminar y ampliar las acciones de las tablas mediante el menú de tres puntos.
+- Mejorar la edición de órdenes y otras entidades donde corresponda.
+- Preparar funcionalidades de reportes.
+- Preparar generación y descarga de documentos PDF para liquidaciones e impresión.
+- Evaluar reportes semanales de producción. A traves de la pestaña reportes
+- Continuar preparando el sistema para un uso sin fallos en la empresa.
+
+3. PROBLEMAS CONOCIDOS
+
+- El sistema depende de que frontend, backend y base de datos desplegada mantengan correctamente sus URLs y variables de entorno.
+- Los cambios en los modelos SQLAlchemy no actualizan automáticamente las tablas existentes de PostgreSQL; si se agrega o cambia una columna, la base de datos debe mantenerse sincronizada.
+- Un cambio incorrecto en nombres de modelos, tablas, columnas, rutas o campos puede provocar errores tanto en backend como en frontend.
+- Algunas partes del frontend todavía pueden contener URLs explícitas del backend y conviene mantener una configuración consistente mediante el archivo de API correspondiente.
+- La edición/eliminación debe manejarse con cuidado cuando existen relaciones entre órdenes, movimientos y detalles.
+- La búsqueda debe seguir siendo eficiente a medida que aumente el número de Órdenes de Producción. (Actualmente cubierto por tablaas ocultas y función ilike)
+
+4. PRÓXIMOS PASOS
+
+Prioridad inmediata:
+- Corregir errores para poder utilizarse sin fallos
+- Revisar las acciones de las tablas y hacerlas consistentes.
+- Pestaña cotizaciones funcional
+- Seguridad de uso en caso real
+- Descargar PDFs de las cotizaciones
+- Mejorar búsquedas y filtros. (Cubierto por ahora)
+
+Después:
+- Implementar reportes semanales.
+- Implementar generación de PDFs.
+- Diseñar una liquidación imprimible y completa.
+- Definir qué información debe aparecer en cada reporte.
+- Mejorar permisos/seguridad si el sistema empieza a utilizarse de forma operativa.
+- Continuar con pruebas sobre datos reales de producción.
+
+5. QUÉ NO DEBE MODIFICARSE SIN REVISAR
+
+No es una regla absoluta, pero estos elementos deben tocarse con cuidado porque están conectados con varias partes del sistema:
+
+- Nombres de tablas de PostgreSQL.
+- Nombres de modelos SQLAlchemy.
+- Nombres de columnas existentes.
+- IDs y claves foráneas.
+- Nombres de campos enviados por los schemas y recibidos por React.
+- Rutas/endpoints existentes.
+- Estructura de relaciones entre Cliente → OrdenProduccion → Movimiento → DetalleMovimiento.
+- La lógica que determina el estado de una OP a partir de su último movimiento.
+- La filosofía histórica del sistema: los movimientos representan eventos y no deben sobrescribirse como si fueran el estado histórico.
+- Las URLs y configuración de conexión entre frontend y backend desplegado.
+- La configuración de PostgreSQL/Railway.
+- Los archivos que actualmente contienen lógica compartida, como API, dependencias y configuración.
+
+Antes de modificar cualquiera de estos elementos, conviene comprobar qué archivos lo utilizan y probar el flujo afectado.
+
+OBJETIVO GENERAL DEL ESTADO ACTUAL
+
+El backend y frontend ya forman un sistema funcional para registrar y consultar producción. La siguiente etapa consiste principalmente en convertirlo en una herramienta más cómoda, segura, sin bugs, profesional y útil para el trabajo diario, especialmente mediante mejores búsquedas, reportes y documentos imprimibles.
+"""
+
+ruta = Path("/mnt/data/ESTADO_ACTUAL.txt")
+ruta.write_text(contenido, encoding="utf-8")
+print(f"Creado: {ruta}")

@@ -1,0 +1,421 @@
+GUIA PARA IA — PROYECTO PACKTECH
+
+PROPÓSITO
+PackTech es un sistema web interno para digitalizar y controlar el seguimiento de las Órdenes de Producción (OP) de Pack Tech S.A.C.
+
+La IA debe trabajar sobre el proyecto existente, evitando rehacer arquitectura o introducir cambios innecesarios.
+
+==================================================
+1. CONTEXTO COMPACTO
+==================================================
+
+El sistema permite registrar y consultar:
+
+- Clientes.
+- Órdenes de Producción (OP).
+- Movimientos de producción.
+- Operarios.
+- Productos.
+- Detalles de movimientos.
+
+Flujo productivo:
+
+Cliente
+→ Orden de Producción
+→ Extrusión
+→ Impresión
+→ Sellado
+→ Corte
+→ Almacén (Para un futuro)
+→ Despacho (Para un futuro)
+
+La idea central del sistema es registrar eventos de producción. Y ahora también gestionar Cotizaciones
+
+Cada movimiento debe permitir saber:
+- Qué OP fue procesada. 
+- En qué proceso.
+- Qué operario intervino.
+- Qué máquina se utilizó.
+- Cantidad de entrada.
+- Cantidad de salida.
+- Merma.
+- Observaciones.
+- Fecha y hora.
+
+La información histórica es importante: los movimientos representan eventos registrados y no deben tratarse simplemente como un campo de "estado" que se sobrescribe.
+
+==================================================
+2. TERMINOLOGÍA QUE DEBE RESPETARSE
+==================================================
+
+Usar siempre estos términos:
+
+OP = Orden de Producción.
+
+OrdenProduccion = modelo backend correspondiente a una OP.
+
+Movimiento = registro de una operación/proceso realizado sobre una OP.
+
+DetalleMovimiento = información adicional asociada a un Movimiento.
+
+Cliente = cliente de la empresa.
+
+Operario = persona que realiza el proceso.
+
+Proceso = etapa de producción.
+
+Número de Pedido = nombre utilizado en la interfaz para identificar visualmente una OP.
+
+Código de OP = campo "codigo" de OrdenProduccion.
+
+No cambiar nombres existentes de modelos, tablas, campos, endpoints o propiedades sin revisar primero todas sus dependencias.
+
+==================================================
+3. STACK ACTUAL
+==================================================
+
+Backend:
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- Uvicorn
+
+Frontend:
+- React
+- Vite
+- JavaScript/JSX
+- Tailwind CSS
+- Axios
+
+Base de datos:
+- PostgreSQL
+- Desplegada mediante Railway.
+
+Backend:
+- Desplegado mediante Railway.
+
+Frontend:
+- Desplegado mediante Vercel.
+
+==================================================
+4. ESTRUCTURA CONCEPTUAL
+==================================================
+
+Backend principal:
+
+- models.py
+  Modelos SQLAlchemy y relaciones con la base de datos.
+
+- schemas.py
+  Schemas de entrada/salida de FastAPI.
+
+- crud.py
+  Lógica de creación, consulta, edición y eliminación.
+
+- database.py
+  Configuración de SQLAlchemy y conexión a PostgreSQL.
+
+- dependencias.py
+  Dependencias compartidas, autenticación/clave y obtención de DB.
+
+- main.py
+  Aplicación FastAPI y configuración general.
+
+- routers/
+  Endpoints separados por funcionalidad.
+
+Frontend principal:
+
+- App.jsx
+  Estructura principal y navegación de la aplicación.
+
+- api.js
+  Configuración utilizada para las peticiones Axios.
+
+- CrearOrden.jsx
+  Registro de nuevas OP y duplicación de órdenes.
+
+- Movimientos.jsx
+  Registro, consulta y filtrado de movimientos.
+
+- OrdenDetalle.jsx
+  Detalle e historial de una OP.
+
+- Clientes.jsx
+  Gestión de clientes.
+
+- Operarios.jsx
+  Gestión de operarios.
+
+- DetalleMovimiento.jsx
+  Gestión de detalles de movimientos.
+
+- MenuAcciones.jsx
+  Menú de tres puntos para acciones de registros.
+
+- ModalEditar.jsx
+  Modal reutilizable para edición.
+
+- FiltroDesplegable.jsx
+  Componente reutilizable para filtros.
+
+==================================================
+5. REGLAS PARA MODIFICAR CÓDIGO
+==================================================
+
+REGLA 1:
+Antes de modificar algo, revisar cómo se conecta con el resto del sistema.
+
+REGLA 2:
+No cambiar nombres existentes sin necesidad.
+
+Especialmente:
+- modelos
+- tablas
+- columnas
+- schemas
+- endpoints
+- propiedades JSON
+- IDs
+- claves foráneas
+
+REGLA 3:
+No eliminar funcionalidades existentes para implementar una nueva.
+
+Agregar o modificar de forma incremental.
+
+REGLA 4:
+Si una modificación afecta backend y frontend, indicar ambos lados.
+
+REGLA 5:
+No asumir que cambiar un modelo SQLAlchemy modifica automáticamente PostgreSQL.
+
+Si se agrega/modifica una columna, comprobar que la base de datos también esté sincronizada.
+
+REGLA 6:
+Mantener la estructura actual salvo que exista una razón clara para cambiarla.
+
+REGLA 7:
+Mantener el estilo visual existente.
+
+Paleta principal:
+
+Slate:
+- slate-900
+- slate-800
+- slate-600
+- slate-500
+- slate-400
+- slate-200
+- slate-100
+- slate-50
+
+Azul:
+- blue-700
+- blue-800
+- blue-600
+- blue-100
+- blue-50
+
+Verde:
+- green-600
+- green-700
+- green-100
+- green-50
+
+Rojo:
+- red-600
+- red-700
+
+Regla visual:
+- Azul = acciones y navegación.
+- Verde = confirmaciones, guardado, éxito y estados positivos.
+- Rojo = eliminar, errores y acciones peligrosas.
+- Slate = estructura, fondos, textos y bordes.
+
+REGLA 8:
+No introducir dependencias nuevas si la funcionalidad puede realizarse con las herramientas actuales. Salvo se pida lo contrario
+
+REGLA 9:
+Cuando se entregue código, preferir instrucciones precisas del tipo:
+
+"Busca esto:"
+[código]
+
+"Reemplázalo por:"
+[código]
+
+Esto facilita aplicar cambios sin perder código existente.
+
+==================================================
+6. FILOSOFÍA DEL SISTEMA
+==================================================
+
+El sistema debe evolucionar hacia una herramienta profesional de uso diario.
+
+Prioridades:
+
+1. Fiabilidad.
+2. No perder información.
+3. Trazabilidad.
+4. Facilidad de uso.
+5. Rapidez para registrar producción.
+6. Interfaz profesional.
+7. Reportes.
+8. Documentos imprimibles.
+9. Visual Atractivo
+
+No diseñar funcionalidades pensando solamente en unos pocos registros.
+
+El sistema debe poder trabajar con grandes cantidades de OP, por lo que los buscadores y filtros deben ser prácticos para miles de registros.
+
+Ejemplo:
+No obligar al usuario a recorrer manualmente miles de OP para registrar un movimiento.
+
+Preferir:
+- búsqueda por texto
+- autocompletado
+- sugerencias
+- selección por código
+- filtros
+
+==================================================
+7. ESTADO DEL PROYECTO
+==================================================
+
+Actualmente existe una aplicación funcional con backend y frontend desplegados.
+
+Ya existen funcionalidades para:
+- Crear OP.
+- Consultar OP.
+- Registrar movimientos.
+- Consultar movimientos.
+- Consultar historial de una OP.
+- Gestionar clientes.
+- Gestionar operarios.
+- Gestionar productos.
+- Registrar detalles de movimientos.
+- Editar/eliminar algunas entidades.
+- Buscar clientes.
+- Buscar OP por código.
+- Duplicar OP.
+- Menús de acciones mediante tres puntos.
+- Modales de edición.
+- Filtros.
+- Ver reportes
+- Ver Aglomerado
+- Se esta implementando todo lo que es Cotizaciones
+
+El diseño visual está siendo profesionalizado progresivamente.
+
+==================================================
+8. FUNCIONALIDADES FUTURAS / EN DESARROLLO
+==================================================
+
+Intereses actuales del proyecto:
+
+- Mejorar y unificar el diseño.
+- Funciones de seguridad
+- Perfeccionar acciones de tablas.
+- Corregir errores
+- Profilaxis informatica
+- Edición de órdenes preaprobadas
+- Búsquedas eficientes.
+- Reportes semanales.
+- Reportes de producción.
+- Generación de PDF.
+- Subida de imágenes
+- Liquidaciones completas imprimibles.
+- Mejorar el flujo de trabajo del fiscalizador.
+- Preparar el sistema para uso real a mayor escala.
+
+==================================================
+9. ARCHIVOS QUE CONSULTAR ANTES DE TOCAR ALGO
+==================================================
+
+Antes de modificar BACKEND:
+
+1. models.py
+2. schemas.py
+3. crud.py
+4. router correspondiente dentro de routers/
+5. main.py
+6. dependencias.py
+7. database.py
+
+Antes de modificar FRONTEND:
+
+1. App.jsx
+2. api.js
+3. Componente JSX que se quiere modificar.
+4. Componentes reutilizados por él.
+5. Si afecta datos: revisar también el endpoint/backend correspondiente.
+
+Si la modificación afecta una OP:
+- revisar models.py
+- schemas.py
+- crud.py
+- routers/ordenes.py
+- CrearOrden.jsx
+- OrdenDetalle.jsx
+
+Si afecta movimientos:
+- revisar models.py
+- schemas.py
+- crud.py
+- routers/movimientos.py
+- Movimientos.jsx
+- DetalleMovimiento.jsx
+
+Si afecta clientes:
+- revisar models.py
+- schemas.py
+- crud.py
+- routers/clientes.py
+- Clientes.jsx
+- CrearOrden.jsx
+
+==================================================
+10. CÓMO TRABAJAR CON EL DESARROLLADOR
+==================================================
+
+El desarrollador prefiere trabajar de forma incremental.
+
+No entregar una explicación enorme cuando un cambio puede hacerse en pocos pasos.
+
+Primero explicar:
+- qué vamos a cambiar
+- en qué archivo
+- qué parte se reemplaza
+
+Luego proporcionar el código.
+
+Si se solicita solamente código:
+- entregar código listo para copiar y pegar.
+- no modificar nombres innecesariamente.
+
+Si se solicita "no me des código":
+- no proporcionar código.
+- explicar solamente qué se hará.
+
+Si falta información:
+- pedir el archivo concreto antes de inventar su contenido.
+
+No asumir que el código actual es igual a una versión anterior del proyecto.
+
+==================================================
+11. PRINCIPIO IMPORTANTE
+==================================================
+
+PackTech ya existe y está funcionando.
+
+La IA NO debe tratarlo como un proyecto nuevo.
+
+Cada cambio debe considerarse una modificación sobre un sistema existente.
+
+Antes de eliminar, renombrar o reestructurar algo, comprobar sus dependencias.
+
+Objetivo:
+
+MEJORAR EL SISTEMA SIN ROMPER LO QUE YA FUNCIONA.
