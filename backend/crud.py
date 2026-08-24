@@ -1614,3 +1614,86 @@ def obtener_ordenes_seguimiento(db: Session):
         orden.estado = calcular_estado(proceso_actual)
 
     return ordenes
+
+
+def reporte_liquidacion(db: Session, codigo: str):
+    orden = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.codigo.ilike(codigo.strip()))
+        .first()
+    )
+    if orden is None:
+        raise HTTPException(status_code=404, detail="No se encontró ninguna Orden con ese código.")
+
+    movimientos = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden.id)
+        .order_by(models.Movimiento.id.asc())
+        .all()
+    )
+
+    materiales_extrusion = []
+    procesos = []
+
+    for mov in movimientos:
+        operario = db.get(models.Operario, mov.operario_id)
+
+        detalles = (
+            db.query(models.DetalleMovimiento)
+            .filter(models.DetalleMovimiento.movimiento_id == mov.id)
+            .order_by(models.DetalleMovimiento.numero)
+            .all()
+        )
+
+        if mov.proceso == "Extrusión":
+            for d in detalles:
+                if d.tipo == "material":
+                    materiales_extrusion.append({
+                        "tipo_material": d.tipo_material,
+                        "cantidad": float(d.peso_bruto)
+                    })
+
+        bobinas_salida = [
+            {
+                "numero": d.numero,
+                "peso_bruto": float(d.peso_bruto),
+                "peso_tuco": float(d.peso_tuco) if d.peso_tuco is not None else 0,
+                "peso_neto": float(d.peso_neto),
+                "millares": float(d.millares) if d.millares is not None else None,
+                "tipo_material": d.tipo_material
+            }
+            for d in detalles
+            if d.lado == "salida" and d.tipo != "material"
+        ]
+
+        mermas = (
+            db.query(models.DetalleMerma)
+            .filter(models.DetalleMerma.movimiento_id == mov.id)
+            .all()
+        )
+
+        procesos.append({
+            "proceso": mov.proceso,
+            "maquina": mov.maquina,
+            "operario": operario.nombre if operario else "Desconocido",
+            "entrada": float(mov.entrada or 0),
+            "salida": float(mov.salida or 0),
+            "unidad": mov.unidad,
+            "observacion": mov.observacion,
+            "fecha": mov.fecha,
+            "hora": mov.hora,
+            "bobinas_salida": bobinas_salida,
+            "mermas": [{"peso": float(m.peso), "tipo_merma": m.tipo_merma} for m in mermas]
+        })
+
+    return {
+        "codigo": orden.codigo,
+        "cliente": orden.cliente_obj.nombre,
+        "ruc": orden.cliente_obj.ruc,
+        "descripcion": orden.descripcion,
+        "cantidad": float(orden.cantidad),
+        "unidad": orden.unidad,
+        "fecha": orden.fecha,
+        "materiales_extrusion": materiales_extrusion,
+        "procesos": procesos
+    }

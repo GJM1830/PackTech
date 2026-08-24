@@ -314,3 +314,47 @@ class SiguienteProcesoResponse(BaseModel):
     
 class ImportarBobinasResponse(BaseModel):
     importadas: int
+
+class LiquidacionMaterial(BaseModel):
+    tipo_material: str | None
+    cantidad: float
+
+
+class LiquidacionBobina(BaseModel):
+    numero: int
+    peso_bruto: float
+    peso_tuco: float | None
+    peso_neto: float
+    millares: float | None
+    tipo_material: str | None
+
+
+class LiquidacionMerma(BaseModel):
+    peso: float
+    tipo_merma: str | None
+
+
+class LiquidacionProceso(BaseModel):
+    proceso: str
+    maquina: str | None
+    operario: str
+    entrada: float
+    salida: float
+    unidad: str
+    observacion: str | None
+    fecha: date
+    hora: time
+    bobinas_salida: list[LiquidacionBobina]
+    mermas: list[LiquidacionMerma]
+
+
+class ReporteLiquidacion(BaseModel):
+    codigo: str
+    cliente: str
+    ruc: str | None
+    descripcion: str | None
+    cantidad: float
+    unidad: str
+    fecha: date
+    materiales_extrusion: list[LiquidacionMaterial]
+    procesos: list[LiquidacionProceso]

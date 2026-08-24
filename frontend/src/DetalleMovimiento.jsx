@@ -7,6 +7,11 @@ import { esProduccionOMas } from './roles'
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_SALIDA_FARDO = ['Sellado']
+const MATERIALES_EXTRUSION = [
+  'LINEAL', 'BAJA (PEBD)', 'MASTERBACH', 'USO PESADO', 'ALTA DENSIDAD',
+  'METALOCENO', 'PELETIZADO NEGRO', 'MASTER BLANCO', 'CARAMELO',
+  'AGLOMERADO', 'NEGRO', 'OTROS'
+]
 
 function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const esExtrusion = movimiento.proceso === 'Extrusión'
@@ -34,6 +39,10 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [error, setError] = useState(null)
   const salidaEsFardo = PROCESOS_SALIDA_FARDO.includes(movimiento.proceso)
   const [importando, setImportando] = useState(false)
+  const esExtrusionReal = movimiento.proceso === 'Extrusión'
+  const [materialSeleccionado, setMaterialSeleccionado] = useState('')
+  const [cantidadMaterial, setCantidadMaterial] = useState('')
+  const [enviandoMaterial, setEnviandoMaterial] = useState(false)
   const [tipoMaterial, setTipoMaterial] = useState('')
   const [sugerenciasTipoMaterial, setSugerenciasTipoMaterial] = useState([])
 
@@ -88,7 +97,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       if (esProcesoEspecial) cargarDetallesMerma()
     }, []) 
 
-  const detallesLado = (lado) => detalles.filter(d => d.lado === lado)
+  const detallesLado = (lado) => detalles.filter(d => d.lado === lado && d.tipo !== 'material')
   const sumaNeto = (lista) => lista.reduce((s, d) => s + Number(d.peso_neto), 0)
 
   const entradaBobinas = detallesLado('entrada')
@@ -122,6 +131,34 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       setError(err.response?.data?.detail || 'Error al agregar el fardo.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  const materialesUsados = detalles.filter((d) => d.tipo === 'material')
+
+  const agregarMaterial = async (e) => {
+    e.preventDefault()
+    if (!materialSeleccionado) return
+    setEnviandoMaterial(true)
+    setError(null)
+    try {
+      const siguienteNumero = materialesUsados.length + 1
+      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+        tipo: 'material',
+        lado: 'entrada',
+        numero: siguienteNumero,
+        peso_bruto: parseFloat(cantidadMaterial),
+        peso_tuco: 0,
+        millares: null,
+        tipo_material: materialSeleccionado
+      })
+      setMaterialSeleccionado('')
+      setCantidadMaterial('')
+      cargarDetalles()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al agregar el material.')
+    } finally {
+      setEnviandoMaterial(false)
     }
   }
 
@@ -394,6 +431,78 @@ const duplicarMerma = (detalle) => {
 
         {esProcesoEspecial ? (
           <>
+            {esProduccionOMas() && esExtrusionReal && (
+              <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mb-5">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Materiales usados</h4>
+                <form onSubmit={agregarMaterial} className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
+                    <select
+                      value={materialSeleccionado}
+                      onChange={(e) => setMaterialSeleccionado(e.target.value)}
+                      required
+                      className="w-full border border-slate-300 rounded px-3 py-2 bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {MATERIALES_EXTRUSION.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad (kg)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={cantidadMaterial}
+                      onChange={(e) => setCantidadMaterial(e.target.value)}
+                      required
+                      className="w-full border border-slate-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      disabled={enviandoMaterial}
+                      className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {enviandoMaterial ? 'Agregando...' : '+ Material'}
+                    </button>
+                  </div>
+                </form>
+
+                {materialesUsados.length > 0 && (
+                  <div className="overflow-x-auto bg-white rounded-lg border border-slate-100">
+                    <table className="min-w-full text-sm text-left">
+                      <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                        <tr>
+                          <th className="px-4 py-2">Material</th>
+                          <th className="px-4 py-2">Cantidad</th>
+                          <th className="px-4 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {materialesUsados.map((m) => (
+                          <tr key={m.id} className="border-t border-slate-200">
+                            <td className="px-4 py-2 font-medium text-slate-800">{m.tipo_material}</td>
+                            <td className="px-4 py-2">{m.peso_bruto} kg</td>
+                            <td className="px-4 py-2 text-right">
+                              <button
+                                onClick={() => eliminarDetalle(m.id)}
+                                className="text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {esProduccionOMas() && esDobleLado && (
               <div className="flex justify-between items-center mb-4 border-b border-slate-200">
                 <div className="flex gap-2">

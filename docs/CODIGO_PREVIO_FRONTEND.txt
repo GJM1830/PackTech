@@ -2435,6 +2435,11 @@ import { esProduccionOMas } from './roles'
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_SALIDA_FARDO = ['Sellado']
+const MATERIALES_EXTRUSION = [
+  'LINEAL', 'BAJA (PEBD)', 'MASTERBACH', 'USO PESADO', 'ALTA DENSIDAD',
+  'METALOCENO', 'PELETIZADO NEGRO', 'MASTER BLANCO', 'CARAMELO',
+  'AGLOMERADO', 'NEGRO', 'OTROS'
+]
 
 function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const esExtrusion = movimiento.proceso === 'Extrusión'
@@ -2462,6 +2467,10 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [error, setError] = useState(null)
   const salidaEsFardo = PROCESOS_SALIDA_FARDO.includes(movimiento.proceso)
   const [importando, setImportando] = useState(false)
+  const esExtrusionReal = movimiento.proceso === 'Extrusión'
+  const [materialSeleccionado, setMaterialSeleccionado] = useState('')
+  const [cantidadMaterial, setCantidadMaterial] = useState('')
+  const [enviandoMaterial, setEnviandoMaterial] = useState(false)
   const [tipoMaterial, setTipoMaterial] = useState('')
   const [sugerenciasTipoMaterial, setSugerenciasTipoMaterial] = useState([])
 
@@ -2516,7 +2525,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       if (esProcesoEspecial) cargarDetallesMerma()
     }, []) 
 
-  const detallesLado = (lado) => detalles.filter(d => d.lado === lado)
+  const detallesLado = (lado) => detalles.filter(d => d.lado === lado && d.tipo !== 'material')
   const sumaNeto = (lista) => lista.reduce((s, d) => s + Number(d.peso_neto), 0)
 
   const entradaBobinas = detallesLado('entrada')
@@ -2550,6 +2559,34 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       setError(err.response?.data?.detail || 'Error al agregar el fardo.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  const materialesUsados = detalles.filter((d) => d.tipo === 'material')
+
+  const agregarMaterial = async (e) => {
+    e.preventDefault()
+    if (!materialSeleccionado) return
+    setEnviandoMaterial(true)
+    setError(null)
+    try {
+      const siguienteNumero = materialesUsados.length + 1
+      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+        tipo: 'material',
+        lado: 'entrada',
+        numero: siguienteNumero,
+        peso_bruto: parseFloat(cantidadMaterial),
+        peso_tuco: 0,
+        millares: null,
+        tipo_material: materialSeleccionado
+      })
+      setMaterialSeleccionado('')
+      setCantidadMaterial('')
+      cargarDetalles()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al agregar el material.')
+    } finally {
+      setEnviandoMaterial(false)
     }
   }
 
@@ -2822,6 +2859,78 @@ const duplicarMerma = (detalle) => {
 
         {esProcesoEspecial ? (
           <>
+            {esProduccionOMas() && esExtrusionReal && (
+              <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mb-5">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Materiales usados</h4>
+                <form onSubmit={agregarMaterial} className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
+                    <select
+                      value={materialSeleccionado}
+                      onChange={(e) => setMaterialSeleccionado(e.target.value)}
+                      required
+                      className="w-full border border-slate-300 rounded px-3 py-2 bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {MATERIALES_EXTRUSION.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad (kg)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={cantidadMaterial}
+                      onChange={(e) => setCantidadMaterial(e.target.value)}
+                      required
+                      className="w-full border border-slate-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      disabled={enviandoMaterial}
+                      className="bg-green-700 text-white rounded-lg px-5 py-2 font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {enviandoMaterial ? 'Agregando...' : '+ Material'}
+                    </button>
+                  </div>
+                </form>
+
+                {materialesUsados.length > 0 && (
+                  <div className="overflow-x-auto bg-white rounded-lg border border-slate-100">
+                    <table className="min-w-full text-sm text-left">
+                      <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                        <tr>
+                          <th className="px-4 py-2">Material</th>
+                          <th className="px-4 py-2">Cantidad</th>
+                          <th className="px-4 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {materialesUsados.map((m) => (
+                          <tr key={m.id} className="border-t border-slate-200">
+                            <td className="px-4 py-2 font-medium text-slate-800">{m.tipo_material}</td>
+                            <td className="px-4 py-2">{m.peso_bruto} kg</td>
+                            <td className="px-4 py-2 text-right">
+                              <button
+                                onClick={() => eliminarDetalle(m.id)}
+                                className="text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {esProduccionOMas() && esDobleLado && (
               <div className="flex justify-between items-center mb-4 border-b border-slate-200">
                 <div className="flex gap-2">
@@ -3579,7 +3688,158 @@ export async function generarPDFCotizacion(orden) {
   doc.save(`Cotizacion_${orden.codigo}.pdf`)
 }
 
-index.css
+GenerarPDFLiquidacion.js:
+
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return '-'
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+export async function generarPDFLiquidacion(data) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const M = 12
+  const ANCHO = 210 - M * 2
+  const azul = [30, 64, 175]
+  const slate900 = [15, 23, 42]
+  const slate600 = [71, 85, 105]
+
+  const logoBase64 = await new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      canvas.getContext('2d').drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => resolve(null)
+    img.src = '/logo-packtech.png'
+  })
+
+  let y = 14
+  doc.setDrawColor(...slate900)
+  doc.setLineWidth(0.3)
+  doc.line(M, y + 16, M + ANCHO, y + 16)
+
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', M, y - 2, 55, 18)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(16)
+    doc.setTextColor(...azul)
+    doc.text('PACKTECH', M, y + 6)
+  }
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(...slate900)
+  doc.text('LIQUIDACIÓN DE PRODUCCIÓN', M + ANCHO, y + 6, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...slate600)
+  doc.text(`Pedido ${data.codigo}  ·  ${formatearFecha(data.fecha)}`, M + ANCHO, y + 12, { align: 'right' })
+
+  y += 24
+
+  doc.setFontSize(9)
+  doc.setTextColor(...slate600)
+  doc.text(`Cliente: ${data.cliente}${data.ruc ? '  ·  RUC/DNI: ' + data.ruc : ''}`, M, y)
+  y += 5
+  doc.text(`Producto: ${data.descripcion || '-'}  ·  Cantidad planificada: ${data.cantidad} ${data.unidad}`, M, y)
+  y += 8
+
+  if (data.materiales_extrusion.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...slate900)
+    doc.text('Materiales usados en Extrusión', M, y)
+    y += 3
+    autoTable(doc, {
+      startY: y,
+      head: [['Material', 'Cantidad (kg)']],
+      body: data.materiales_extrusion.map((m) => [m.tipo_material || '-', m.cantidad.toFixed(2)]),
+      theme: 'grid',
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      margin: { left: M, right: M }
+    })
+    y = doc.lastAutoTable.finalY + 8
+  }
+
+  data.procesos.forEach((p) => {
+    if (y > 250) {
+      doc.addPage()
+      y = 16
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...slate900)
+    doc.text(`${p.proceso}  ·  ${p.maquina || 'Sin máquina'}  ·  ${p.operario}`, M, y)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate600)
+    doc.text(`${formatearFecha(p.fecha)}  ${p.hora?.slice(0, 5) || ''}`, M + ANCHO, y, { align: 'right' })
+    y += 5
+
+    if (p.bobinas_salida.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [['N°', 'Bruto', 'Tuco', 'Neto', 'Millares', 'Material']],
+        body: p.bobinas_salida.map((b) => [
+          b.numero,
+          b.peso_bruto.toFixed(2),
+          (b.peso_tuco || 0).toFixed(2),
+          b.peso_neto.toFixed(2),
+          b.millares != null ? b.millares : '-',
+          b.tipo_material || '-'
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5 },
+        bodyStyles: { fontSize: 7.5 },
+        margin: { left: M, right: M }
+      })
+      y = doc.lastAutoTable.finalY + 3
+    } else {
+      doc.setFontSize(8)
+      doc.setTextColor(...slate600)
+      doc.text(`Entrada: ${p.entrada} ${p.unidad}   Salida: ${p.salida} ${p.unidad}`, M, y)
+      y += 6
+    }
+
+    if (p.mermas.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [['Merma (kg)', 'Tipo']],
+        body: p.mermas.map((m) => [m.peso.toFixed(2), m.tipo_merma || 'Sin especificar']),
+        theme: 'grid',
+        headStyles: { fillColor: [153, 27, 27], textColor: 255, fontSize: 7.5 },
+        bodyStyles: { fontSize: 7.5 },
+        margin: { left: M, right: M },
+        tableWidth: 90
+      })
+      y = doc.lastAutoTable.finalY + 3
+    }
+
+    if (p.observacion) {
+      doc.setFontSize(7.5)
+      doc.setTextColor(...slate600)
+      doc.text(`Obs: ${p.observacion}`, M, y)
+      y += 5
+    }
+
+    y += 5
+  })
+
+  doc.save(`Liquidacion_${data.codigo}.pdf`)
+}
+
+index.css:
 
 @import "tailwindcss";
 
@@ -4816,6 +5076,7 @@ import { useParams, Link } from 'react-router-dom'
 import axios from './api'
 import DetalleMovimiento from './DetalleMovimiento'
 import VistaCotizacion from './VistaCotizacion'
+import { generarPDFLiquidacion } from './GenerarPDFLiquidacion'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
@@ -4837,6 +5098,19 @@ function OrdenDetalle() {
   const [guardando, setGuardando] = useState(false)
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
   const [verHojaPedido, setVerHojaPedido] = useState(false)
+  const [generandoLiquidacion, setGenerandoLiquidacion] = useState(false)
+
+  const descargarLiquidacion = async () => {
+    setGenerandoLiquidacion(true)
+    try {
+      const res = await axios.get(`https://packtech-production.up.railway.app/reportes/liquidacion/${orden.codigo}`)
+      await generarPDFLiquidacion(res.data)
+    } catch (err) {
+      alert(err.response?.data?.detail || 'No se pudo generar la liquidación.')
+    } finally {
+      setGenerandoLiquidacion(false)
+    }
+  }
 
   const cargar = async () => {
     try {
@@ -4929,12 +5203,21 @@ function OrdenDetalle() {
           )}
         </div>
         {orden && (
-          <button
-            onClick={() => setVerHojaPedido(true)}
-            className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 whitespace-nowrap"
-          >
-            📄 Hoja de Pedido
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setVerHojaPedido(true)}
+              className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 whitespace-nowrap"
+            >
+              📄 Hoja de Pedido
+            </button>
+            <button
+              onClick={descargarLiquidacion}
+              disabled={generandoLiquidacion}
+              className="text-sm bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-800 disabled:opacity-50 whitespace-nowrap"
+            >
+              {generandoLiquidacion ? 'Generando...' : '📋 Liquidación'}
+            </button>
+          </div>
         )}
       </div>
 

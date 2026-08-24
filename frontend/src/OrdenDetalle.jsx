@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import axios from './api'
 import DetalleMovimiento from './DetalleMovimiento'
 import VistaCotizacion from './VistaCotizacion'
+import { generarPDFLiquidacion } from './GenerarPDFLiquidacion'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
@@ -24,6 +25,19 @@ function OrdenDetalle() {
   const [guardando, setGuardando] = useState(false)
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
   const [verHojaPedido, setVerHojaPedido] = useState(false)
+  const [generandoLiquidacion, setGenerandoLiquidacion] = useState(false)
+
+  const descargarLiquidacion = async () => {
+    setGenerandoLiquidacion(true)
+    try {
+      const res = await axios.get(`https://packtech-production.up.railway.app/reportes/liquidacion/${orden.codigo}`)
+      await generarPDFLiquidacion(res.data)
+    } catch (err) {
+      alert(err.response?.data?.detail || 'No se pudo generar la liquidación.')
+    } finally {
+      setGenerandoLiquidacion(false)
+    }
+  }
 
   const cargar = async () => {
     try {
@@ -116,12 +130,21 @@ function OrdenDetalle() {
           )}
         </div>
         {orden && (
-          <button
-            onClick={() => setVerHojaPedido(true)}
-            className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 whitespace-nowrap"
-          >
-            📄 Hoja de Pedido
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setVerHojaPedido(true)}
+              className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 whitespace-nowrap"
+            >
+              📄 Hoja de Pedido
+            </button>
+            <button
+              onClick={descargarLiquidacion}
+              disabled={generandoLiquidacion}
+              className="text-sm bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-800 disabled:opacity-50 whitespace-nowrap"
+            >
+              {generandoLiquidacion ? 'Generando...' : '📋 Liquidación'}
+            </button>
+          </div>
         )}
       </div>
 
