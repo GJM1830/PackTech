@@ -36,3 +36,10 @@ def tipos_merma(
     db: Session = Depends(obtener_db)
 ):
     return crud.reporte_por_tipo_merma(db, desde, hasta)
+
+@router.get("/liquidacion/{codigo}", response_model=schemas.ReporteLiquidacion)
+def liquidacion(
+    codigo: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.reporte_liquidacion(db, codigo)
