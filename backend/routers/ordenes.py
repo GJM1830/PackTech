@@ -91,6 +91,14 @@ def listar_preaprobadas(
     return crud.obtener_ordenes_preaprobadas(db)
 
 
+@router.get("/seguimiento/listar", response_model=list[schemas.OrdenProduccionResponse])
+def listar_seguimiento(
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("produccion"))
+):
+    return crud.obtener_ordenes_seguimiento(db)
+
+
 @router.post("/{orden_id}/aprobar", response_model=schemas.OrdenProduccionResponse)
 def aprobar_orden(
     orden_id: int,

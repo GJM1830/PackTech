@@ -12,6 +12,8 @@ const formatearFecha = (fecha) => {
 }
 
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
+  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+
   const [form, setForm] = useState({
     codigo: '',
     ruc: '',
@@ -29,8 +31,29 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     direccion_entrega: '',
     numero_contacto: '',
     email_cliente: '',
-    telefono_cliente: ''
+    telefono_cliente: '',
+    tipo_trabajo: ''
   })
+
+  const [procesosRuta, setProcesosRuta] = useState([])
+
+  const agregarProceso = (proceso) => {
+    setProcesosRuta((actual) => [...actual, proceso])
+  }
+
+  const quitarProceso = (index) => {
+    setProcesosRuta((actual) => actual.filter((_, i) => i !== index))
+  }
+
+  const moverProceso = (index, direccion) => {
+    setProcesosRuta((actual) => {
+      const nuevo = [...actual]
+      const destino = index + direccion
+      if (destino < 0 || destino >= nuevo.length) return actual
+      ;[nuevo[index], nuevo[destino]] = [nuevo[destino], nuevo[index]]
+      return nuevo
+    })
+  }
 
   const [sugerenciasClientes, setSugerenciasClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -139,7 +162,9 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         direccion_entrega: form.direccion_entrega || null,
         numero_contacto: form.numero_contacto || null,
         email_cliente: form.email_cliente || null,
-        telefono_cliente: form.telefono_cliente || null
+        telefono_cliente: form.telefono_cliente || null,
+        tipo_trabajo: form.tipo_trabajo || null,
+        procesos_plan: procesosRuta.length > 0 ? procesosRuta.join(',') : null
       })
 
       setExito(true)
@@ -147,8 +172,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '',
         cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
         precio_unitario: '', unidad_precio: 'kg', millares: '',
-        direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: ''
+        direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
+        tipo_trabajo: ''
       })
+      setProcesosRuta([])
       setClienteSeleccionado(null)
       if (onCreada) onCreada()
     } catch (err) {
@@ -296,6 +323,65 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo de trabajo y ruta (opcional)</p>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de trabajo</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, tipo_trabajo: form.tipo_trabajo === 'Venta' ? '' : 'Venta' })}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  form.tipo_trabajo === 'Venta' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                Venta
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, tipo_trabajo: form.tipo_trabajo === 'Servicio' ? '' : 'Servicio' })}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  form.tipo_trabajo === 'Servicio' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                Servicio
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-2">Ruta de procesos</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {TODOS_LOS_PROCESOS.filter((p) => !procesosRuta.includes(p)).map((proceso) => (
+                <button
+                  key={proceso}
+                  type="button"
+                  onClick={() => agregarProceso(proceso)}
+                  className="px-3 py-1 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
+                >
+                  + {proceso}
+                </button>
+              ))}
+            </div>
+            {procesosRuta.length > 0 && (
+              <div className="space-y-1.5">
+                {procesosRuta.map((proceso, index) => (
+                  <div key={`${proceso}-${index}`} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                    <span className="text-xs font-bold text-blue-700 bg-white rounded-full w-5 h-5 flex items-center justify-center border border-blue-300">
+                      {index + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-blue-800">{proceso}</span>
+                    <button type="button" onClick={() => moverProceso(index, -1)} disabled={index === 0} className="text-blue-600 hover:text-blue-800 disabled:opacity-30 px-1">↑</button>
+                    <button type="button" onClick={() => moverProceso(index, 1)} disabled={index === procesosRuta.length - 1} className="text-blue-600 hover:text-blue-800 disabled:opacity-30 px-1">↓</button>
+                    <button type="button" onClick={() => quitarProceso(index)} className="text-red-500 hover:text-red-700 px-1">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <details className="text-sm">
           <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
             + Datos opcionales (dirección, contacto)
@@ -331,7 +417,88 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
   )
 }
 
+function VistaSeguimiento() {
+  const [ordenes, setOrdenes] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
+
+  const cargar = () => {
+    setCargando(true)
+    axios.get('https://packtech-production.up.railway.app/ordenes-produccion/seguimiento/listar')
+      .then((res) => {
+        setOrdenes(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError('No se pudo conectar con el backend.')
+      })
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '—'
+    const [anio, mes, dia] = fecha.split('-')
+    return `${dia}/${mes}/${anio.slice(2)}`
+  }
+
+  const ordenesFiltradas = ordenes.filter((o) =>
+    o.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
+    o.cliente.toLowerCase().includes(busqueda.toLowerCase())
+  )
+
+  return (
+    <div className="space-y-4">
+      <input
+        type="text"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscar por código o cliente..."
+        className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-64"
+      />
+
+      {cargando && <p className="text-slate-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!cargando && !error && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {ordenesFiltradas.map((o) => (
+            <div key={o.id} className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+              <div className="flex justify-between items-start mb-2">
+                <span className="font-bold text-slate-800">{o.codigo}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  o.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
+                  o.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
+                  o.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                  'bg-slate-100 text-slate-500'
+                }`}>
+                  {o.estado}
+                </span>
+              </div>
+              <p className="text-sm text-slate-600 mb-1">{o.cliente}</p>
+              {o.descripcion && <p className="text-xs text-slate-400 mb-3">{o.descripcion}</p>}
+              <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
+                <span className="text-slate-500">Proceso: <span className="font-medium text-slate-700">{o.ultimo_proceso}</span></span>
+                <span className="text-slate-500">Entrega: <span className="font-medium text-slate-700">{formatearFecha(o.fecha_entrega)}</span></span>
+              </div>
+            </div>
+          ))}
+          {ordenesFiltradas.length === 0 && (
+            <p className="text-slate-400 col-span-full text-center py-8">No hay pedidos para mostrar.</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Cotizaciones() {
+  const [vista, setVista] = useState('preaprobadas')
   const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -453,6 +620,29 @@ function Cotizaciones() {
         </p>
       </div>
 
+      <div className="flex gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setVista('preaprobadas')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'preaprobadas' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Por Aprobar
+        </button>
+        <button
+          onClick={() => setVista('seguimiento')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'seguimiento' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Seguimiento
+        </button>
+      </div>
+
+      {vista === 'seguimiento' && <VistaSeguimiento />}
+
+      {vista === 'preaprobadas' && (
+        <>
       {vendedorOAdmin && <FormularioCotizacion onCreada={cargar} duplicarDesde={duplicarDesde} />}
 
       <div>
@@ -533,6 +723,8 @@ function Cotizaciones() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {vistaAbierta && (
         <VistaCotizacion orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />

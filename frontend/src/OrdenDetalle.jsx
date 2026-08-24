@@ -135,6 +135,11 @@ function OrdenDetalle() {
           <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
             Último proceso: {orden.ultimo_proceso}
           </span>
+          {orden.tipo_trabajo && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+              {orden.tipo_trabajo}
+            </span>
+          )}
         </div>
       )}
 

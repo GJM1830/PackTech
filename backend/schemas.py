@@ -24,6 +24,7 @@ class OrdenProduccionCreate(BaseModel):
     unidad: str
     estado: str | None = "Pendiente"
     procesos_plan: str | None = None
+    tipo_trabajo: str | None = None
     moneda: str | None = None
     vendedor: str | None = None
     fecha_entrega: date | None = None
@@ -50,6 +51,7 @@ class OrdenProduccionResponse(BaseModel):
     cliente: str
     ultimo_proceso: str
     procesos_plan: str | None = None
+    tipo_trabajo: str | None = None
     moneda: str | None = None
     vendedor: str | None = None
     fecha_entrega: date | None = None

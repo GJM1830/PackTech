@@ -305,15 +305,22 @@ function App() {
         <nav className="bg-slate-900 text-white px-4 sm:px-8 py-4 flex flex-wrap gap-3 sm:gap-6 items-center shadow-md">
           <span className="font-bold text-lg tracking-tight">PackTech</span>
           <div className="h-5 w-px bg-slate-700" />
+        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Producción</span>
         <Link to="/" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Órdenes</Link>
         <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
-        <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
-        <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
         <Link to="/aglomerado" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Aglomerado</Link>
-        <Link to="/reportes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Reportes</Link>
+
+        <div className="h-5 w-px bg-slate-700" />
+        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Ventas</span>
         {rol !== 'observador' && (
           <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Cotizaciones</Link>
         )}
+        <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
+
+        <div className="h-5 w-px bg-slate-700" />
+        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Gestión</span>
+        <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
+        <Link to="/reportes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Reportes</Link>
   
         <button
         onClick={() => {

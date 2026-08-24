@@ -86,6 +86,7 @@ class OrdenProduccion(Base):
     __tablename__ = "ordenes_produccion"
     
     procesos_plan: Mapped[str | None] = mapped_column(Text)
+    tipo_trabajo: Mapped[str | None] = mapped_column(String(20))
 
     moneda: Mapped[str | None] = mapped_column(String(10))
     vendedor: Mapped[str | None] = mapped_column(String(100))

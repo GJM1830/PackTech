@@ -209,6 +209,8 @@ def crear_orden_produccion(
         estado=orden.estado,
         fecha=ahora.date(),
         hora=ahora.time(),
+        procesos_plan=orden.procesos_plan,
+        tipo_trabajo=orden.tipo_trabajo,
         moneda=orden.moneda,
         vendedor=orden.vendedor.strip() if orden.vendedor and orden.vendedor.strip() else None,
         fecha_entrega=orden.fecha_entrega,
@@ -1520,6 +1522,9 @@ def editar_orden_produccion(
     orden.cantidad = orden_nueva.cantidad
     orden.unidad = orden_nueva.unidad
     orden.estado = orden_nueva.estado
+    if orden_nueva.procesos_plan is not None:
+        orden.procesos_plan = orden_nueva.procesos_plan
+    orden.tipo_trabajo = orden_nueva.tipo_trabajo
     orden.moneda = orden_nueva.moneda
     orden.vendedor = orden_nueva.vendedor.strip() if orden_nueva.vendedor and orden_nueva.vendedor.strip() else None
     orden.fecha_entrega = orden_nueva.fecha_entrega
@@ -1581,5 +1586,31 @@ def obtener_ordenes_preaprobadas(db: Session):
         orden.ruc = orden.cliente_obj.ruc
         orden.cliente = orden.cliente_obj.nombre
         orden.ultimo_proceso = "Sin iniciar"
+
+    return ordenes
+
+
+def obtener_ordenes_seguimiento(db: Session):
+    ordenes = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.estado != "Preaprobada")
+        .filter(models.OrdenProduccion.vendedor.isnot(None))
+        .order_by(models.OrdenProduccion.fecha_entrega.asc().nullslast())
+        .all()
+    )
+
+    for orden in ordenes:
+        orden.ruc = orden.cliente_obj.ruc
+        orden.cliente = orden.cliente_obj.nombre
+
+        ultimo_movimiento = (
+            db.query(models.Movimiento)
+            .filter(models.Movimiento.orden_id == orden.id)
+            .order_by(models.Movimiento.id.desc())
+            .first()
+        )
+        proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+        orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+        orden.estado = calcular_estado(proceso_actual)
 
     return ordenes
