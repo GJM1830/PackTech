@@ -111,6 +111,9 @@ function OrdenDetalle() {
           {orden?.descripcion && (
             <p className="text-slate-500 text-sm mt-1">{orden.descripcion}</p>
           )}
+          {orden?.numero_std != null && (
+            <p className="text-slate-400 text-xs mt-1">N° Estándar: {orden.numero_std}</p>
+          )}
         </div>
         {orden && (
           <button

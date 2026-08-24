@@ -201,11 +201,11 @@ const guardarEdicion = async () => {
               <tr>
                 <th className="px-4 py-3">N° Pedido</th>
                 <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">N° Std</th>
                 <th className="px-4 py-3">Producto</th>
                 <th className="px-4 py-3">Cantidad</th>
                 <th className="px-4 py-3">Unidad</th>
                 <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Último Proceso</th>
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Hora</th>
                 <th className="px-4 py-3 text-right"></th>
@@ -220,7 +220,6 @@ const guardarEdicion = async () => {
                   >
                     <td className="px-4 py-3 font-medium text-slate-800">{orden.codigo}</td>
                     <td className="px-4 py-3">{orden.cliente}</td>
-                    <td className="px-4 py-3">{orden.numero_std}</td>
                     <td className="px-4 py-3">{orden.descripcion}</td>
                     <td className="px-4 py-3">{orden.cantidad}</td>
                     <td className="px-4 py-3">{orden.unidad}</td>
@@ -234,6 +233,7 @@ const guardarEdicion = async () => {
                         {orden.estado}
                       </span>
                     </td>
+                    <td className="px-4 py-3">{orden.ultimo_proceso}</td>
                     <td className="px-4 py-3">{formatearFecha(orden.fecha)}</td>
                     <td className="px-4 py-3">{orden.hora?.slice(0, 5)}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
