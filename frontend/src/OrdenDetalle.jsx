@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from './api'
 import DetalleMovimiento from './DetalleMovimiento'
+import VistaCotizacion from './VistaCotizacion'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
@@ -22,6 +23,7 @@ function OrdenDetalle() {
   const [seleccionados, setSeleccionados] = useState([])
   const [guardando, setGuardando] = useState(false)
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
+  const [verHojaPedido, setVerHojaPedido] = useState(false)
 
   const cargar = async () => {
     try {
@@ -101,12 +103,22 @@ function OrdenDetalle() {
         ← Volver a Órdenes
       </Link>
 
-      <div>
-        <h2 className="text-xl font-bold text-slate-800">
-          {orden ? `${orden.codigo} · ${orden.cliente}` : `Orden #${id}`}
-        </h2>
-        {orden?.descripcion && (
-          <p className="text-slate-500 text-sm mt-1">{orden.descripcion}</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">
+            {orden ? `${orden.codigo} · ${orden.cliente}` : `Orden #${id}`}
+          </h2>
+          {orden?.descripcion && (
+            <p className="text-slate-500 text-sm mt-1">{orden.descripcion}</p>
+          )}
+        </div>
+        {orden && (
+          <button
+            onClick={() => setVerHojaPedido(true)}
+            className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 whitespace-nowrap"
+          >
+            📄 Hoja de Pedido
+          </button>
         )}
       </div>
 
@@ -324,6 +336,10 @@ function OrdenDetalle() {
           orden={orden}
           onCerrar={() => setMovimientoAbierto(null)}
         />
+      )}
+
+      {verHojaPedido && orden && (
+        <VistaCotizacion orden={orden} onCerrar={() => setVerHojaPedido(false)} />
       )}
     </div>
   )
