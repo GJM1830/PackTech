@@ -192,7 +192,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       <h2 className="text-xl font-bold text-slate-800 mb-4">Nueva Cotización</h2>
 
       <form onSubmit={manejarEnvio} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">N° de Pedido</label>
             <input type="text" name="codigo" value={form.codigo} onChange={manejarCambio} required className={estilo} placeholder="OP-118" />
@@ -203,7 +203,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
           <div className="relative">
             <label className="block text-sm font-medium text-slate-600 mb-1">RUC (opcional)</label>
             <input
@@ -244,7 +244,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           <input type="text" name="descripcion" value={form.descripcion} onChange={manejarCambio} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad</label>
             <input type="number" step="0.01" name="cantidad" value={form.cantidad} onChange={manejarCambio} required className={estilo} />
@@ -268,7 +268,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
         <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio (obligatorio para cotización)</p>
-          <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
               <input type="number" step="0.01" name="precio_unitario" value={form.precio_unitario} onChange={manejarCambio} required className={estilo} />
@@ -297,7 +297,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
           <div className="relative">
             <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
             <input
@@ -386,7 +386,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
             + Datos opcionales (dirección, contacto)
           </summary>
-          <div className="grid grid-cols-2 gap-4 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Dirección de entrega</label>
               <input type="text" name="direccion_entrega" value={form.direccion_entrega} onChange={manejarCambio} className={estilo} />
@@ -448,8 +448,8 @@ function VistaSeguimiento() {
   }
 
   const ordenesFiltradas = ordenes.filter((o) =>
-    o.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    o.cliente.toLowerCase().includes(busqueda.toLowerCase())
+    (o.codigo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
+    (o.cliente || '').toLowerCase().includes(busqueda.toLowerCase())
   )
 
   return (

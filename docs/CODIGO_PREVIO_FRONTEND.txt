@@ -1027,23 +1027,23 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-50">
-        <nav className="bg-slate-900 text-white px-4 sm:px-8 py-4 flex flex-wrap gap-3 sm:gap-6 items-center shadow-md">
-          <span className="font-bold text-lg tracking-tight">PackTech</span>
-          <div className="h-5 w-px bg-slate-700" />
+        <nav className="bg-slate-900 text-white px-4 sm:px-8 py-3 flex flex-wrap gap-x-3 gap-y-2 sm:gap-6 items-center shadow-md">
+          <span className="font-bold text-lg tracking-tight w-full sm:w-auto">PackTech</span>
+          <div className="hidden sm:block h-5 w-px bg-slate-700" />
         <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Producción</span>
         <Link to="/" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Órdenes</Link>
         <Link to="/movimientos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Movimientos</Link>
         <Link to="/aglomerado" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Aglomerado</Link>
 
-        <div className="h-5 w-px bg-slate-700" />
-        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Ventas</span>
+        <div className="hidden sm:block h-5 w-px bg-slate-700" />
+        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold w-full sm:w-auto">Ventas</span>
         {rol !== 'observador' && (
           <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Cotizaciones</Link>
         )}
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
 
-        <div className="h-5 w-px bg-slate-700" />
-        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Gestión</span>
+        <div className="hidden sm:block h-5 w-px bg-slate-700" />
+        <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold w-full sm:w-auto">Gestión</span>
         <Link to="/operarios" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operarios</Link>
         <Link to="/reportes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Reportes</Link>
   
@@ -1059,7 +1059,7 @@ function App() {
         Salir
       </button>
     </nav>
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           <Routes>
             <Route path="/" element={<Ordenes />} />
             <Route path="/movimientos" element={<Movimientos />} />
@@ -1497,7 +1497,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       <h2 className="text-xl font-bold text-slate-800 mb-4">Nueva Cotización</h2>
 
       <form onSubmit={manejarEnvio} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">N° de Pedido</label>
             <input type="text" name="codigo" value={form.codigo} onChange={manejarCambio} required className={estilo} placeholder="OP-118" />
@@ -1508,7 +1508,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
           <div className="relative">
             <label className="block text-sm font-medium text-slate-600 mb-1">RUC (opcional)</label>
             <input
@@ -1549,7 +1549,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           <input type="text" name="descripcion" value={form.descripcion} onChange={manejarCambio} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad</label>
             <input type="number" step="0.01" name="cantidad" value={form.cantidad} onChange={manejarCambio} required className={estilo} />
@@ -1573,7 +1573,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
         <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio (obligatorio para cotización)</p>
-          <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
               <input type="number" step="0.01" name="precio_unitario" value={form.precio_unitario} onChange={manejarCambio} required className={estilo} />
@@ -1602,7 +1602,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
           <div className="relative">
             <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
             <input
@@ -1753,8 +1753,8 @@ function VistaSeguimiento() {
   }
 
   const ordenesFiltradas = ordenes.filter((o) =>
-    o.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    o.cliente.toLowerCase().includes(busqueda.toLowerCase())
+    (o.codigo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
+    (o.cliente || '').toLowerCase().includes(busqueda.toLowerCase())
   )
 
   return (
@@ -2359,7 +2359,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
           />
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
 
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-600 mb-1.5">
