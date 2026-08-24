@@ -1714,8 +1714,8 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {exito && <p className="text-green-700 text-sm font-medium">Cotización creada correctamente.</p>}
 
-        <button type="submit" disabled={enviando} className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 disabled:opacity-50">
-          {enviando ? 'Creando...' : 'Crear Cotización'}
+        <button type="submit" disabled={enviando} className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 disabled:opacity-50">
+          {enviando ? 'Creando...' : 'Registrar Cotización'}
         </button>
       </form>
     </div>
