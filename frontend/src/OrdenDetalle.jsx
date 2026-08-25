@@ -229,6 +229,8 @@ function OrdenDetalle() {
                 <th className="px-4 py-3">Entrada</th>
                 <th className="px-4 py-3">Salida</th>
                 <th className="px-4 py-3">Unidad</th>
+                <th className="px-4 py-3">Merma</th>
+                <th className="px-4 py-3">Faltante/Sobrante</th>
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Hora</th>
               </tr>
@@ -252,6 +254,8 @@ function OrdenDetalle() {
                   <td className="px-4 py-3">{mov.entrada}</td>
                   <td className="px-4 py-3">{mov.salida}</td>
                   <td className="px-4 py-3">{mov.unidad}</td>
+                  <td className="px-4 py-3">{mov.merma_real != null ? mov.merma_real : '—'}</td>
+                  <td className="px-4 py-3">{(Number(mov.entrada) - Number(mov.salida)).toFixed(2)}</td>
                   <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                 </tr>
