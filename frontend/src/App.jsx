@@ -125,9 +125,9 @@ const guardarEdicion = async () => {
   const clientesUnicos = [...new Set(ordenes.map(o => o.cliente))].sort()
   const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
 
-  const ordenesFiltradas = ordenesVisibles.filter((orden) => {
+  const ordenesFiltradas = ordenes.filter((orden) => {
     if (filtroCodigo && !orden.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
-    if (filtroCliente && !orden.cliente.toLowerCase().includes(filtroCliente.toLowerCase())) return false
+    if (filtroCliente && orden.cliente !== filtroCliente) return false
     if (filtroEstado && orden.estado !== filtroEstado) return false
     if (fechaDesde && orden.fecha < fechaDesde) return false
     if (fechaHasta && orden.fecha > fechaHasta) return false
