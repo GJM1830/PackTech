@@ -6086,6 +6086,19 @@ export default VistaCotizacion
 
 .gitignore
 
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
 # Logs
 logs
 *.log
@@ -6095,7 +6108,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
+# Node
+node_modules/
 dist
 dist-ssr
 *.local
