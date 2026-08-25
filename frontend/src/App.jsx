@@ -125,9 +125,9 @@ const guardarEdicion = async () => {
   const clientesUnicos = [...new Set(ordenes.map(o => o.cliente))].sort()
   const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
 
-  const ordenesFiltradas = ordenes.filter((orden) => {
+  const ordenesFiltradas = ordenesVisibles.filter((orden) => {
     if (filtroCodigo && !orden.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
-    if (filtroCliente && orden.cliente !== filtroCliente) return false
+    if (filtroCliente && !orden.cliente.toLowerCase().includes(filtroCliente.toLowerCase())) return false
     if (filtroEstado && orden.estado !== filtroEstado) return false
     if (fechaDesde && orden.fecha < fechaDesde) return false
     if (fechaHasta && orden.fecha > fechaHasta) return false
@@ -157,11 +157,12 @@ const guardarEdicion = async () => {
               placeholder="Buscar N° Pedido..."
               className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
             />
-            <FiltroDesplegable
-              etiqueta="Cliente"
-              opciones={clientesUnicos}
-              seleccionado={filtroCliente}
-              onSeleccionar={setFiltroCliente}
+            <input
+              type="text"
+              value={filtroCliente || ''}
+              onChange={(e) => setFiltroCliente(e.target.value)}
+              placeholder="Buscar Cliente..."
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
             />
             <FiltroDesplegable
               etiqueta="Estado"

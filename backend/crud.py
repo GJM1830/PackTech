@@ -1151,9 +1151,7 @@ def eliminar_movimiento_aglomerado(db: Session, movimiento_id: int):
 # =========================
 
 def merma_efectiva(movimiento) -> float:
-    if movimiento.merma_real is not None:
-        return float(movimiento.merma_real)
-    return float(movimiento.merma or 0)
+    return float(movimiento.merma_real) if movimiento.merma_real is not None else 0.0
 
 
 def reporte_resumen(db: Session, desde: str | None, hasta: str | None, agrupar_por: str):
