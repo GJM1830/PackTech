@@ -183,6 +183,8 @@ export async function generarPDFCotizacion(orden) {
     doc.setFontSize(8)
     doc.setTextColor(...slate600)
     doc.text(orden.tipo_trabajo ? `TIPO DE TRABAJO: ${orden.tipo_trabajo}` : 'RUTA DE PRODUCCIÓN', M, y + 6)
+    
+    y += 10
   } 
 
   // ---- Condiciones ----
