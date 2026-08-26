@@ -481,6 +481,21 @@ def obtener_movimientos(db: Session, limit: int = 20, antes_de: int | None = Non
     )
 
 
+def buscar_movimientos(db: Session, q: str):
+    return (
+        db.query(models.Movimiento)
+        .join(models.OrdenProduccion, models.Movimiento.orden_id == models.OrdenProduccion.id)
+        .join(models.Cliente, models.OrdenProduccion.cliente_id == models.Cliente.id)
+        .filter(
+            (models.OrdenProduccion.codigo.ilike(f"%{q}%")) |
+            (models.Cliente.nombre.ilike(f"%{q}%"))
+        )
+        .order_by(models.Movimiento.id.desc())
+        .limit(50)
+        .all()
+    )
+
+
 def buscar_operarios(db: Session, q: str):
     return (
         db.query(models.Operario)
@@ -503,10 +518,14 @@ def obtener_movimientos_por_orden(db: Session, orden_id: int):
 def buscar_ordenes(db: Session, q: str):
     resultados = (
         db.query(models.OrdenProduccion)
-        .filter(models.OrdenProduccion.codigo.ilike(f"%{q}%"))
+        .join(models.Cliente, models.OrdenProduccion.cliente_id == models.Cliente.id)
+        .filter(
+            (models.OrdenProduccion.codigo.ilike(f"%{q}%")) |
+            (models.Cliente.nombre.ilike(f"%{q}%"))
+        )
         .filter(models.OrdenProduccion.estado != "Preaprobada")
         .order_by(models.OrdenProduccion.id.desc())
-        .limit(10)
+        .limit(50)
         .all()
     )
 
@@ -1592,7 +1611,6 @@ def obtener_ordenes_seguimiento(db: Session):
     ordenes = (
         db.query(models.OrdenProduccion)
         .filter(models.OrdenProduccion.estado != "Preaprobada")
-        .filter(models.OrdenProduccion.vendedor.isnot(None))
         .order_by(models.OrdenProduccion.fecha_entrega.asc().nullslast())
         .all()
     )

@@ -22,7 +22,7 @@ function VistaCotizacion({ orden, onCerrar }) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-center px-5 py-3 border-b border-slate-200">
-          <h3 className="font-bold text-slate-800">Vista previa de cotización</h3>
+          <h3 className="font-bold text-slate-800">Vista previa de pedido</h3>
           <button onClick={onCerrar} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
         </div>
 
@@ -84,6 +84,19 @@ function VistaCotizacion({ orden, onCerrar }) {
                 </tr>
               </tbody>
             </table>
+
+            {(orden.tipo_trabajo || orden.procesos_plan) && (
+              <div className="px-3 py-2 border-t border-slate-800 bg-slate-50">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                  {orden.tipo_trabajo || 'Ruta de producción'}
+                </p>
+                {orden.procesos_plan && (
+                  <p className="text-sm text-slate-700">
+                    {orden.procesos_plan.split(',').join('  →  ')}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Total */}
             <div className="flex justify-end border-t border-slate-800">

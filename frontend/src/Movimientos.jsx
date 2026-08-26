@@ -306,7 +306,25 @@ const guardarEdicion = async () => {
   const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
   const maquinasUnicas = [...new Set(movimientos.filter(m => m.maquina).map(m => m.maquina))].sort()
 
-  const movimientosFiltrados = movimientos.filter((mov) => {
+  const [resultadosBusquedaMov, setResultadosBusquedaMov] = useState(null)
+
+  useEffect(() => {
+    const termino = (filtroCodigo || filtroCliente).trim()
+    if (termino.length < 2) {
+      setResultadosBusquedaMov(null)
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/movimientos/buscar?q=${termino}`)
+        .then((res) => setResultadosBusquedaMov(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [filtroCodigo, filtroCliente])
+
+  const baseMovimientos = resultadosBusquedaMov !== null ? resultadosBusquedaMov : movimientos
+
+  const movimientosFiltrados = baseMovimientos.filter((mov) => {
     const codigo = ordenes.find(o => o.id === mov.orden_id)?.codigo || String(mov.orden_id)
     const cliente = ordenes.find(o => o.id === mov.orden_id)?.cliente || ''
     if (filtroCodigo && !codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false

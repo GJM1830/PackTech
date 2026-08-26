@@ -122,12 +122,30 @@ const guardarEdicion = async () => {
   }
 }
 
+    const [resultadosBusqueda, setResultadosBusqueda] = useState(null)
+
+  useEffect(() => {
+    const termino = (filtroCodigo || filtroCliente).trim()
+    if (termino.length < 2) {
+      setResultadosBusqueda(null)
+      return
+    }
+    const t = setTimeout(() => {
+      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${termino}`)
+        .then((res) => setResultadosBusqueda(res.data))
+        .catch((err) => console.error(err))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [filtroCodigo, filtroCliente])
+
   const clientesUnicos = [...new Set(ordenes.map(o => o.cliente))].sort()
   const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
 
-  const ordenesFiltradas = ordenes.filter((orden) => {
+  const baseOrdenes = resultadosBusqueda !== null ? resultadosBusqueda : ordenesVisibles
+
+  const ordenesFiltradas = baseOrdenes.filter((orden) => {
     if (filtroCodigo && !orden.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
-    if (filtroCliente && orden.cliente !== filtroCliente) return false
+    if (filtroCliente && !orden.cliente.toLowerCase().includes(filtroCliente.toLowerCase())) return false
     if (filtroEstado && orden.estado !== filtroEstado) return false
     if (fechaDesde && orden.fecha < fechaDesde) return false
     if (fechaHasta && orden.fecha > fechaHasta) return false
@@ -314,7 +332,7 @@ function App() {
         <div className="hidden sm:block h-5 w-px bg-slate-700" />
         <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold w-full sm:w-auto">Ventas</span>
         {rol !== 'observador' && (
-          <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Cotizaciones</Link>
+          <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Pedidos</Link>
         )}
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
 

@@ -4,6 +4,7 @@ import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import VistaCotizacion from './VistaCotizacion'
+import FiltroDesplegable from './FiltroDesplegable'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -179,7 +180,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       setClienteSeleccionado(null)
       if (onCreada) onCreada()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al crear la cotización.')
+      setError(err.response?.data?.detail || 'Error al crear la Pedido.')
     } finally {
       setEnviando(false)
     }
@@ -189,7 +190,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
   return (
     <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <h2 className="text-xl font-bold text-slate-800 mb-4">Nueva Cotización</h2>
+      <h2 className="text-xl font-bold text-slate-800 mb-4">Nuevo Pedido</h2>
 
       <form onSubmit={manejarEnvio} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -207,7 +208,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           <div className="relative">
             <label className="block text-sm font-medium text-slate-600 mb-1">RUC (opcional)</label>
             <input
-              type="text" name="ruc" value={form.ruc}
+              type="text" name="ruc" value={form.ruc} maxLength={11}
               onChange={(e) => { manejarCambio(e); setClienteSeleccionado(null) }}
               autoComplete="off" className={estilo} placeholder="20100070970"
             />
@@ -267,7 +268,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         </div>
 
         <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio (obligatorio para cotización)</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio (obligatorio para Pedido)</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
@@ -407,10 +408,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         </details>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
-        {exito && <p className="text-green-700 text-sm font-medium">Cotización creada correctamente.</p>}
+        {exito && <p className="text-green-700 text-sm font-medium">Pedido creada correctamente.</p>}
 
-        <button type="submit" disabled={enviando} className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800 disabled:opacity-50">
-          {enviando ? 'Creando...' : 'Registrar Cotización'}
+        <button type="submit" disabled={enviando} className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 disabled:opacity-50">
+          {enviando ? 'Creando...' : 'Registrar Pedido'}
         </button>
       </form>
     </div>
@@ -421,7 +422,12 @@ function VistaSeguimiento() {
   const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [busqueda, setBusqueda] = useState('')
+  const [filtroCodigo, setFiltroCodigo] = useState('')
+  const [filtroCliente, setFiltroCliente] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [vistaAbierta, setVistaAbierta] = useState(null)
 
   const cargar = () => {
     setCargando(true)
@@ -447,51 +453,139 @@ function VistaSeguimiento() {
     return `${dia}/${mes}/${anio.slice(2)}`
   }
 
-  const ordenesFiltradas = ordenes.filter((o) =>
-    (o.codigo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
-    (o.cliente || '').toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const diasParaEntrega = (fechaEntrega) => {
+    if (!fechaEntrega) return null
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    const entrega = new Date(fechaEntrega + 'T00:00:00')
+    return Math.round((entrega - hoy) / (1000 * 60 * 60 * 24))
+  }
+
+  const estiloUrgencia = (orden) => {
+    if (orden.estado === 'Terminado') {
+      return 'border-green-200 bg-green-50'
+    }
+    const dias = diasParaEntrega(orden.fecha_entrega)
+    if (dias === null) return 'border-slate-200 bg-white'
+    if (dias < 0) return 'border-red-300 bg-red-50'
+    if (dias <= 3) return 'border-amber-300 bg-amber-50'
+    return 'border-slate-200 bg-white'
+  }
+
+  const etiquetaUrgencia = (orden) => {
+    if (orden.estado === 'Terminado') return null
+    const dias = diasParaEntrega(orden.fecha_entrega)
+    if (dias === null) return null
+    if (dias < 0) return { texto: `Vencido (${Math.abs(dias)}d)`, color: 'text-red-700' }
+    if (dias === 0) return { texto: 'Entrega hoy', color: 'text-amber-700' }
+    if (dias <= 3) return { texto: `Faltan ${dias}d`, color: 'text-amber-700' }
+    return { texto: `Faltan ${dias}d`, color: 'text-slate-500' }
+  }
+
+  const estadosUnicos = [...new Set(ordenes.map(o => o.estado))].sort()
+
+  const ordenesFiltradas = ordenes.filter((o) => {
+    if (filtroCodigo && !o.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
+    if (filtroCliente && !(o.cliente || '').toLowerCase().includes(filtroCliente.toLowerCase())) return false
+    if (filtroEstado && o.estado !== filtroEstado) return false
+    if (fechaDesde && (!o.fecha_entrega || o.fecha_entrega < fechaDesde)) return false
+    if (fechaHasta && (!o.fecha_entrega || o.fecha_entrega > fechaHasta)) return false
+    return true
+  })
 
   return (
     <div className="space-y-4">
-      <input
-        type="text"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Buscar por código o cliente..."
-        className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-64"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={filtroCodigo}
+          onChange={(e) => setFiltroCodigo(e.target.value)}
+          placeholder="Buscar N° Pedido..."
+          className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+        />
+        <input
+          type="text"
+          value={filtroCliente}
+          onChange={(e) => setFiltroCliente(e.target.value)}
+          placeholder="Buscar Cliente..."
+          className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+        />
+        <FiltroDesplegable
+          etiqueta="Estado"
+          opciones={estadosUnicos}
+          seleccionado={filtroEstado}
+          onSeleccionar={setFiltroEstado}
+        />
+        <div className="flex items-center gap-1.5 text-sm text-slate-500">
+          <span>Entrega desde</span>
+          <input
+            type="date"
+            value={fechaDesde}
+            onChange={(e) => setFechaDesde(e.target.value)}
+            className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+          />
+          <span>hasta</span>
+          <input
+            type="date"
+            value={fechaHasta}
+            onChange={(e) => setFechaHasta(e.target.value)}
+            className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+          />
+        </div>
+        {(filtroCodigo || filtroCliente || filtroEstado || fechaDesde || fechaHasta) && (
+          <button
+            onClick={() => { setFiltroCodigo(''); setFiltroCliente(''); setFiltroEstado(null); setFechaDesde(''); setFechaHasta('') }}
+            className="text-sm text-slate-400 hover:text-slate-700 underline"
+          >
+            Limpiar filtros
+          </button>
+        )}
+      </div>
 
       {cargando && <p className="text-slate-500">Cargando...</p>}
       {error && <p className="text-red-600">{error}</p>}
 
       {!cargando && !error && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {ordenesFiltradas.map((o) => (
-            <div key={o.id} className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-              <div className="flex justify-between items-start mb-2">
-                <span className="font-bold text-slate-800">{o.codigo}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  o.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
-                  o.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
-                  o.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                  'bg-slate-100 text-slate-500'
-                }`}>
-                  {o.estado}
-                </span>
+          {ordenesFiltradas.map((o) => {
+            const urgencia = etiquetaUrgencia(o)
+            return (
+              <div
+                key={o.id}
+                onClick={() => setVistaAbierta(o)}
+                className={`rounded-xl shadow-sm border p-4 cursor-pointer hover:shadow-md transition-shadow ${estiloUrgencia(o)}`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-bold text-slate-800">{o.codigo}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    o.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
+                    o.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
+                    o.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                    'bg-slate-100 text-slate-500'
+                  }`}>
+                    {o.estado}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-600 mb-1">{o.cliente}</p>
+                {o.descripcion && <p className="text-xs text-slate-400 mb-3">{o.descripcion}</p>}
+                <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200">
+                  <span className="text-slate-500">Proceso: <span className="font-medium text-slate-700">{o.ultimo_proceso}</span></span>
+                  <span className="text-slate-500">Entrega: <span className="font-medium text-slate-700">{formatearFecha(o.fecha_entrega)}</span></span>
+                </div>
+                {urgencia && (
+                  <p className={`text-xs font-semibold mt-1 ${urgencia.color}`}>{urgencia.texto}</p>
+                )}
               </div>
-              <p className="text-sm text-slate-600 mb-1">{o.cliente}</p>
-              {o.descripcion && <p className="text-xs text-slate-400 mb-3">{o.descripcion}</p>}
-              <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
-                <span className="text-slate-500">Proceso: <span className="font-medium text-slate-700">{o.ultimo_proceso}</span></span>
-                <span className="text-slate-500">Entrega: <span className="font-medium text-slate-700">{formatearFecha(o.fecha_entrega)}</span></span>
-              </div>
-            </div>
-          ))}
+            )
+          })}
           {ordenesFiltradas.length === 0 && (
             <p className="text-slate-400 col-span-full text-center py-8">No hay pedidos para mostrar.</p>
           )}
         </div>
+      )}
+
+      {vistaAbierta && (
+        <VistaCotizacion orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
       )}
     </div>
   )
@@ -528,13 +622,13 @@ function Cotizaciones() {
   }, [])
 
   const aprobar = async (id) => {
-    if (!confirm('¿Aprobar esta cotización y enviarla a producción?')) return
+    if (!confirm('¿Aprobar este pedido y enviarlo a producción?')) return
     setAprobando(id)
     try {
       await axios.post(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/aprobar`)
       cargar()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error al aprobar la cotización.')
+      alert(err.response?.data?.detail || 'Error al aprobar el pedido.')
     } finally {
       setAprobando(null)
     }
@@ -593,30 +687,30 @@ function Cotizaciones() {
       setEditando(null)
       cargar()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error al editar la cotización.')
+      alert(err.response?.data?.detail || 'Error al editar el pedido.')
     } finally {
       setGuardando(false)
     }
   }
 
   const eliminar = async (id) => {
-    if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return
+    if (!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return
     try {
       await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
       cargar()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error al eliminar la cotización.')
+      alert(err.response?.data?.detail || 'Error al eliminar el pedido.')
     }
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Cotizaciones</h1>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Pedidos</h1>
         <p className="text-slate-500 text-sm mt-1">
           {vendedorOAdmin
-            ? 'Crea cotizaciones y apruébalas para enviarlas a producción.'
-            : 'Seguimiento de cotizaciones pendientes de aprobación.'}
+            ? 'Registra los pedidos de tus clientes y apruébalos para enviarlos a producción.'
+            : 'Seguimiento de pedidos pendientes de aprobación.'}
         </p>
       </div>
 
@@ -714,7 +808,7 @@ function Cotizaciones() {
                 {ordenes.length === 0 && (
                   <tr>
                     <td colSpan={vendedorOAdmin ? 10 : 6} className="px-4 py-6 text-center text-slate-400">
-                      No hay cotizaciones pendientes.
+                      No hay pedidos pendientes.
                     </td>
                   </tr>
                 )}
@@ -732,7 +826,7 @@ function Cotizaciones() {
 
       {editando && (
         <ModalEditar
-          titulo="Editar Cotización"
+          titulo="Editar Pedido"
           campos={[
             { name: 'codigo', label: 'N° de Pedido' },
             { name: 'ruc', label: 'RUC' },

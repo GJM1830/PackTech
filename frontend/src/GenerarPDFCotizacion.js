@@ -178,7 +178,22 @@ export async function generarPDFCotizacion(orden) {
     xTotales + anchoTotales - 2, y + 6, { align: 'right' }
   )
 
-  y += 20
+  if (orden.tipo_trabajo || orden.procesos_plan) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate600)
+    doc.text(orden.tipo_trabajo ? `TIPO DE TRABAJO: ${orden.tipo_trabajo}` : 'RUTA DE PRODUCCIÓN', M, y + 6)
+    if (orden.procesos_plan) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...slate900)
+      doc.text(orden.procesos_plan.split(',').join('  →  '), M, y + 11)
+      y += 8
+    }
+    y += 10
+  } else {
+    y += 4
+  }
 
   // ---- Condiciones ----
   doc.setFont('helvetica', 'normal')
@@ -203,5 +218,5 @@ export async function generarPDFCotizacion(orden) {
   doc.setTextColor(...slate600)
   doc.text('Firma / Huella', M, y + 4)
 
-  doc.save(`Cotizacion_${orden.codigo}.pdf`)
+  doc.save(`Pedido_${orden.codigo}.pdf`)
 }
