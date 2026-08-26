@@ -125,7 +125,7 @@ const guardarEdicion = async () => {
     const [resultadosBusqueda, setResultadosBusqueda] = useState(null)
 
   useEffect(() => {
-    const termino = (filtroCodigo || filtroCliente).trim()
+    const termino = (filtroCodigo || filtroCliente || '').trim()
     if (termino.length < 2) {
       setResultadosBusqueda(null)
       return

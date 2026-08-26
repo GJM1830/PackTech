@@ -309,7 +309,7 @@ const guardarEdicion = async () => {
   const [resultadosBusquedaMov, setResultadosBusquedaMov] = useState(null)
 
   useEffect(() => {
-    const termino = (filtroCodigo || filtroCliente).trim()
+    const termino = (filtroCodigo || filtroCliente || '').trim()
     if (termino.length < 2) {
       setResultadosBusquedaMov(null)
       return
