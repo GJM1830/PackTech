@@ -3916,17 +3916,22 @@ export async function generarPDFLiquidacion(data) {
     y += 5
 
     if (p.bobinas_salida.length > 0) {
+      const hayMillares = p.bobinas_salida.some((b) => b.millares != null)
+      const hayMaterial = p.bobinas_salida.some((b) => b.tipo_material)
+
+      const cabecera = ['N°', 'Bruto', 'Tuco', 'Neto']
+      if (hayMillares) cabecera.push('Millares')
+      if (hayMaterial) cabecera.push('Material')
+
       autoTable(doc, {
         startY: y,
-        head: [['N°', 'Bruto', 'Tuco', 'Neto', 'Millares', 'Material']],
-        body: p.bobinas_salida.map((b) => [
-          b.numero,
-          b.peso_bruto.toFixed(2),
-          (b.peso_tuco || 0).toFixed(2),
-          b.peso_neto.toFixed(2),
-          b.millares != null ? b.millares : '-',
-          b.tipo_material || '-'
-        ]),
+        head: [cabecera],
+        body: p.bobinas_salida.map((b) => {
+          const fila = [b.numero, b.peso_bruto.toFixed(2), (b.peso_tuco || 0).toFixed(2), b.peso_neto.toFixed(2)]
+          if (hayMillares) fila.push(b.millares != null ? b.millares : '-')
+          if (hayMaterial) fila.push(b.tipo_material || '-')
+          return fila
+        }),
         theme: 'grid',
         headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5 },
         bodyStyles: { fontSize: 7.5 },
