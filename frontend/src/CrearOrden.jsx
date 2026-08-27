@@ -266,6 +266,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
             value={form.numero_std}
             onChange={manejarCambio}
             className={estiloInput}
+            placeholder="2115 (opcional)"
           />
         </div>
 
