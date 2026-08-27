@@ -115,9 +115,9 @@ class OrdenProduccion(Base):
         ForeignKey("clientes.id")
     )
 
-    numero_std: Mapped[int] = mapped_column(
+    numero_std: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False
+        nullable=True
     )
 
     descripcion: Mapped[str | None] = mapped_column(

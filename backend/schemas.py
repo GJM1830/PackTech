@@ -18,7 +18,7 @@ class OrdenProduccionCreate(BaseModel):
     codigo: str
     ruc: str | None = None
     nombre_cliente: str | None = None
-    numero_std: int
+    numero_std: int | None = None
     descripcion: str | None = None
     cantidad: float
     unidad: str
@@ -40,7 +40,7 @@ class OrdenProduccionResponse(BaseModel):
     id: int
     codigo: str
     cliente_id: int
-    numero_std: int
+    numero_std: int | None
     descripcion: str | None = None
     cantidad: float
     unidad: str

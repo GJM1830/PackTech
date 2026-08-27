@@ -81,7 +81,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         codigo: form.codigo,
         ruc: form.ruc,
         nombre_cliente: form.nombre_cliente,
-        numero_std: parseInt(form.numero_std),
+        numero_std: form.numero_std ? parseInt(form.numero_std) : null,
         descripcion: form.descripcion,
         cantidad: parseFloat(form.cantidad),
         unidad: form.unidad,
@@ -265,7 +265,6 @@ function CrearOrden({ onCreada, duplicarDesde }) {
             name="numero_std"
             value={form.numero_std}
             onChange={manejarCambio}
-            required
             className={estiloInput}
           />
         </div>

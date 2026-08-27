@@ -149,7 +149,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         codigo: form.codigo,
         ruc: form.ruc || null,
         nombre_cliente: form.nombre_cliente,
-        numero_std: parseInt(form.numero_std) || 0,
+        numero_std: form.numero_std ? parseInt(form.numero_std) : null,
         descripcion: form.descripcion,
         cantidad: parseFloat(form.cantidad),
         unidad: form.unidad,
