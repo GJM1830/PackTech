@@ -46,6 +46,7 @@ function Movimientos() {
   const [filtroProceso, setFiltroProceso] = useState(null)
   const [filtroOperario, setFiltroOperario] = useState(null)
   const [filtroMaquina, setFiltroMaquina] = useState(null)
+  const [maquinasUnicas, setMaquinasUnicas] = useState([])
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -76,16 +77,17 @@ function Movimientos() {
   const cargarDatos = async () => {
     setCargando(true)
     try {
-      const [movRes, ordRes, opRes] = await Promise.all([
+      const [movRes, ordRes, opRes, maqRes] = await Promise.all([
         axios.get('https://packtech-production.up.railway.app/movimientos?limit=20'),
         axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=500'),
-        axios.get('https://packtech-production.up.railway.app/operarios')
+        axios.get('https://packtech-production.up.railway.app/operarios'),
+        axios.get('https://packtech-production.up.railway.app/movimientos/maquinas')
       ])
 
       setMovimientos(movRes.data)
-      setHayMasMovimientos(movRes.data.length === 20)
       setOrdenes(ordRes.data)
       setOperarios(opRes.data)
+      setMaquinasUnicas(maqRes.data)
       setError(null)
     } catch (err) {
       console.error(err)
@@ -304,8 +306,7 @@ const guardarEdicion = async () => {
 
   const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
   const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
-  const maquinasUnicas = [...new Set(movimientos.filter(m => m.maquina).map(m => m.maquina))].sort()
-
+  const [maquinasUnicas, setMaquinasUnicas] = useState([])
   const [resultadosBusquedaMov, setResultadosBusquedaMov] = useState(null)
 
   useEffect(() => {

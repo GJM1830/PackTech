@@ -10,6 +10,11 @@ router = APIRouter(
     tags=["Movimientos"]
 )
 
+@router.get("/movimientos/maquinas", response_model=list[str])
+def listar_maquinas_unicas(
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_maquinas_unicas(db)
 
 @router.post("/movimientos", response_model=schemas.MovimientoResponse)
 def crear_movimiento(

@@ -1713,3 +1713,13 @@ def reporte_liquidacion(db: Session, codigo: str):
         "materiales_extrusion": materiales_extrusion,
         "procesos": procesos
     }
+    
+def obtener_maquinas_unicas(db: Session):
+    resultados = (
+        db.query(models.Movimiento.maquina)
+        .filter(models.Movimiento.maquina.isnot(None))
+        .distinct()
+        .order_by(models.Movimiento.maquina)
+        .all()
+    )
+    return [r[0] for r in resultados]
