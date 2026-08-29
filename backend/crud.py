@@ -433,6 +433,8 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         tipo_laminado=tipo_laminado_limpio,
         observacion=movimiento.observacion,
         fecha=ahora.date(),
+        hora_inicio=movimiento.hora_inicio,
+        hora_fin=movimiento.hora_fin,
         hora=ahora.time()
     )
 

@@ -218,6 +218,10 @@ class Movimiento(Base):
         Time,
         default=datetime.utcnow().time
     )
+    
+    hora_inicio: Mapped[str | None] = mapped_column(String(5))
+    
+    hora_fin: Mapped[str | None] = mapped_column(String(5))
         
 
 # =========================

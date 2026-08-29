@@ -453,6 +453,8 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         observacion=movimiento.observacion,
         fecha=ahora.date(),
         hora=ahora.time()
+        hora_inicio=movimiento.hora_inicio,
+        hora_fin=movimiento.hora_fin,
     )
 
     db.add(nuevo_movimiento)
@@ -2123,6 +2125,9 @@ class Movimiento(Base):
         default=datetime.utcnow().time
     )
         
+    hora_inicio: Mapped[str | None] = mapped_column(String(5))
+    
+    hora_fin: Mapped[str | None] = mapped_column(String(5))
 
 # =========================
 # DETALLES DE MOVIMIENTO
@@ -2345,6 +2350,8 @@ class MovimientoCreate(BaseModel):
     tipo_merma: str | None = None
     tipo_laminado: str | None = None
     observacion: str | None = None
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
 
 
 class MovimientoResponse(BaseModel):
@@ -2363,6 +2370,8 @@ class MovimientoResponse(BaseModel):
     observacion: str | None
     fecha: date
     hora: time
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
 
     class Config:
         from_attributes = True

@@ -88,6 +88,8 @@ class MovimientoCreate(BaseModel):
     tipo_merma: str | None = None
     tipo_laminado: str | None = None
     observacion: str | None = None
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
 
 
 class MovimientoResponse(BaseModel):
@@ -106,6 +108,8 @@ class MovimientoResponse(BaseModel):
     observacion: str | None
     fecha: date
     hora: time
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
 
     class Config:
         from_attributes = True
