@@ -20,13 +20,20 @@ const MAQUINAS_POR_PROCESO = {
     'Selladora-01', 'Selladora-02', 'Selladora-03',
     'Selladora-04', 'Selladora-05', 'Selladora-06', 'Selladora-07', 'Selladora-08'
   ],
-  'Corte': ['Cortadora-01', 'Cortadora-02'],
-  'Almacén': ['Almacén'],
-  'Despacho': ['Almacén']
+  'Corte': ['Cortadora-01', 'Cortadora-02']
 }
 
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+
+const horaActualLima = () => {
+  return new Date().toLocaleTimeString('es-PE', {
+    timeZone: 'America/Lima',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+}
 
 function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
@@ -62,7 +69,7 @@ function Movimientos() {
     salida: '',
     unidad: 'kg',
     tipo_laminado: '',
-    hora_inicio: '',
+    hora_inicio: horaActualLima(),
     hora_fin: '',
     observacion: ''
   })
@@ -146,7 +153,7 @@ function Movimientos() {
       salida: mov.salida || '',
       unidad: mov.unidad || 'kg',
       tipo_laminado: mov.tipo_laminado || '',
-      hora_inicio: '',
+      hora_inicio: horaActualLima(),
       hora_fin: '',
       observacion: mov.observacion || ''
     })
@@ -243,7 +250,7 @@ const guardarEdicion = async () => {
         salida: '',
         unidad: 'kg',
         tipo_laminado: '',
-        hora_inicio: '',
+        hora_inicio: horaActualLima(),
         hora_fin: '',
         observacion: ''
       })
@@ -460,8 +467,6 @@ const guardarEdicion = async () => {
                 <option value="Impresión">Impresión</option>
                 <option value="Sellado">Sellado</option>
                 <option value="Corte">Corte</option>
-                <option value="Almacén">Almacén</option>
-                <option value="Despacho">Despacho</option>
               </select>
             </div>
 
@@ -538,76 +543,12 @@ const guardarEdicion = async () => {
                 La merma se registra en detalle (por tipo) en el siguiente paso.
               </p>
             </>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Entrada
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="entrada"
-                  value={form.entrada}
-                  onChange={manejarCambio}
-                  required
-                  className="w-full border border-slate-300 rounded px-3 py-2"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Salida
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="salida"
-                  value={form.salida}
-                  onChange={manejarCambio}
-                  required
-                  className="w-full border border-slate-300 rounded px-3 py-2"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Faltante/Sobrante
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  value={
-                    form.entrada !== '' && form.salida !== ''
-                      ? (parseFloat(form.entrada) - parseFloat(form.salida)).toFixed(2)
-                      : ''
-                  }
-                  className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
-                />
-              </div>
-
-              <div className="w-28">
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Unidad
-                </label>
-                <select
-                  name="unidad"
-                  value={form.unidad}
-                  onChange={manejarCambio}
-                  className="w-full border border-slate-300 rounded px-3 py-2"
-                >
-                  <option value="kg">kg</option>
-                  <option value="unidades">unidades</option>
-                  <option value="rollos">rollos</option>
-                </select>
-              </div>
-            </div>
-          )}
+          ) : null}
 
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">
-                Hora de inicio (opcional)
+                Hora de inicio
               </label>
               <input
                 type="time"
@@ -616,6 +557,7 @@ const guardarEdicion = async () => {
                 onChange={manejarCambio}
                 className="w-full border border-slate-300 rounded px-3 py-2"
               />
+              <p className="text-xs text-slate-400 mt-1">Se completa con la hora actual, puedes cambiarla.</p>
             </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-600 mb-1">

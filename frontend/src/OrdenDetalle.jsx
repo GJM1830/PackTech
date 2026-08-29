@@ -13,6 +13,17 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+const calcularDuracion = (inicio, fin) => {
+  if (!inicio || !fin) return null
+  const [h1, m1] = inicio.split(':').map(Number)
+  const [h2, m2] = fin.split(':').map(Number)
+  let minutos = (h2 * 60 + m2) - (h1 * 60 + m1)
+  if (minutos < 0) minutos += 24 * 60
+  const horas = Math.floor(minutos / 60)
+  const mins = minutos % 60
+  return horas > 0 ? `${horas}h ${mins}min` : `${mins}min`
+}
+
 function OrdenDetalle() {
   const { id } = useParams()
   const [orden, setOrden] = useState(null)
@@ -231,6 +242,7 @@ function OrdenDetalle() {
                 <th className="px-4 py-3">Unidad</th>
                 <th className="px-4 py-3">Merma</th>
                 <th className="px-4 py-3">Faltante/Sobrante</th>
+                <th className="px-4 py-3">Tiempo</th>
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Hora</th>
               </tr>
@@ -256,6 +268,9 @@ function OrdenDetalle() {
                   <td className="px-4 py-3">{mov.unidad}</td>
                   <td className="px-4 py-3">{mov.merma_real != null ? mov.merma_real : '—'}</td>
                   <td className="px-4 py-3">{(Number(mov.entrada) - Number(mov.salida)).toFixed(2)}</td>
+                  <td className="px-4 py-3">
+                    {calcularDuracion(mov.hora_inicio, mov.hora_fin) || '—'}
+                  </td>
                   <td className="px-4 py-3">{formatearFecha(mov.fecha)}</td>
                   <td className="px-4 py-3">{mov.hora?.slice(0, 5)}</td>
                 </tr>

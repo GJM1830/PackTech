@@ -7,6 +7,17 @@ import { esProduccionOMas } from './roles'
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_SALIDA_FARDO = ['Sellado']
+
+const calcularDuracion = (inicio, fin) => {
+  if (!inicio || !fin) return null
+  const [h1, m1] = inicio.split(':').map(Number)
+  const [h2, m2] = fin.split(':').map(Number)
+  let minutos = (h2 * 60 + m2) - (h1 * 60 + m1)
+  if (minutos < 0) minutos += 24 * 60
+  const horas = Math.floor(minutos / 60)
+  const mins = minutos % 60
+  return horas > 0 ? `${horas}h ${mins}min` : `${mins}min`
+}
 const MATERIALES_EXTRUSION = [
   'LINEAL', 'BAJA (PEBD)', 'MASTERBACH', 'USO PESADO', 'ALTA DENSIDAD',
   'METALOCENO', 'PELETIZADO NEGRO', 'MASTER BLANCO', 'CARAMELO',
@@ -381,6 +392,19 @@ const duplicarMerma = (detalle) => {
             <p className="text-sm text-slate-500 mt-1">
               {orden?.cliente || 'Cliente desconocido'} · N° Std {orden?.numero_std ?? '-'} · {movimiento.proceso}
             </p>
+            {(movimiento.hora_inicio || movimiento.hora_fin) && (
+              <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-full px-3 py-1 text-xs font-medium">
+                <span>⏱</span>
+                <span>{movimiento.hora_inicio || '—'}</span>
+                <span className="text-amber-400">→</span>
+                <span>{movimiento.hora_fin || '—'}</span>
+                {calcularDuracion(movimiento.hora_inicio, movimiento.hora_fin) && (
+                  <span className="ml-1 bg-amber-100 rounded-full px-2 py-0.5">
+                    {calcularDuracion(movimiento.hora_inicio, movimiento.hora_fin)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <button onClick={onCerrar} className="text-slate-400 hover:text-slate-700 text-xl leading-none">
             ×
