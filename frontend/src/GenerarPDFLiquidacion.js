@@ -146,6 +146,46 @@ export async function generarPDFLiquidacion(data) {
       y += 5
     }
 
+    const entradaProceso = Number(p.entrada) || 0
+    const salidaProceso = Number(p.salida) || 0
+    const mermaProceso = p.mermas.reduce((s, m) => s + m.peso, 0)
+    const rendimiento = entradaProceso > 0 ? (salidaProceso / entradaProceso) * 100 : null
+    const tieneMillares = p.bobinas_salida.some((b) => b.millares != null)
+    const millaresTotal = tieneMillares
+      ? p.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
+      : null
+
+    let tiempoTexto = null
+    if (p.hora_inicio && p.hora_fin) {
+      const [h1, m1] = p.hora_inicio.split(':').map(Number)
+      const [h2, m2] = p.hora_fin.split(':').map(Number)
+      let minutos = (h2 * 60 + m2) - (h1 * 60 + m1)
+      if (minutos < 0) minutos += 24 * 60
+      tiempoTexto = `${p.hora_inicio} - ${p.hora_fin} (${Math.floor(minutos / 60)}h ${minutos % 60}min)`
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text('RESUMEN', M, y)
+    y += 4
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate900)
+    let resumenLinea1 = `Entrada: ${entradaProceso.toFixed(2)} kg   Salida: ${salidaProceso.toFixed(2)} kg   Merma: ${mermaProceso.toFixed(2)} kg`
+    if (rendimiento != null) resumenLinea1 += `   Rendimiento: ${rendimiento.toFixed(1)}%`
+    doc.text(resumenLinea1, M, y)
+    y += 4
+
+    const resumenLinea2 = []
+    if (millaresTotal != null) resumenLinea2.push(`Millares: ${millaresTotal.toFixed(2)}`)
+    if (tiempoTexto) resumenLinea2.push(`Tiempo: ${tiempoTexto}`)
+    if (resumenLinea2.length > 0) {
+      doc.text(resumenLinea2.join('   '), M, y)
+      y += 4
+    }
+
     y += 5
   })
 

@@ -21,6 +21,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     nombre_cliente: '',
     numero_std: '',
     descripcion: '',
+    medidas: '',
     cantidad: '',
     unidad: 'kg',
     moneda: 'Soles',
@@ -76,6 +77,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         nombre_cliente: duplicarDesde.cliente || '',
         numero_std: duplicarDesde.numero_std || '',
         descripcion: duplicarDesde.descripcion || '',
+        medidas: duplicarDesde.medidas || '',
         cantidad: duplicarDesde.cantidad || '',
         unidad: duplicarDesde.unidad || 'kg',
         moneda: duplicarDesde.moneda || 'Soles',
@@ -151,6 +153,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         nombre_cliente: form.nombre_cliente,
         numero_std: form.numero_std ? parseInt(form.numero_std) : null,
         descripcion: form.descripcion,
+        medidas: form.medidas || null,
         cantidad: parseFloat(form.cantidad),
         unidad: form.unidad,
         estado: 'Preaprobada',
@@ -170,7 +173,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
       setExito(true)
       setForm({
-        codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '',
+        codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '', medidas: '',
         cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
         precio_unitario: '', unidad_precio: 'kg', millares: '',
         direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
@@ -243,6 +246,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
           <input type="text" name="descripcion" value={form.descripcion} onChange={manejarCambio} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">Medidas</label>
+          <input type="text" name="medidas" value={form.medidas} onChange={manejarCambio} className={estilo} placeholder="Ej. 30x40 cm, calibre 2 (opcional)" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -646,6 +654,7 @@ function Cotizaciones() {
       nombre_cliente: orden.cliente,
       numero_std: orden.numero_std,
       descripcion: orden.descripcion || '',
+      medidas: orden.medidas || '',
       cantidad: orden.cantidad,
       unidad: orden.unidad,
       moneda: orden.moneda || 'Soles',
@@ -670,6 +679,7 @@ function Cotizaciones() {
         nombre_cliente: editando.nombre_cliente,
         numero_std: parseInt(editando.numero_std) || 0,
         descripcion: editando.descripcion,
+        medidas: editando.medidas || null,
         cantidad: parseFloat(editando.cantidad),
         unidad: editando.unidad,
         estado: 'Preaprobada',
@@ -833,6 +843,7 @@ function Cotizaciones() {
             { name: 'nombre_cliente', label: 'Cliente' },
             { name: 'numero_std', label: 'N° Estándar', type: 'number' },
             { name: 'descripcion', label: 'Producto / Descripción' },
+            { name: 'medidas', label: 'Medidas' },
             { name: 'cantidad', label: 'Cantidad', type: 'number' },
             { name: 'unidad', label: 'Unidad' },
             { name: 'moneda', label: 'Moneda' },

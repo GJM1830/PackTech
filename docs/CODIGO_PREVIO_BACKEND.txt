@@ -223,6 +223,7 @@ def crear_orden_produccion(
         cliente_id=cliente.id,
         numero_std=orden.numero_std,
         descripcion=orden.descripcion,
+        medidas=orden.medidas,
         cantidad=orden.cantidad,
         unidad=orden.unidad,
         estado=orden.estado,
@@ -923,6 +924,19 @@ def eliminar_detalle_movimiento(db: Session, detalle_id: int):
 
     actualizar_totales_movimiento(db, movimiento_id)
 
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento and movimiento.proceso == "Extrusión":
+        quedan_materiales = (
+            db.query(models.DetalleMovimiento)
+            .filter(models.DetalleMovimiento.movimiento_id == movimiento_id)
+            .filter(models.DetalleMovimiento.tipo == "material")
+            .count()
+        )
+        if quedan_materiales == 0:
+            movimiento.entrada = 0
+            movimiento.merma = movimiento.entrada - movimiento.salida
+            db.commit()
+
 
 # =========================
 # TIPOS DE MERMA
@@ -1331,6 +1345,8 @@ def editar_movimiento(db: Session, movimiento_id: int, datos: schemas.Movimiento
     movimiento.maquina = datos.maquina
     movimiento.unidad = datos.unidad
     movimiento.observacion = datos.observacion
+    movimiento.hora_inicio = datos.hora_inicio
+    movimiento.hora_fin = datos.hora_fin
 
     if movimiento.proceso not in PROCESOS_ESPECIALES:
         if datos.entrada is not None:
@@ -1557,6 +1573,7 @@ def editar_orden_produccion(
     orden.cliente_id = cliente.id
     orden.numero_std = orden_nueva.numero_std
     orden.descripcion = orden_nueva.descripcion
+    orden.medidas = orden_nueva.medidas
     orden.cantidad = orden_nueva.cantidad
     orden.unidad = orden_nueva.unidad
     orden.estado = orden_nueva.estado
@@ -1717,6 +1734,8 @@ def reporte_liquidacion(db: Session, codigo: str):
             "observacion": mov.observacion,
             "fecha": mov.fecha,
             "hora": mov.hora,
+            "hora_inicio": mov.hora_inicio,
+            "hora_fin": mov.hora_fin,
             "bobinas_salida": bobinas_salida,
             "mermas": [{"peso": float(m.peso), "tipo_merma": m.tipo_merma} for m in mermas]
         })
@@ -2030,6 +2049,10 @@ class OrdenProduccion(Base):
         String(200)
     )
 
+    medidas: Mapped[str | None] = mapped_column(
+        String(200)
+    )
+
     cantidad: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )
@@ -2282,6 +2305,7 @@ class OrdenProduccionCreate(BaseModel):
     nombre_cliente: str | None = None
     numero_std: int | None = None
     descripcion: str | None = None
+    medidas: str | None = None
     cantidad: float
     unidad: str
     estado: str | None = "Pendiente"
@@ -2304,6 +2328,7 @@ class OrdenProduccionResponse(BaseModel):
     cliente_id: int
     numero_std: int | None
     descripcion: str | None = None
+    medidas: str | None = None
     cantidad: float
     unidad: str
     estado: str | None
@@ -2564,6 +2589,8 @@ class MovimientoEditar(BaseModel):
     entrada: float | None = None
     salida: float | None = None
     observacion: str | None = None
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
     
 class ReporteTipoMerma(BaseModel):
     etiqueta: str
@@ -2610,6 +2637,8 @@ class LiquidacionProceso(BaseModel):
     observacion: str | None
     fecha: date
     hora: time
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
     bobinas_salida: list[LiquidacionBobina]
     mermas: list[LiquidacionMerma]
 

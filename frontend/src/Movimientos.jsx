@@ -62,6 +62,8 @@ function Movimientos() {
     salida: '',
     unidad: 'kg',
     tipo_laminado: '',
+    hora_inicio: '',
+    hora_fin: '',
     observacion: ''
   })
 
@@ -144,6 +146,8 @@ function Movimientos() {
       salida: mov.salida || '',
       unidad: mov.unidad || 'kg',
       tipo_laminado: mov.tipo_laminado || '',
+      hora_inicio: '',
+      hora_fin: '',
       observacion: mov.observacion || ''
     })
 
@@ -166,6 +170,8 @@ function Movimientos() {
       salida: mov.salida,
       unidad: mov.unidad,
       observacion: mov.observacion || '',
+      hora_inicio: mov.hora_inicio || '',
+      hora_fin: mov.hora_fin || '',
       esEspecial: PROCESOS_ESPECIALES.includes(mov.proceso)
     })
   }
@@ -181,7 +187,9 @@ const guardarEdicion = async () => {
         unidad: editando.unidad,
         entrada: editando.esEspecial ? null : (parseFloat(editando.entrada) || 0),
         salida: editando.esEspecial ? null : (parseFloat(editando.salida) || 0),
-        observacion: editando.observacion || null
+        observacion: editando.observacion || null,
+        hora_inicio: editando.hora_inicio || null,
+        hora_fin: editando.hora_fin || null
       })
 
       setEditando(null)
@@ -214,12 +222,12 @@ const guardarEdicion = async () => {
       proceso: form.proceso,
       nombre_operario: form.nombre_operario.trim(),
       maquina: form.maquina,
-      entrada: esProcesoEspecial
-        ? (form.proceso === 'Extrusión' ? parseFloat(form.entrada) || 0 : 0)
-        : parseFloat(form.entrada) || 0,
+      entrada: esProcesoEspecial ? 0 : (parseFloat(form.entrada) || 0),
       salida: esProcesoEspecial ? 0 : (parseFloat(form.salida) || 0),
       unidad: form.unidad,
       tipo_laminado: form.proceso === 'Laminado' ? (form.tipo_laminado?.trim() || null) : null,
+      hora_inicio: form.hora_inicio || null,
+      hora_fin: form.hora_fin || null,
       observacion: form.observacion || null
     }
 
@@ -235,6 +243,8 @@ const guardarEdicion = async () => {
         salida: '',
         unidad: 'kg',
         tipo_laminado: '',
+        hora_inicio: '',
+        hora_fin: '',
         observacion: ''
       })
       setBusquedaOrden('')
@@ -306,7 +316,7 @@ const guardarEdicion = async () => {
 
   const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
   const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
-  const [maquinasUnicas, setMaquinasUnicas] = useState([])
+
   const [resultadosBusquedaMov, setResultadosBusquedaMov] = useState(null)
 
   useEffect(() => {
@@ -480,20 +490,9 @@ const guardarEdicion = async () => {
           {esProcesoEspecial ? (
             <>
               {form.proceso === 'Extrusión' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Entrada (kg, sacos)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="entrada"
-                    value={form.entrada}
-                    onChange={manejarCambio}
-                    required
-                    className="w-full border border-slate-300 rounded px-3 py-2"
-                  />
-                </div>
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  La entrada se calcula automáticamente sumando los materiales que registres en el siguiente paso.
+                </p>
               )}
 
               {PROCESOS_DOBLE_LADO.includes(form.proceso) && (
@@ -604,6 +603,33 @@ const guardarEdicion = async () => {
               </div>
             </div>
           )}
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Hora de inicio (opcional)
+              </label>
+              <input
+                type="time"
+                name="hora_inicio"
+                value={form.hora_inicio}
+                onChange={manejarCambio}
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Hora de fin (opcional)
+              </label>
+              <input
+                type="time"
+                name="hora_fin"
+                value={form.hora_fin}
+                onChange={manejarCambio}
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              />
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">
@@ -800,6 +826,8 @@ const guardarEdicion = async () => {
               { name: 'entrada', label: 'Entrada', type: 'number' },
               { name: 'salida', label: 'Salida', type: 'number' }
             ]),
+            { name: 'hora_inicio', label: 'Hora de inicio', type: 'time' },
+            { name: 'hora_fin', label: 'Hora de fin', type: 'time' },
             { name: 'observacion', label: 'Observación' }
           ]}
           valores={editando}

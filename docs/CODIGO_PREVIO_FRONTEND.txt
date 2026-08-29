@@ -1346,6 +1346,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     nombre_cliente: '',
     numero_std: '',
     descripcion: '',
+    medidas: '',
     cantidad: '',
     unidad: 'kg',
     moneda: 'Soles',
@@ -1400,6 +1401,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         nombre_cliente: duplicarDesde.cliente || '',
         numero_std: duplicarDesde.numero_std || '',
         descripcion: duplicarDesde.descripcion || '',
+        medidas: duplicarDesde.medidas || '',
         cantidad: duplicarDesde.cantidad || '',
         unidad: duplicarDesde.unidad || 'kg',
         moneda: duplicarDesde.moneda || 'Soles',
@@ -1475,6 +1477,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         nombre_cliente: form.nombre_cliente,
         numero_std: form.numero_std ? parseInt(form.numero_std) : null,
         descripcion: form.descripcion,
+        medidas: form.medidas || null,
         cantidad: parseFloat(form.cantidad),
         unidad: form.unidad,
         estado: 'Preaprobada',
@@ -1494,7 +1497,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
       setExito(true)
       setForm({
-        codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '',
+        codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '', medidas: '',
         cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
         precio_unitario: '', unidad_precio: 'kg', millares: '',
         direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
@@ -1567,6 +1570,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
           <input type="text" name="descripcion" value={form.descripcion} onChange={manejarCambio} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">Medidas</label>
+          <input type="text" name="medidas" value={form.medidas} onChange={manejarCambio} className={estilo} placeholder="Ej. 30x40 cm, calibre 2 (opcional)" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1970,6 +1978,7 @@ function Cotizaciones() {
       nombre_cliente: orden.cliente,
       numero_std: orden.numero_std,
       descripcion: orden.descripcion || '',
+      medidas: orden.medidas || '',
       cantidad: orden.cantidad,
       unidad: orden.unidad,
       moneda: orden.moneda || 'Soles',
@@ -1994,6 +2003,7 @@ function Cotizaciones() {
         nombre_cliente: editando.nombre_cliente,
         numero_std: parseInt(editando.numero_std) || 0,
         descripcion: editando.descripcion,
+        medidas: editando.medidas || null,
         cantidad: parseFloat(editando.cantidad),
         unidad: editando.unidad,
         estado: 'Preaprobada',
@@ -2156,6 +2166,7 @@ function Cotizaciones() {
             { name: 'nombre_cliente', label: 'Cliente' },
             { name: 'numero_std', label: 'N° Estándar', type: 'number' },
             { name: 'descripcion', label: 'Producto / Descripción' },
+            { name: 'medidas', label: 'Medidas' },
             { name: 'cantidad', label: 'Cantidad', type: 'number' },
             { name: 'unidad', label: 'Unidad' },
             { name: 'moneda', label: 'Moneda' },
@@ -3725,7 +3736,10 @@ export async function generarPDFCotizacion(orden) {
   doc.setTextColor(...slate900)
   doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
   doc.text(unidadTabla, colX[1] + 2, y + 5.5)
-  doc.text(orden.descripcion || '-', colX[2] + 2, y + 5.5)
+  const descripcionPDF = orden.medidas
+    ? `${orden.descripcion || '-'} (${orden.medidas})`
+    : (orden.descripcion || '-')
+  doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
   doc.text(
     orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
     colX[3] + 2, y + 5.5
@@ -3964,6 +3978,46 @@ export async function generarPDFLiquidacion(data) {
       doc.setTextColor(...slate600)
       doc.text(`Obs: ${p.observacion}`, M, y)
       y += 5
+    }
+
+    const entradaProceso = Number(p.entrada) || 0
+    const salidaProceso = Number(p.salida) || 0
+    const mermaProceso = p.mermas.reduce((s, m) => s + m.peso, 0)
+    const rendimiento = entradaProceso > 0 ? (salidaProceso / entradaProceso) * 100 : null
+    const tieneMillares = p.bobinas_salida.some((b) => b.millares != null)
+    const millaresTotal = tieneMillares
+      ? p.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
+      : null
+
+    let tiempoTexto = null
+    if (p.hora_inicio && p.hora_fin) {
+      const [h1, m1] = p.hora_inicio.split(':').map(Number)
+      const [h2, m2] = p.hora_fin.split(':').map(Number)
+      let minutos = (h2 * 60 + m2) - (h1 * 60 + m1)
+      if (minutos < 0) minutos += 24 * 60
+      tiempoTexto = `${p.hora_inicio} - ${p.hora_fin} (${Math.floor(minutos / 60)}h ${minutos % 60}min)`
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text('RESUMEN', M, y)
+    y += 4
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate900)
+    let resumenLinea1 = `Entrada: ${entradaProceso.toFixed(2)} kg   Salida: ${salidaProceso.toFixed(2)} kg   Merma: ${mermaProceso.toFixed(2)} kg`
+    if (rendimiento != null) resumenLinea1 += `   Rendimiento: ${rendimiento.toFixed(1)}%`
+    doc.text(resumenLinea1, M, y)
+    y += 4
+
+    const resumenLinea2 = []
+    if (millaresTotal != null) resumenLinea2.push(`Millares: ${millaresTotal.toFixed(2)}`)
+    if (tiempoTexto) resumenLinea2.push(`Tiempo: ${tiempoTexto}`)
+    if (resumenLinea2.length > 0) {
+      doc.text(resumenLinea2.join('   '), M, y)
+      y += 4
     }
 
     y += 5
@@ -4248,6 +4302,8 @@ function Movimientos() {
     salida: '',
     unidad: 'kg',
     tipo_laminado: '',
+    hora_inicio: '',
+    hora_fin: '',
     observacion: ''
   })
 
@@ -4330,6 +4386,8 @@ function Movimientos() {
       salida: mov.salida || '',
       unidad: mov.unidad || 'kg',
       tipo_laminado: mov.tipo_laminado || '',
+      hora_inicio: '',
+      hora_fin: '',
       observacion: mov.observacion || ''
     })
 
@@ -4352,6 +4410,8 @@ function Movimientos() {
       salida: mov.salida,
       unidad: mov.unidad,
       observacion: mov.observacion || '',
+      hora_inicio: mov.hora_inicio || '',
+      hora_fin: mov.hora_fin || '',
       esEspecial: PROCESOS_ESPECIALES.includes(mov.proceso)
     })
   }
@@ -4367,7 +4427,9 @@ const guardarEdicion = async () => {
         unidad: editando.unidad,
         entrada: editando.esEspecial ? null : (parseFloat(editando.entrada) || 0),
         salida: editando.esEspecial ? null : (parseFloat(editando.salida) || 0),
-        observacion: editando.observacion || null
+        observacion: editando.observacion || null,
+        hora_inicio: editando.hora_inicio || null,
+        hora_fin: editando.hora_fin || null
       })
 
       setEditando(null)
@@ -4400,12 +4462,12 @@ const guardarEdicion = async () => {
       proceso: form.proceso,
       nombre_operario: form.nombre_operario.trim(),
       maquina: form.maquina,
-      entrada: esProcesoEspecial
-        ? (form.proceso === 'Extrusión' ? parseFloat(form.entrada) || 0 : 0)
-        : parseFloat(form.entrada) || 0,
+      entrada: esProcesoEspecial ? 0 : (parseFloat(form.entrada) || 0),
       salida: esProcesoEspecial ? 0 : (parseFloat(form.salida) || 0),
       unidad: form.unidad,
       tipo_laminado: form.proceso === 'Laminado' ? (form.tipo_laminado?.trim() || null) : null,
+      hora_inicio: form.hora_inicio || null,
+      hora_fin: form.hora_fin || null,
       observacion: form.observacion || null
     }
 
@@ -4421,6 +4483,8 @@ const guardarEdicion = async () => {
         salida: '',
         unidad: 'kg',
         tipo_laminado: '',
+        hora_inicio: '',
+        hora_fin: '',
         observacion: ''
       })
       setBusquedaOrden('')
@@ -4492,7 +4556,6 @@ const guardarEdicion = async () => {
 
   const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
   const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
-  const [maquinasUnicas, setMaquinasUnicas] = useState([])
 
   const [resultadosBusquedaMov, setResultadosBusquedaMov] = useState(null)
 
@@ -4667,20 +4730,9 @@ const guardarEdicion = async () => {
           {esProcesoEspecial ? (
             <>
               {form.proceso === 'Extrusión' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Entrada (kg, sacos)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="entrada"
-                    value={form.entrada}
-                    onChange={manejarCambio}
-                    required
-                    className="w-full border border-slate-300 rounded px-3 py-2"
-                  />
-                </div>
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  La entrada se calcula automáticamente sumando los materiales que registres en el siguiente paso.
+                </p>
               )}
 
               {PROCESOS_DOBLE_LADO.includes(form.proceso) && (
@@ -4791,6 +4843,33 @@ const guardarEdicion = async () => {
               </div>
             </div>
           )}
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Hora de inicio (opcional)
+              </label>
+              <input
+                type="time"
+                name="hora_inicio"
+                value={form.hora_inicio}
+                onChange={manejarCambio}
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Hora de fin (opcional)
+              </label>
+              <input
+                type="time"
+                name="hora_fin"
+                value={form.hora_fin}
+                onChange={manejarCambio}
+                className="w-full border border-slate-300 rounded px-3 py-2"
+              />
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">
@@ -4987,6 +5066,8 @@ const guardarEdicion = async () => {
               { name: 'entrada', label: 'Entrada', type: 'number' },
               { name: 'salida', label: 'Salida', type: 'number' }
             ]),
+            { name: 'hora_inicio', label: 'Hora de inicio', type: 'time' },
+            { name: 'hora_fin', label: 'Hora de fin', type: 'time' },
             { name: 'observacion', label: 'Observación' }
           ]}
           valores={editando}
@@ -6196,7 +6277,12 @@ function VistaCotizacion({ orden, onCerrar }) {
                 <tr className="border-t border-slate-200">
                   <td className="px-2 py-2">{cantidadTabla || '-'}</td>
                   <td className="px-2 py-2">{unidadTabla}</td>
-                  <td className="px-2 py-2">{orden.descripcion || '-'}</td>
+                  <td className="px-2 py-2">
+                    {orden.descripcion || '-'}
+                    {orden.medidas && (
+                      <div className="text-xs text-slate-500">Medidas: {orden.medidas}</div>
+                    )}
+                  </td>
                   <td className="px-2 py-2">
                     {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}/${orden.unidad_precio}` : '-'}
                   </td>

@@ -124,6 +124,10 @@ class OrdenProduccion(Base):
         String(200)
     )
 
+    medidas: Mapped[str | None] = mapped_column(
+        String(200)
+    )
+
     cantidad: Mapped[float] = mapped_column(
         Numeric(10, 2)
     )

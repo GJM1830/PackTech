@@ -74,7 +74,12 @@ function VistaCotizacion({ orden, onCerrar }) {
                 <tr className="border-t border-slate-200">
                   <td className="px-2 py-2">{cantidadTabla || '-'}</td>
                   <td className="px-2 py-2">{unidadTabla}</td>
-                  <td className="px-2 py-2">{orden.descripcion || '-'}</td>
+                  <td className="px-2 py-2">
+                    {orden.descripcion || '-'}
+                    {orden.medidas && (
+                      <div className="text-xs text-slate-500">Medidas: {orden.medidas}</div>
+                    )}
+                  </td>
                   <td className="px-2 py-2">
                     {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}/${orden.unidad_precio}` : '-'}
                   </td>

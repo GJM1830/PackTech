@@ -130,7 +130,10 @@ export async function generarPDFCotizacion(orden) {
   doc.setTextColor(...slate900)
   doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
   doc.text(unidadTabla, colX[1] + 2, y + 5.5)
-  doc.text(orden.descripcion || '-', colX[2] + 2, y + 5.5)
+  const descripcionPDF = orden.medidas
+    ? `${orden.descripcion || '-'} (${orden.medidas})`
+    : (orden.descripcion || '-')
+  doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
   doc.text(
     orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
     colX[3] + 2, y + 5.5

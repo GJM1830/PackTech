@@ -20,6 +20,7 @@ class OrdenProduccionCreate(BaseModel):
     nombre_cliente: str | None = None
     numero_std: int | None = None
     descripcion: str | None = None
+    medidas: str | None = None
     cantidad: float
     unidad: str
     estado: str | None = "Pendiente"
@@ -42,6 +43,7 @@ class OrdenProduccionResponse(BaseModel):
     cliente_id: int
     numero_std: int | None
     descripcion: str | None = None
+    medidas: str | None = None
     cantidad: float
     unidad: str
     estado: str | None
@@ -302,6 +304,8 @@ class MovimientoEditar(BaseModel):
     entrada: float | None = None
     salida: float | None = None
     observacion: str | None = None
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
     
 class ReporteTipoMerma(BaseModel):
     etiqueta: str
@@ -348,6 +352,8 @@ class LiquidacionProceso(BaseModel):
     observacion: str | None
     fecha: date
     hora: time
+    hora_inicio: str | None = None
+    hora_fin: str | None = None
     bobinas_salida: list[LiquidacionBobina]
     mermas: list[LiquidacionMerma]
 

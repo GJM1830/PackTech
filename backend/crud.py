@@ -204,6 +204,7 @@ def crear_orden_produccion(
         cliente_id=cliente.id,
         numero_std=orden.numero_std,
         descripcion=orden.descripcion,
+        medidas=orden.medidas,
         cantidad=orden.cantidad,
         unidad=orden.unidad,
         estado=orden.estado,
@@ -433,9 +434,9 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
         tipo_laminado=tipo_laminado_limpio,
         observacion=movimiento.observacion,
         fecha=ahora.date(),
+        hora=ahora.time(),
         hora_inicio=movimiento.hora_inicio,
         hora_fin=movimiento.hora_fin,
-        hora=ahora.time()
     )
 
     db.add(nuevo_movimiento)
@@ -904,6 +905,19 @@ def eliminar_detalle_movimiento(db: Session, detalle_id: int):
 
     actualizar_totales_movimiento(db, movimiento_id)
 
+    movimiento = db.get(models.Movimiento, movimiento_id)
+    if movimiento and movimiento.proceso == "Extrusión":
+        quedan_materiales = (
+            db.query(models.DetalleMovimiento)
+            .filter(models.DetalleMovimiento.movimiento_id == movimiento_id)
+            .filter(models.DetalleMovimiento.tipo == "material")
+            .count()
+        )
+        if quedan_materiales == 0:
+            movimiento.entrada = 0
+            movimiento.merma = movimiento.entrada - movimiento.salida
+            db.commit()
+
 
 # =========================
 # TIPOS DE MERMA
@@ -1312,6 +1326,8 @@ def editar_movimiento(db: Session, movimiento_id: int, datos: schemas.Movimiento
     movimiento.maquina = datos.maquina
     movimiento.unidad = datos.unidad
     movimiento.observacion = datos.observacion
+    movimiento.hora_inicio = datos.hora_inicio
+    movimiento.hora_fin = datos.hora_fin
 
     if movimiento.proceso not in PROCESOS_ESPECIALES:
         if datos.entrada is not None:
@@ -1538,6 +1554,7 @@ def editar_orden_produccion(
     orden.cliente_id = cliente.id
     orden.numero_std = orden_nueva.numero_std
     orden.descripcion = orden_nueva.descripcion
+    orden.medidas = orden_nueva.medidas
     orden.cantidad = orden_nueva.cantidad
     orden.unidad = orden_nueva.unidad
     orden.estado = orden_nueva.estado
@@ -1700,6 +1717,8 @@ def reporte_liquidacion(db: Session, codigo: str):
             "observacion": mov.observacion,
             "fecha": mov.fecha,
             "hora": mov.hora,
+            "hora_inicio": mov.hora_inicio,
+            "hora_fin": mov.hora_fin,
             "bobinas_salida": bobinas_salida,
             "mermas": [{"peso": float(m.peso), "tipo_merma": m.tipo_merma} for m in mermas]
         })
