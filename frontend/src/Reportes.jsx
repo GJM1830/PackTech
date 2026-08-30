@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell, LabelList
 } from 'recharts'
+import { generarPDFReporte } from './GenerarPDFReporte'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -286,6 +287,36 @@ function VistaGeneral() {
     }))
     .sort((a, b) => b.sin_merma - a.sin_merma)
 
+  const [descargando, setDescargando] = useState(false)
+
+  const descargarPDF = async () => {
+    setDescargando(true)
+    try {
+      const { desde, hasta } = rangoActual()
+      const etiquetaPeriodo = periodo === 'custom' ? 'Personalizado' : PERIODOS.find((x) => x.id === periodo).label
+      await generarPDFReporte({
+        tipo: 'general',
+        periodoLabel: etiquetaPeriodo,
+        desde,
+        hasta,
+        agrupacionLabel: etiquetaAgrupacion,
+        datos,
+        totales: {
+          entrada: totalEntrada, salida: totalSalida, merma: totalMerma,
+          sinMerma: totalSinMerma, movimientos: totalMovimientos
+        },
+        totalesAnterior: datosAnterior
+          ? { entrada: totalEntradaAnt, salida: totalSalidaAnt, merma: totalMermaAnt, sinMerma: totalSinMermaAnt }
+          : null
+      })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF.')
+    } finally {
+      setDescargando(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -295,7 +326,7 @@ function VistaGeneral() {
           rangoCustom={rangoCustom}
           setRangoCustom={setRangoCustom}
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {AGRUPACIONES.map((a) => (
             <button
               key={a.id}
@@ -309,6 +340,13 @@ function VistaGeneral() {
               Por {a.label}
             </button>
           ))}
+          <button
+            onClick={descargarPDF}
+            disabled={descargando || cargando || datos.length === 0}
+            className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+          >
+            {descargando ? 'Generando...' : '⬇ Descargar PDF'}
+          </button>
         </div>
       </div>
 
@@ -521,17 +559,51 @@ function VistaTipoMerma() {
     cargar()
   }, [periodo, rangoCustom.desde, rangoCustom.hasta])
 
-  const totalPeso = datos.reduce((s, d) => s + d.peso, 0)
+
   const top3 = datos.slice().sort((a, b) => b.peso - a.peso).slice(0, 3)
+  const totalPeso = datos.reduce((s, d) => s + d.peso, 0)
+
+  const [descargando, setDescargando] = useState(false)
+
+  const descargarPDF = async () => {
+    setDescargando(true)
+    try {
+      let desde, hasta
+      if (periodo === 'custom') {
+        desde = rangoCustom.desde
+        hasta = rangoCustom.hasta
+      } else {
+        const p = PERIODOS.find((x) => x.id === periodo)
+        desde = p.desde()
+        hasta = p.hasta()
+      }
+      const etiquetaPeriodo = periodo === 'custom' ? 'Personalizado' : PERIODOS.find((x) => x.id === periodo).label
+      await generarPDFReporte({ tipo: 'tipoMerma', periodoLabel: etiquetaPeriodo, desde, hasta, datos, totalPeso })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF.')
+    } finally {
+      setDescargando(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <SelectorPeriodo
-        periodo={periodo}
-        setPeriodo={setPeriodo}
-        rangoCustom={rangoCustom}
-        setRangoCustom={setRangoCustom}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SelectorPeriodo
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          rangoCustom={rangoCustom}
+          setRangoCustom={setRangoCustom}
+        />
+        <button
+          onClick={descargarPDF}
+          disabled={descargando || cargando || datos.length === 0}
+          className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+        >
+          {descargando ? 'Generando...' : '⬇ Descargar PDF'}
+        </button>
+      </div>
 
       {cargando && <p className="text-slate-500">Cargando...</p>}
       {error && <p className="text-red-600">{error}</p>}
@@ -650,6 +722,21 @@ function VistaOrden() {
       }))
     : []
 
+  const [descargando, setDescargando] = useState(false)
+
+  const descargarPDF = async () => {
+    if (!reporte) return
+    setDescargando(true)
+    try {
+      await generarPDFReporte({ tipo: 'orden', reporte })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF.')
+    } finally {
+      setDescargando(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="max-w-md relative">
@@ -691,9 +778,18 @@ function VistaOrden() {
                   {reporte.cliente} · {reporte.descripcion || 'Sin descripción'}
                 </p>
               </div>
-              <span className="text-sm text-slate-400">
-                {fmt(reporte.cantidad)} {reporte.unidad} planificado
-              </span>
+              <div className="text-right">
+                <span className="text-sm text-slate-400 block mb-2">
+                  {fmt(reporte.cantidad)} {reporte.unidad} planificado
+                </span>
+                <button
+                  onClick={descargarPDF}
+                  disabled={descargando}
+                  className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {descargando ? 'Generando...' : '⬇ Descargar PDF'}
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
@@ -834,6 +930,38 @@ function VistaAlertas() {
     cargar()
   }, [periodo, rangoCustom.desde, rangoCustom.hasta, diasEstancado, umbralPocos])
 
+  const [descargando, setDescargando] = useState(false)
+
+  const descargarPDF = async () => {
+    if (!datos) return
+    setDescargando(true)
+    try {
+      let desde, hasta
+      if (periodo === 'custom') {
+        desde = rangoCustom.desde
+        hasta = rangoCustom.hasta
+      } else {
+        const p = PERIODOS.find((x) => x.id === periodo)
+        desde = p.desde()
+        hasta = p.hasta()
+      }
+      const etiquetaPeriodo = periodo === 'custom' ? 'Personalizado' : PERIODOS.find((x) => x.id === periodo).label
+      await generarPDFReporte({
+        tipo: 'alertas',
+        periodoLabel: etiquetaPeriodo,
+        desde,
+        hasta,
+        datos,
+        parametros: { diasEstancado, umbralPocos }
+      })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF.')
+    } finally {
+      setDescargando(false)
+    }
+  }
+
   if (cargando) return <p className="text-slate-500">Cargando...</p>
   if (error) return <p className="text-red-600">{error}</p>
   if (!datos) return null
@@ -871,6 +999,13 @@ function VistaAlertas() {
             />
           </label>
         </div>
+        <button
+          onClick={descargarPDF}
+          disabled={descargando}
+          className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+        >
+          {descargando ? 'Generando...' : '⬇ Descargar PDF'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
