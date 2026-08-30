@@ -270,6 +270,8 @@ class ReporteGrupo(BaseModel):
     salida: float
     merma: float
     movimientos: int
+    movimientos_con_merma: int
+    movimientos_sin_merma: int
 
 
 class ReportePaso(BaseModel):
@@ -368,3 +370,59 @@ class ReporteLiquidacion(BaseModel):
     fecha: date
     materiales_extrusion: list[LiquidacionMaterial]
     procesos: list[LiquidacionProceso]
+
+
+# =========================
+# ALERTAS / ANOMALÍAS
+# =========================
+
+class AlertaOrdenSinMovimiento(BaseModel):
+    codigo: str
+    cliente: str
+    fecha: date
+
+
+class AlertaOrdenEstancada(BaseModel):
+    codigo: str
+    cliente: str
+    ultimo_proceso: str
+    dias_sin_movimiento: int
+    fecha_ultimo_movimiento: date
+
+
+class AlertaDiaPocoMovimiento(BaseModel):
+    fecha: date
+    movimientos: int
+
+
+class AlertaMovimientoSinMerma(BaseModel):
+    movimiento_id: int
+    codigo_orden: str
+    proceso: str
+    maquina: str | None
+    fecha: date
+
+
+class AlertaMaquinaMerma(BaseModel):
+    maquina: str
+    merma: float
+    registros: int
+
+
+class AlertaOrdenMermaExcesiva(BaseModel):
+    movimiento_id: int
+    codigo_orden: str
+    proceso: str
+    maquina: str | None
+    merma_real: float
+    promedio_proceso: float
+    fecha: date
+
+
+class ReporteAlertas(BaseModel):
+    ordenes_sin_movimientos: list[AlertaOrdenSinMovimiento]
+    ordenes_estancadas: list[AlertaOrdenEstancada]
+    dias_pocos_movimientos: list[AlertaDiaPocoMovimiento]
+    movimientos_sin_merma: list[AlertaMovimientoSinMerma]
+    maquinas_top_merma: list[AlertaMaquinaMerma]
+    ordenes_merma_excesiva: list[AlertaOrdenMermaExcesiva]

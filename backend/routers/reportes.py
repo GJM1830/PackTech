@@ -43,3 +43,15 @@ def liquidacion(
     db: Session = Depends(obtener_db)
 ):
     return crud.reporte_liquidacion(db, codigo)
+
+
+@router.get("/alertas", response_model=schemas.ReporteAlertas)
+def alertas(
+    desde: str | None = None,
+    hasta: str | None = None,
+    dias_estancado: int = 3,
+    umbral_pocos_movimientos: int = 3,
+    dias_analisis: int = 14,
+    db: Session = Depends(obtener_db)
+):
+    return crud.reporte_alertas(db, desde, hasta, dias_estancado, umbral_pocos_movimientos, dias_analisis)

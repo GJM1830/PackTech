@@ -195,11 +195,13 @@ function TarjetaKPI({ titulo, valor, unidad, delta, tono }) {
   )
 }
 
-// Color de barra de rendimiento según el % (señal de decisión rápida)
-const colorRendimiento = (pct) => {
-  if (pct >= 95) return '#16a34a' // verde
-  if (pct >= 85) return '#f59e0b' // ámbar
-  return '#dc2626' // rojo
+// Color según si el movimiento tiene o no merma registrada (dato real, no una meta)
+const colorSinMerma = (sinMerma, total) => {
+  if (total === 0) return '#94a3b8'
+  const pct = (sinMerma / total) * 100
+  if (pct === 0) return '#16a34a' // verde: todo registrado
+  if (pct <= 20) return '#f59e0b' // ámbar: algunos huecos
+  return '#dc2626' // rojo: muchos movimientos sin merma
 }
 
 // ===================================================================
@@ -266,22 +268,23 @@ function VistaGeneral() {
   const totalSalida = datos.reduce((s, d) => s + d.salida, 0)
   const totalMerma = datos.reduce((s, d) => s + d.merma, 0)
   const totalMovimientos = datos.reduce((s, d) => s + d.movimientos, 0)
-  const rendimiento = totalEntrada > 0 ? (totalSalida / totalEntrada) * 100 : null
+  const totalSinMerma = datos.reduce((s, d) => s + d.movimientos_sin_merma, 0)
 
   const totalEntradaAnt = datosAnterior ? datosAnterior.reduce((s, d) => s + d.entrada, 0) : null
   const totalSalidaAnt = datosAnterior ? datosAnterior.reduce((s, d) => s + d.salida, 0) : null
   const totalMermaAnt = datosAnterior ? datosAnterior.reduce((s, d) => s + d.merma, 0) : null
-  const rendimientoAnt = totalEntradaAnt > 0 ? (totalSalidaAnt / totalEntradaAnt) * 100 : null
+  const totalSinMermaAnt = datosAnterior ? datosAnterior.reduce((s, d) => s + d.movimientos_sin_merma, 0) : null
 
   const etiquetaAgrupacion = AGRUPACIONES.find((a) => a.id === agrupacion).label
 
-  // Datos de rendimiento por grupo, ordenados de peor a mejor (para decidir dónde actuar primero)
-  const datosRendimiento = datos
+  // Movimientos sin merma por grupo, ordenados de peor a mejor (registro incompleto primero)
+  const datosSinMerma = datos
     .map((d) => ({
       etiqueta: d.etiqueta,
-      rendimiento: d.entrada > 0 ? Math.min(100, (d.salida / d.entrada) * 100) : 0
+      sin_merma: d.movimientos_sin_merma,
+      total: d.movimientos
     }))
-    .sort((a, b) => a.rendimiento - b.rendimiento)
+    .sort((a, b) => b.sin_merma - a.sin_merma)
 
   return (
     <div className="space-y-6">
@@ -337,16 +340,16 @@ function VistaGeneral() {
               delta={<Delta actual={totalMerma} anterior={totalMermaAnt} positivoEsBueno={false} />}
             />
             <TarjetaKPI
-              titulo="Rendimiento"
-              valor={rendimiento != null ? rendimiento.toFixed(1) : '—'}
-              unidad={rendimiento != null ? '%' : ''}
-              tono="green"
-              delta={<Delta actual={rendimiento} anterior={rendimientoAnt} />}
+              titulo="Sin merma registrada"
+              valor={totalSinMerma}
+              unidad={totalMovimientos > 0 ? `de ${totalMovimientos}` : ''}
+              tono={totalSinMerma === 0 ? 'green' : 'red'}
+              delta={<Delta actual={totalSinMerma} anterior={totalSinMermaAnt} positivoEsBueno={false} />}
             />
           </div>
 
           <p className="text-xs text-slate-400">
-            {totalMovimientos} movimiento{totalMovimientos !== 1 ? 's' : ''} registrado{totalMovimientos !== 1 ? 's' : ''} en el periodo · Rendimiento = Salida ÷ Entrada
+            {totalMovimientos} movimiento{totalMovimientos !== 1 ? 's' : ''} registrado{totalMovimientos !== 1 ? 's' : ''} en el periodo · La merma real es obligatoria en cada proceso
           </p>
 
           {datos.length === 0 ? (
@@ -383,34 +386,44 @@ function VistaGeneral() {
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
                   <h3 className="text-sm font-semibold text-slate-700 mb-1">
-                    Rendimiento por {etiquetaAgrupacion.toLowerCase()}
+                    Movimientos sin merma por {etiquetaAgrupacion.toLowerCase()}
                   </h3>
                   <p className="text-xs text-slate-400 mb-4">
-                    Salida ÷ Entrada · ordenado de menor a mayor (dónde revisar primero)
+                    Registros donde no se cargó merma real · posible registro incompleto
                   </p>
-                  <ResponsiveContainer width="100%" height={Math.max(240, datosRendimiento.length * 60)}>
-                    <BarChart data={datosRendimiento} layout="vertical" margin={{ left: 10, right: 30 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                      <YAxis dataKey="etiqueta" type="category" width={110} tick={{ fontSize: 12 }} />
-                      <Tooltip cursor={{ fill: 'rgba(226,232,240,0.35)' }} formatter={(v) => `${v.toFixed(1)}%`} />
-                      <Bar dataKey="rendimiento" radius={[0, 4, 4, 0]} barSize={18}>
-                        {datosRendimiento.map((d, i) => (
-                          <Cell key={i} fill={colorRendimiento(d.rendimiento)} />
-                        ))}
-                        <LabelList
-                          dataKey="rendimiento"
-                          position="right"
-                          formatter={(v) => `${v.toFixed(1)}%`}
-                          style={{ fontSize: 10, fill: '#475569' }}
+                  {datosSinMerma.every((d) => d.sin_merma === 0) ? (
+                    <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center py-10">
+                      <span className="text-3xl">✅</span>
+                      <p className="text-sm font-medium text-green-700 mt-2">Todos los movimientos tienen merma registrada</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={Math.max(240, datosSinMerma.length * 60)}>
+                      <BarChart data={datosSinMerma} layout="vertical" margin={{ left: 10, right: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis dataKey="etiqueta" type="category" width={110} tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          cursor={{ fill: 'rgba(226,232,240,0.35)' }}
+                          formatter={(v, n, item) => [`${v} de ${item.payload.total}`, 'Sin merma']}
                         />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                        <Bar dataKey="sin_merma" radius={[0, 4, 4, 0]} barSize={18}>
+                          {datosSinMerma.map((d, i) => (
+                            <Cell key={i} fill={colorSinMerma(d.sin_merma, d.total)} />
+                          ))}
+                          <LabelList
+                            dataKey="sin_merma"
+                            position="right"
+                            formatter={(v) => (v > 0 ? v : '')}
+                            style={{ fontSize: 10, fill: '#475569' }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                   <div className="flex gap-4 mt-3 text-xs text-slate-400">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" /> ≥ 95%</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" /> 85–95%</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" /> &lt; 85%</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" /> Todo registrado</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" /> Algunos huecos</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" /> Muchos sin merma</span>
                   </div>
                 </div>
               </div>
@@ -424,7 +437,7 @@ function VistaGeneral() {
                       <th className="px-4 py-3">Salida</th>
                       <th className="px-4 py-3">Merma</th>
                       <th className="px-4 py-3">% Merma</th>
-                      <th className="px-4 py-3">Rendimiento</th>
+                      <th className="px-4 py-3">Sin merma</th>
                       <th className="px-4 py-3">Movimientos</th>
                     </tr>
                   </thead>
@@ -432,34 +445,29 @@ function VistaGeneral() {
                     {datos
                       .slice()
                       .sort((a, b) => b.entrada - a.entrada)
-                      .map((d) => {
-                        const rend = d.entrada > 0 ? (d.salida / d.entrada) * 100 : null
-                        return (
-                          <tr key={d.etiqueta} className="border-t border-slate-100">
-                            <td className="px-4 py-3 font-medium text-slate-800">{d.etiqueta}</td>
-                            <td className="px-4 py-3">{fmt(d.entrada)}</td>
-                            <td className="px-4 py-3">{fmt(d.salida)}</td>
-                            <td className="px-4 py-3 text-red-600 font-medium">{fmt(d.merma)}</td>
-                            <td className="px-4 py-3">
-                              {d.entrada > 0 ? `${((d.merma / d.entrada) * 100).toFixed(1)}%` : '—'}
-                            </td>
-                            <td className="px-4 py-3">
-                              {rend != null ? (
-                                <span
-                                  className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                                  style={{
-                                    color: colorRendimiento(rend),
-                                    backgroundColor: `${colorRendimiento(rend)}1a`
-                                  }}
-                                >
-                                  {rend.toFixed(1)}%
-                                </span>
-                              ) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-slate-500">{d.movimientos}</td>
-                          </tr>
-                        )
-                      })}
+                      .map((d) => (
+                        <tr key={d.etiqueta} className="border-t border-slate-100">
+                          <td className="px-4 py-3 font-medium text-slate-800">{d.etiqueta}</td>
+                          <td className="px-4 py-3">{fmt(d.entrada)}</td>
+                          <td className="px-4 py-3">{fmt(d.salida)}</td>
+                          <td className="px-4 py-3 text-red-600 font-medium">{fmt(d.merma)}</td>
+                          <td className="px-4 py-3">
+                            {d.entrada > 0 ? `${((d.merma / d.entrada) * 100).toFixed(1)}%` : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            {d.movimientos_sin_merma > 0 ? (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600">
+                                {d.movimientos_sin_merma} de {d.movimientos}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-600">
+                                Completo
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{d.movimientos}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -762,6 +770,255 @@ function VistaOrden() {
   )
 }
 
+// ===================================================================
+// VISTA ALERTAS — anomalías de producción sobre datos reales
+// ===================================================================
+function TarjetaSeccion({ titulo, subtitulo, count, tono, children }) {
+  const tonos = {
+    ok: 'border-green-200',
+    alerta: 'border-amber-300',
+    critico: 'border-red-300'
+  }
+  const badge = {
+    ok: 'bg-green-100 text-green-700',
+    alerta: 'bg-amber-100 text-amber-700',
+    critico: 'bg-red-100 text-red-700'
+  }
+  return (
+    <div className={`bg-white rounded-xl shadow-sm border p-5 ${tonos[tono]}`}>
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-sm font-semibold text-slate-800">{titulo}</h3>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge[tono]}`}>{count}</span>
+      </div>
+      {subtitulo && <p className="text-xs text-slate-400 mb-3">{subtitulo}</p>}
+      {children}
+    </div>
+  )
+}
+
+function VistaAlertas() {
+  const [periodo, setPeriodo] = useState('semana')
+  const [rangoCustom, setRangoCustom] = useState({ desde: aISO(new Date()), hasta: aISO(new Date()) })
+  const [diasEstancado, setDiasEstancado] = useState(3)
+  const [umbralPocos, setUmbralPocos] = useState(3)
+  const [datos, setDatos] = useState(null)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+
+  const cargar = () => {
+    setCargando(true)
+    let desde, hasta
+    if (periodo === 'custom') {
+      desde = rangoCustom.desde
+      hasta = rangoCustom.hasta
+    } else {
+      const p = PERIODOS.find((x) => x.id === periodo)
+      desde = p.desde()
+      hasta = p.hasta()
+    }
+
+    axios.get('https://packtech-production.up.railway.app/reportes/alertas', {
+      params: {
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+        dias_estancado: diasEstancado,
+        umbral_pocos_movimientos: umbralPocos
+      }
+    })
+      .then((res) => { setDatos(res.data); setError(null) })
+      .catch((err) => { console.error(err); setError('No se pudo cargar las alertas.') })
+      .finally(() => setCargando(false))
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [periodo, rangoCustom.desde, rangoCustom.hasta, diasEstancado, umbralPocos])
+
+  if (cargando) return <p className="text-slate-500">Cargando...</p>
+  if (error) return <p className="text-red-600">{error}</p>
+  if (!datos) return null
+
+  const vacio = (lista) => !lista || lista.length === 0
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SelectorPeriodo
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          rangoCustom={rangoCustom}
+          setRangoCustom={setRangoCustom}
+        />
+        <div className="flex items-center gap-3 text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+          <label className="flex items-center gap-1.5">
+            Días para "estancada"
+            <input
+              type="number"
+              min="1"
+              value={diasEstancado}
+              onChange={(e) => setDiasEstancado(parseInt(e.target.value) || 1)}
+              className="w-14 border border-slate-300 rounded px-1.5 py-0.5 text-sm"
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            Umbral "pocos movimientos"
+            <input
+              type="number"
+              min="0"
+              value={umbralPocos}
+              onChange={(e) => setUmbralPocos(parseInt(e.target.value) || 0)}
+              className="w-14 border border-slate-300 rounded px-1.5 py-0.5 text-sm"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TarjetaSeccion
+          titulo="Órdenes sin ningún movimiento"
+          subtitulo="Pedidos aprobados que aún no entraron a producción"
+          count={datos.ordenes_sin_movimientos.length}
+          tono={vacio(datos.ordenes_sin_movimientos) ? 'ok' : 'alerta'}
+        >
+          {vacio(datos.ordenes_sin_movimientos) ? (
+            <p className="text-sm text-green-700">✅ Todas las órdenes tienen movimientos.</p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
+              {datos.ordenes_sin_movimientos.map((o) => (
+                <div key={o.codigo} className="flex justify-between text-sm bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                  <span className="font-medium text-slate-800">{o.codigo}</span>
+                  <span className="text-slate-500">{o.cliente}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </TarjetaSeccion>
+
+        <TarjetaSeccion
+          titulo="Órdenes estancadas"
+          subtitulo={`Sin movimiento hace ${diasEstancado}+ días`}
+          count={datos.ordenes_estancadas.length}
+          tono={vacio(datos.ordenes_estancadas) ? 'ok' : 'critico'}
+        >
+          {vacio(datos.ordenes_estancadas) ? (
+            <p className="text-sm text-green-700">✅ Ninguna orden está parada.</p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
+              {datos.ordenes_estancadas.map((o) => (
+                <div key={o.codigo} className="flex justify-between items-center text-sm bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
+                  <div>
+                    <span className="font-medium text-slate-800">{o.codigo}</span>
+                    <span className="text-slate-500"> · {o.cliente} · {o.ultimo_proceso}</span>
+                  </div>
+                  <span className="text-red-600 font-semibold text-xs whitespace-nowrap ml-2">{o.dias_sin_movimiento}d</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </TarjetaSeccion>
+
+        <TarjetaSeccion
+          titulo="Días con pocos movimientos"
+          subtitulo={`Últimos 14 días con ${umbralPocos} o menos registros`}
+          count={datos.dias_pocos_movimientos.length}
+          tono={vacio(datos.dias_pocos_movimientos) ? 'ok' : 'alerta'}
+        >
+          {vacio(datos.dias_pocos_movimientos) ? (
+            <p className="text-sm text-green-700">✅ Actividad normal todos los días.</p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
+              {datos.dias_pocos_movimientos.map((d) => (
+                <div key={d.fecha} className="flex justify-between text-sm bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                  <span className="text-slate-700">{formatearFecha(d.fecha)}</span>
+                  <span className="font-semibold text-amber-700">{d.movimientos} movimiento{d.movimientos !== 1 ? 's' : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </TarjetaSeccion>
+
+        <TarjetaSeccion
+          titulo="Movimientos sin merma registrada"
+          subtitulo="Posible registro incompleto en el periodo seleccionado"
+          count={datos.movimientos_sin_merma.length}
+          tono={vacio(datos.movimientos_sin_merma) ? 'ok' : 'alerta'}
+        >
+          {vacio(datos.movimientos_sin_merma) ? (
+            <p className="text-sm text-green-700">✅ Todos los movimientos tienen merma registrada.</p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
+              {datos.movimientos_sin_merma.map((m) => (
+                <div key={m.movimiento_id} className="flex justify-between text-sm bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                  <span className="text-slate-700">
+                    <span className="font-medium text-slate-800">{m.codigo_orden}</span> · {m.proceso} · {m.maquina || 'Sin máquina'}
+                  </span>
+                  <span className="text-slate-400 text-xs whitespace-nowrap ml-2">{formatearFechaCorta(m.fecha)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </TarjetaSeccion>
+
+        <TarjetaSeccion
+          titulo="Máquinas con más merma acumulada"
+          subtitulo="Top 10 en el periodo seleccionado"
+          count={datos.maquinas_top_merma.length}
+          tono="ok"
+        >
+          {vacio(datos.maquinas_top_merma) ? (
+            <p className="text-sm text-slate-400">Sin mermas registradas en el periodo.</p>
+          ) : (
+            <div className="space-y-2">
+              {datos.maquinas_top_merma.map((m, i) => {
+                const max = datos.maquinas_top_merma[0].merma || 1
+                return (
+                  <div key={m.maquina}>
+                    <div className="flex justify-between text-xs text-slate-600 mb-0.5">
+                      <span className="font-medium">{i + 1}. {m.maquina}</span>
+                      <span>{fmt(m.merma)} kg · {m.registros} reg.</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-red-400 rounded-full"
+                        style={{ width: `${(m.merma / max) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </TarjetaSeccion>
+
+        <TarjetaSeccion
+          titulo="Merma anormalmente alta"
+          subtitulo="Movimientos muy por encima del promedio de su mismo proceso"
+          count={datos.ordenes_merma_excesiva.length}
+          tono={vacio(datos.ordenes_merma_excesiva) ? 'ok' : 'critico'}
+        >
+          {vacio(datos.ordenes_merma_excesiva) ? (
+            <p className="text-sm text-slate-400">Sin anomalías detectadas (o aún no hay suficiente historial por proceso).</p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
+              {datos.ordenes_merma_excesiva.map((m) => (
+                <div key={m.movimiento_id} className="flex justify-between items-center text-sm bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
+                  <span className="text-slate-700">
+                    <span className="font-medium text-slate-800">{m.codigo_orden}</span> · {m.proceso} · {m.maquina || 'Sin máquina'}
+                  </span>
+                  <span className="text-right text-xs whitespace-nowrap ml-2">
+                    <span className="text-red-600 font-bold">{fmt(m.merma_real)} kg</span>
+                    <span className="text-slate-400 block">prom. {fmt(m.promedio_proceso)} kg</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </TarjetaSeccion>
+      </div>
+    </div>
+  )
+}
+
 function Reportes() {
   const [vista, setVista] = useState('general')
 
@@ -797,11 +1054,20 @@ function Reportes() {
         >
           Por Tipo de Merma
         </button>
+        <button
+          onClick={() => setVista('alertas')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            vista === 'alertas' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Alertas
+        </button>
       </div>
 
       {vista === 'general' && <VistaGeneral />}
       {vista === 'orden' && <VistaOrden />}
       {vista === 'tipoMerma' && <VistaTipoMerma />}
+      {vista === 'alertas' && <VistaAlertas />}
     </div>
   )
 }

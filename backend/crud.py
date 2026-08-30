@@ -8,7 +8,8 @@ from fastapi import HTTPException
 import models
 import schemas
 
-from datetime import datetime
+import statistics
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 ZONA_LIMA = ZoneInfo("America/Lima")
@@ -1217,12 +1218,25 @@ def reporte_resumen(db: Session, desde: str | None, hasta: str | None, agrupar_p
             raise HTTPException(status_code=400, detail="Agrupación no válida.")
 
         if etiqueta not in grupos:
-            grupos[etiqueta] = {"etiqueta": etiqueta, "entrada": 0, "salida": 0, "merma": 0, "movimientos": 0}
+            grupos[etiqueta] = {
+                "etiqueta": etiqueta, "entrada": 0, "salida": 0, "merma": 0,
+                "movimientos": 0, "movimientos_con_merma": 0, "movimientos_sin_merma": 0
+            }
+
+        tiene_merma = (
+            db.query(models.DetalleMerma.id)
+            .filter(models.DetalleMerma.movimiento_id == mov.id)
+            .first()
+        ) is not None
 
         grupos[etiqueta]["entrada"] += float(mov.entrada or 0)
         grupos[etiqueta]["salida"] += float(mov.salida or 0)
         grupos[etiqueta]["merma"] += merma_efectiva(mov)
         grupos[etiqueta]["movimientos"] += 1
+        if tiene_merma:
+            grupos[etiqueta]["movimientos_con_merma"] += 1
+        else:
+            grupos[etiqueta]["movimientos_sin_merma"] += 1
 
     resultado = list(grupos.values())
     resultado.sort(key=lambda g: g["merma"], reverse=True)
@@ -1744,3 +1758,192 @@ def obtener_maquinas_unicas(db: Session):
         .all()
     )
     return [r[0] for r in resultados]
+
+
+# =========================
+# ALERTAS / ANOMALÍAS DE PRODUCCIÓN
+# =========================
+
+def _alertas_ordenes_sin_movimientos(db: Session):
+    ordenes = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.estado != "Preaprobada")
+        .all()
+    )
+    resultado = []
+    for orden in ordenes:
+        existe = db.query(models.Movimiento.id).filter(models.Movimiento.orden_id == orden.id).first()
+        if existe is None:
+            resultado.append({
+                "codigo": orden.codigo,
+                "cliente": orden.cliente_obj.nombre,
+                "fecha": orden.fecha
+            })
+    resultado.sort(key=lambda x: x["fecha"])
+    return resultado
+
+
+def _alertas_ordenes_estancadas(db: Session, dias_estancado: int):
+    hoy = ahora_lima().date()
+    ordenes = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.estado.notin_(["Preaprobada", "Terminado"]))
+        .all()
+    )
+    resultado = []
+    for orden in ordenes:
+        ultimo = (
+            db.query(models.Movimiento)
+            .filter(models.Movimiento.orden_id == orden.id)
+            .order_by(models.Movimiento.fecha.desc(), models.Movimiento.id.desc())
+            .first()
+        )
+        if ultimo is None:
+            continue
+
+        dias = (hoy - ultimo.fecha).days
+        if dias >= dias_estancado:
+            resultado.append({
+                "codigo": orden.codigo,
+                "cliente": orden.cliente_obj.nombre,
+                "ultimo_proceso": ultimo.proceso,
+                "dias_sin_movimiento": dias,
+                "fecha_ultimo_movimiento": ultimo.fecha
+            })
+
+    resultado.sort(key=lambda x: x["dias_sin_movimiento"], reverse=True)
+    return resultado
+
+
+def _alertas_dias_pocos_movimientos(db: Session, dias_analisis: int, umbral: int):
+    hoy = ahora_lima().date()
+    resultado = []
+    for i in range(dias_analisis):
+        dia = hoy - timedelta(days=i)
+        cantidad = db.query(models.Movimiento).filter(models.Movimiento.fecha == dia).count()
+        if cantidad <= umbral:
+            resultado.append({"fecha": dia, "movimientos": cantidad})
+
+    resultado.sort(key=lambda x: x["fecha"])
+    return resultado
+
+
+def _alertas_movimientos_sin_merma(db: Session, desde: str | None, hasta: str | None):
+    query = db.query(models.Movimiento)
+    if desde:
+        query = query.filter(models.Movimiento.fecha >= desde)
+    if hasta:
+        query = query.filter(models.Movimiento.fecha <= hasta)
+
+    movimientos = query.order_by(models.Movimiento.fecha.desc()).all()
+
+    resultado = []
+    for mov in movimientos:
+        tiene_merma = (
+            db.query(models.DetalleMerma.id)
+            .filter(models.DetalleMerma.movimiento_id == mov.id)
+            .first()
+        )
+        if tiene_merma is None:
+            orden = db.get(models.OrdenProduccion, mov.orden_id)
+            resultado.append({
+                "movimiento_id": mov.id,
+                "codigo_orden": orden.codigo if orden else "-",
+                "proceso": mov.proceso,
+                "maquina": mov.maquina,
+                "fecha": mov.fecha
+            })
+    return resultado
+
+
+def _alertas_maquinas_top_merma(db: Session, desde: str | None, hasta: str | None):
+    query = (
+        db.query(models.DetalleMerma)
+        .join(models.Movimiento, models.DetalleMerma.movimiento_id == models.Movimiento.id)
+    )
+    if desde:
+        query = query.filter(models.Movimiento.fecha >= desde)
+    if hasta:
+        query = query.filter(models.Movimiento.fecha <= hasta)
+
+    detalles = query.all()
+
+    grupos = {}
+    for d in detalles:
+        mov = db.get(models.Movimiento, d.movimiento_id)
+        maquina = mov.maquina or "Sin máquina"
+        if maquina not in grupos:
+            grupos[maquina] = {"maquina": maquina, "merma": 0, "registros": 0}
+        grupos[maquina]["merma"] += float(d.peso)
+        grupos[maquina]["registros"] += 1
+
+    resultado = list(grupos.values())
+    resultado.sort(key=lambda g: g["merma"], reverse=True)
+    return resultado[:10]
+
+
+def _alertas_ordenes_merma_excesiva(db: Session, desde: str | None, hasta: str | None):
+    """
+    Detecta movimientos con merma_real anormalmente alta comparada con el
+    promedio de su MISMO proceso (no una meta inventada, sino una desviación
+    estadística sobre datos reales). Requiere al menos 5 movimientos con
+    merma registrada en ese proceso para evaluar, para no sacar conclusiones
+    con poca muestra.
+    """
+    query = db.query(models.Movimiento).filter(models.Movimiento.merma_real.isnot(None))
+    if desde:
+        query = query.filter(models.Movimiento.fecha >= desde)
+    if hasta:
+        query = query.filter(models.Movimiento.fecha <= hasta)
+
+    movimientos = query.all()
+
+    por_proceso = {}
+    for mov in movimientos:
+        por_proceso.setdefault(mov.proceso, []).append(mov)
+
+    resultado = []
+    for lista in por_proceso.values():
+        valores = [float(m.merma_real) for m in lista if m.merma_real is not None]
+        if len(valores) < 5:
+            continue
+
+        promedio = statistics.mean(valores)
+        desviacion = statistics.pstdev(valores)
+        if desviacion == 0:
+            continue
+
+        umbral = promedio + 2 * desviacion
+        for mov in lista:
+            if mov.merma_real is not None and float(mov.merma_real) > umbral:
+                orden = db.get(models.OrdenProduccion, mov.orden_id)
+                resultado.append({
+                    "movimiento_id": mov.id,
+                    "codigo_orden": orden.codigo if orden else "-",
+                    "proceso": mov.proceso,
+                    "maquina": mov.maquina,
+                    "merma_real": float(mov.merma_real),
+                    "promedio_proceso": round(promedio, 2),
+                    "fecha": mov.fecha
+                })
+
+    resultado.sort(key=lambda x: x["merma_real"], reverse=True)
+    return resultado
+
+
+def reporte_alertas(
+    db: Session,
+    desde: str | None = None,
+    hasta: str | None = None,
+    dias_estancado: int = 3,
+    umbral_pocos_movimientos: int = 3,
+    dias_analisis: int = 14
+):
+    return {
+        "ordenes_sin_movimientos": _alertas_ordenes_sin_movimientos(db),
+        "ordenes_estancadas": _alertas_ordenes_estancadas(db, dias_estancado),
+        "dias_pocos_movimientos": _alertas_dias_pocos_movimientos(db, dias_analisis, umbral_pocos_movimientos),
+        "movimientos_sin_merma": _alertas_movimientos_sin_merma(db, desde, hasta),
+        "maquinas_top_merma": _alertas_maquinas_top_merma(db, desde, hasta),
+        "ordenes_merma_excesiva": _alertas_ordenes_merma_excesiva(db, desde, hasta)
+    }

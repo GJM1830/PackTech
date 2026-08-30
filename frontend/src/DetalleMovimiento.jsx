@@ -420,12 +420,28 @@ const duplicarMerma = (detalle) => {
             <p className="text-xs text-slate-400 uppercase tracking-wide">{esProcesoEspecial ? 'Salida (neto)' : 'Salida'}</p>
             <p className="text-sm font-semibold text-slate-800">{salidaCalculada.toFixed(2)} {movimiento.unidad}</p>
           </div>
-          <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-            <p className="text-xs text-blue-500 uppercase tracking-wide">Faltante/Sobrante</p>
-            <p className="text-sm font-semibold text-blue-800">
+          <div className={`rounded-lg px-3 py-2 border ${
+            Math.abs(diferenciaReal) < 0.01
+              ? 'bg-green-50 border-green-100'
+              : 'bg-amber-50 border-amber-300'
+          }`}>
+            <p className={`text-xs uppercase tracking-wide ${
+              Math.abs(diferenciaReal) < 0.01 ? 'text-green-600' : 'text-amber-700'
+            }`}>
+              {Math.abs(diferenciaReal) < 0.01 ? 'Cuadre correcto' : '⚠ Faltante sin explicar'}
+            </p>
+            <p className={`text-sm font-semibold ${
+              Math.abs(diferenciaReal) < 0.01 ? 'text-green-800' : 'text-amber-800'
+            }`}>
               {diferenciaReal.toFixed(2)} {movimiento.unidad}
             </p>
-            <p className="text-[11px] text-blue-400 mt-0.5">Entrada − (Salida + Merma real)</p>
+            <p className={`text-[11px] mt-0.5 ${
+              Math.abs(diferenciaReal) < 0.01 ? 'text-green-400' : 'text-amber-600'
+            }`}>
+              {Math.abs(diferenciaReal) < 0.01
+                ? 'Entrada = Salida + Merma real'
+                : 'No es merma — verifica con el operario o registra la merma real que falta.'}
+            </p>
           </div>
           <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2">
           <p className="text-xs text-green-600 uppercase tracking-wide">Merma real</p>
