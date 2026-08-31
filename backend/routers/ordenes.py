@@ -120,3 +120,11 @@ def aprobar_orden(
     _: None = Depends(requiere_rol("vendedor"))
 ):
     return crud.aprobar_orden_preaprobada(db, orden_id)
+
+
+@router.get("/{orden_id}", response_model=schemas.OrdenProduccionResponse)
+def obtener_orden(
+    orden_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_orden_por_id(db, orden_id)

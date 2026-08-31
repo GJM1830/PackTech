@@ -1760,6 +1760,27 @@ def obtener_ordenes_preaprobadas(db: Session):
     return ordenes
 
 
+def obtener_orden_por_id(db: Session, orden_id: int):
+    orden = db.get(models.OrdenProduccion, orden_id)
+    if orden is None:
+        raise HTTPException(status_code=404, detail="La Orden de Producción no existe.")
+
+    orden.ruc = orden.cliente_obj.ruc
+    orden.cliente = orden.cliente_obj.nombre
+
+    ultimo_movimiento = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden.id)
+        .order_by(models.Movimiento.id.desc())
+        .first()
+    )
+    proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+    orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+    orden.estado = calcular_estado(proceso_actual)
+
+    return orden
+
+
 def obtener_ordenes_seguimiento(db: Session):
     ordenes = (
         db.query(models.OrdenProduccion)

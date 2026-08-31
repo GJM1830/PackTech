@@ -96,22 +96,17 @@ export async function generarPDFLiquidacion(data) {
     y += 5
 
     if (p.bobinas_salida.length > 0) {
-      const hayMillares = p.bobinas_salida.some((b) => b.millares != null)
-      const hayMaterial = p.bobinas_salida.some((b) => b.tipo_material)
-
-      const cabecera = ['N°', 'Bruto', 'Tuco', 'Neto']
-      if (hayMillares) cabecera.push('Millares')
-      if (hayMaterial) cabecera.push('Material')
-
       autoTable(doc, {
         startY: y,
-        head: [cabecera],
-        body: p.bobinas_salida.map((b) => {
-          const fila = [b.numero, b.peso_bruto.toFixed(2), (b.peso_tuco || 0).toFixed(2), b.peso_neto.toFixed(2)]
-          if (hayMillares) fila.push(b.millares != null ? b.millares : '-')
-          if (hayMaterial) fila.push(b.tipo_material || '-')
-          return fila
-        }),
+        head: [['N°', 'Bruto', 'Tuco', 'Neto', 'Millares', 'Material']],
+        body: p.bobinas_salida.map((b) => [
+          b.numero,
+          b.peso_bruto.toFixed(2),
+          (b.peso_tuco || 0).toFixed(2),
+          b.peso_neto.toFixed(2),
+          b.millares != null ? b.millares : '-',
+          b.tipo_material || '-'
+        ]),
         theme: 'grid',
         headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5 },
         bodyStyles: { fontSize: 7.5 },
@@ -144,46 +139,6 @@ export async function generarPDFLiquidacion(data) {
       doc.setTextColor(...slate600)
       doc.text(`Obs: ${p.observacion}`, M, y)
       y += 5
-    }
-
-    const entradaProceso = Number(p.entrada) || 0
-    const salidaProceso = Number(p.salida) || 0
-    const mermaProceso = p.mermas.reduce((s, m) => s + m.peso, 0)
-    const rendimiento = entradaProceso > 0 ? (salidaProceso / entradaProceso) * 100 : null
-    const tieneMillares = p.bobinas_salida.some((b) => b.millares != null)
-    const millaresTotal = tieneMillares
-      ? p.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
-      : null
-
-    let tiempoTexto = null
-    if (p.hora_inicio && p.hora_fin) {
-      const [h1, m1] = p.hora_inicio.split(':').map(Number)
-      const [h2, m2] = p.hora_fin.split(':').map(Number)
-      let minutos = (h2 * 60 + m2) - (h1 * 60 + m1)
-      if (minutos < 0) minutos += 24 * 60
-      tiempoTexto = `${p.hora_inicio} - ${p.hora_fin} (${Math.floor(minutos / 60)}h ${minutos % 60}min)`
-    }
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...slate600)
-    doc.text('RESUMEN', M, y)
-    y += 4
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(...slate900)
-    let resumenLinea1 = `Entrada: ${entradaProceso.toFixed(2)} kg   Salida: ${salidaProceso.toFixed(2)} kg   Merma: ${mermaProceso.toFixed(2)} kg`
-    if (rendimiento != null) resumenLinea1 += `   Rendimiento: ${rendimiento.toFixed(1)}%`
-    doc.text(resumenLinea1, M, y)
-    y += 4
-
-    const resumenLinea2 = []
-    if (millaresTotal != null) resumenLinea2.push(`Millares: ${millaresTotal.toFixed(2)}`)
-    if (tiempoTexto) resumenLinea2.push(`Tiempo: ${tiempoTexto}`)
-    if (resumenLinea2.length > 0) {
-      doc.text(resumenLinea2.join('   '), M, y)
-      y += 4
     }
 
     y += 5

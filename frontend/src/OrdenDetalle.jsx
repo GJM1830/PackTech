@@ -52,20 +52,19 @@ function OrdenDetalle() {
 
   const cargar = async () => {
     try {
-      const [ordenesRes, movRes, opRes] = await Promise.all([
-        axios.get('https://packtech-production.up.railway.app/ordenes-produccion'),
+      const [ordenRes, movRes, opRes] = await Promise.all([
+        axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`),
         axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`),
-        axios.get('https://packtech-production.up.railway.app/operarios')
+        axios.get('https://packtech-production.up.railway.app/operarios?limit=1000')
       ])
 
-      const ordenEncontrada = ordenesRes.data.find(o => o.id === parseInt(id))
-      setOrden(ordenEncontrada)
+      setOrden(ordenRes.data)
       setMovimientos(movRes.data)
       setOperarios(opRes.data)
       setCargando(false)
     } catch (err) {
       console.error(err)
-      setError('No se pudo cargar el historial.')
+      setError(err.response?.data?.detail || 'No se pudo cargar el historial.')
       setCargando(false)
     }
   }
