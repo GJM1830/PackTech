@@ -5169,7 +5169,7 @@ const horaActualLima = () => {
       unidad: mov.unidad,
       observacion: mov.observacion || '',
       hora_inicio: mov.hora_inicio || '',
-      hora_fin: mov.hora_fin || '',
+      hora_fin: mov.hora_fin || horaActualLima(),
       esEspecial: PROCESOS_ESPECIALES.includes(mov.proceso)
     })
   }
