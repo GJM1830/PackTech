@@ -538,6 +538,59 @@ def obtener_movimientos_por_orden(db: Session, orden_id: int):
     )
 
 
+def filtrar_movimientos(
+    db: Session,
+    q: str | None = None,
+    proceso: str | None = None,
+    maquina: str | None = None,
+    operario: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None
+):
+    """
+    Filtrado combinado real de movimientos (código/cliente + proceso + máquina +
+    operario + rango de fecha), aplicado en la base de datos.
+    """
+    query = db.query(models.Movimiento)
+
+    if q:
+        query = (
+            query
+            .join(models.OrdenProduccion, models.Movimiento.orden_id == models.OrdenProduccion.id)
+            .join(models.Cliente, models.OrdenProduccion.cliente_id == models.Cliente.id)
+            .filter(
+                (models.OrdenProduccion.codigo.ilike(f"%{q}%")) |
+                (models.Cliente.nombre.ilike(f"%{q}%"))
+            )
+        )
+
+    if proceso:
+        query = query.filter(models.Movimiento.proceso == proceso)
+
+    if maquina:
+        query = query.filter(models.Movimiento.maquina == maquina)
+
+    if operario:
+        query = (
+            query
+            .join(models.Operario, models.Movimiento.operario_id == models.Operario.id)
+            .filter(models.Operario.nombre == operario)
+        )
+
+    if fecha_desde:
+        query = query.filter(models.Movimiento.fecha >= fecha_desde)
+
+    if fecha_hasta:
+        query = query.filter(models.Movimiento.fecha <= fecha_hasta)
+
+    if antes_de:
+        query = query.filter(models.Movimiento.id < antes_de)
+
+    return query.order_by(models.Movimiento.id.desc()).limit(limit).all()
+
+
 def buscar_ordenes(db: Session, q: str):
     resultados = (
         db.query(models.OrdenProduccion)
@@ -573,6 +626,73 @@ def buscar_ordenes(db: Session, q: str):
         orden.estado = calcular_estado(proceso_actual)
 
     return resultados
+
+
+def filtrar_ordenes_produccion(
+    db: Session,
+    q: str | None = None,
+    producto: str | None = None,
+    estado: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None
+):
+    """
+    Filtrado combinado real (código/cliente + producto + estado + rango de fecha),
+    todo aplicado en la base de datos — no sobre el lote ya cargado en pantalla.
+    """
+    query = (
+        db.query(models.OrdenProduccion)
+        .join(models.Cliente, models.OrdenProduccion.cliente_id == models.Cliente.id)
+        .filter(models.OrdenProduccion.estado != "Preaprobada")
+    )
+
+    if q:
+        query = query.filter(
+            (models.OrdenProduccion.codigo.ilike(f"%{q}%")) |
+            (models.Cliente.nombre.ilike(f"%{q}%"))
+        )
+
+    if producto:
+        query = query.filter(models.OrdenProduccion.descripcion.ilike(f"%{producto}%"))
+
+    if estado:
+        query = query.filter(models.OrdenProduccion.estado == estado)
+
+    if fecha_desde:
+        query = query.filter(models.OrdenProduccion.fecha >= fecha_desde)
+
+    if fecha_hasta:
+        query = query.filter(models.OrdenProduccion.fecha <= fecha_hasta)
+
+    if antes_de:
+        query = query.filter(models.OrdenProduccion.id < antes_de)
+
+    ordenes = query.order_by(models.OrdenProduccion.id.desc()).limit(limit).all()
+
+    for orden in ordenes:
+        orden.ruc = orden.cliente_obj.ruc
+        orden.cliente = orden.cliente_obj.nombre
+
+        ultimo_movimiento = (
+            db.query(models.Movimiento)
+            .filter(models.Movimiento.orden_id == orden.id)
+            .order_by(models.Movimiento.id.desc())
+            .first()
+        )
+
+        proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+
+        # El filtro por estado se resuelve contra el estado calculado (dinámico),
+        # no contra el campo estado guardado, salvo Terminado/Preaprobada que sí son reales.
+        orden.ultimo_proceso = proceso_actual or "Sin iniciar"
+        orden.estado = calcular_estado(proceso_actual)
+
+    if estado:
+        ordenes = [o for o in ordenes if o.estado == estado]
+
+    return ordenes
 
 
 def eliminar_movimiento(
@@ -3204,6 +3324,21 @@ def buscar_movimientos(
     return crud.buscar_movimientos(db, q)
 
 
+@router.get("/movimientos/filtrar", response_model=list[schemas.MovimientoResponse])
+def filtrar_movimientos(
+    q: str | None = None,
+    proceso: str | None = None,
+    maquina: str | None = None,
+    operario: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.filtrar_movimientos(db, q, proceso, maquina, operario, fecha_desde, fecha_hasta, limit, antes_de)
+
+
 @router.put("/movimientos/{movimiento_id}", response_model=schemas.MovimientoResponse)
 def editar_movimiento(
     movimiento_id: int,
@@ -3419,6 +3554,20 @@ def buscar_ordenes(
     db: Session = Depends(obtener_db)
 ):
     return crud.buscar_ordenes(db, q)
+
+
+@router.get("/filtrar", response_model=list[schemas.OrdenProduccionResponse])
+def filtrar_ordenes(
+    q: str | None = None,
+    producto: str | None = None,
+    estado: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.filtrar_ordenes_produccion(db, q, producto, estado, fecha_desde, fecha_hasta, limit, antes_de)
 
 @router.put("/{orden_id}/procesos", response_model=schemas.OrdenProduccionResponse)
 def actualizar_procesos(

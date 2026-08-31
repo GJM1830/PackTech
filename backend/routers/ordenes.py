@@ -65,6 +65,20 @@ def buscar_ordenes(
 ):
     return crud.buscar_ordenes(db, q)
 
+
+@router.get("/filtrar", response_model=list[schemas.OrdenProduccionResponse])
+def filtrar_ordenes(
+    q: str | None = None,
+    producto: str | None = None,
+    estado: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.filtrar_ordenes_produccion(db, q, producto, estado, fecha_desde, fecha_hasta, limit, antes_de)
+
 @router.put("/{orden_id}/procesos", response_model=schemas.OrdenProduccionResponse)
 def actualizar_procesos(
     orden_id: int,

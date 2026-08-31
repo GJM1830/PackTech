@@ -5,6 +5,7 @@ import ModalEditar from './ModalEditar'
 import DetalleMovimiento from './DetalleMovimiento'
 import FiltroDesplegable from './FiltroDesplegable'
 import { puedeCrear, esProduccionOMas } from './roles'
+import { PERIODOS_RAPIDOS, cargarFiltros, guardarFiltros } from './filtrosPersistentes'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -25,17 +26,13 @@ const MAQUINAS_POR_PROCESO = {
 
 const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
 const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
-
-const horaActualLima = () => {
-  return new Date().toLocaleTimeString('es-PE', {
-    timeZone: 'America/Lima',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  })
-}
+const CLAVE_FILTROS_MOVIMIENTOS = 'packtech_filtros_movimientos'
 
 function Movimientos() {
+  const filtrosGuardados = cargarFiltros(CLAVE_FILTROS_MOVIMIENTOS, {
+    codigo: '', cliente: '', proceso: '', operario: '', maquina: '', periodo: 'todo', desde: '', hasta: ''
+  })
+
   const [movimientos, setMovimientos] = useState([])
   const [ordenes, setOrdenes] = useState([])
   const [operarios, setOperarios] = useState([])
@@ -49,16 +46,26 @@ function Movimientos() {
   const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
-  const [filtroCodigo, setFiltroCodigo] = useState('')
-  const [filtroProceso, setFiltroProceso] = useState(null)
-  const [filtroOperario, setFiltroOperario] = useState(null)
-  const [filtroMaquina, setFiltroMaquina] = useState(null)
+  const [filtroCodigo, setFiltroCodigo] = useState(filtrosGuardados.codigo)
+  const [filtroProceso, setFiltroProceso] = useState(filtrosGuardados.proceso || null)
+  const [filtroOperario, setFiltroOperario] = useState(filtrosGuardados.operario || null)
+  const [filtroMaquina, setFiltroMaquina] = useState(filtrosGuardados.maquina || null)
   const [maquinasUnicas, setMaquinasUnicas] = useState([])
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
-  const [filtroCliente, setFiltroCliente] = useState('')
+  const [periodo, setPeriodo] = useState(filtrosGuardados.periodo)
+  const [fechaDesde, setFechaDesde] = useState(filtrosGuardados.desde)
+  const [fechaHasta, setFechaHasta] = useState(filtrosGuardados.hasta)
+  const [filtroCliente, setFiltroCliente] = useState(filtrosGuardados.cliente)
   const [sugerenciasTipoLaminado, setSugerenciasTipoLaminado] = useState([])
   const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
+
+const horaActualLima = () => {
+  return new Date().toLocaleTimeString('es-PE', {
+    timeZone: 'America/Lima',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+}
 
   const [form, setForm] = useState({
     orden_id: '',
@@ -86,18 +93,17 @@ function Movimientos() {
   const cargarDatos = async () => {
     setCargando(true)
     try {
-      const [movRes, ordRes, opRes, maqRes] = await Promise.all([
-        axios.get('https://packtech-production.up.railway.app/movimientos?limit=20'),
+      const [ordRes, opRes, maqRes] = await Promise.all([
         axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=500'),
-        axios.get('https://packtech-production.up.railway.app/operarios'),
+        axios.get('https://packtech-production.up.railway.app/operarios?limit=1000'),
         axios.get('https://packtech-production.up.railway.app/movimientos/maquinas')
       ])
 
-      setMovimientos(movRes.data)
       setOrdenes(ordRes.data)
       setOperarios(opRes.data)
       setMaquinasUnicas(maqRes.data)
       setError(null)
+      await cargarMovimientos()
     } catch (err) {
       console.error(err)
       setError('No se pudo conectar con el backend.')
@@ -106,12 +112,45 @@ function Movimientos() {
     }
   }
 
+  const rangoPeriodo = () => {
+    if (periodo === 'custom') return { desde: fechaDesde, hasta: fechaHasta }
+    const p = PERIODOS_RAPIDOS.find((x) => x.id === periodo) || PERIODOS_RAPIDOS[0]
+    return { desde: p.desde(), hasta: p.hasta() }
+  }
+
+  const paramsFiltroMovimientos = () => {
+    const { desde, hasta } = rangoPeriodo()
+    return {
+      q: filtroCodigo.trim() || filtroCliente.trim() || undefined,
+      proceso: filtroProceso || undefined,
+      maquina: filtroMaquina || undefined,
+      operario: filtroOperario || undefined,
+      fecha_desde: desde || undefined,
+      fecha_hasta: hasta || undefined
+    }
+  }
+
+  const cargarMovimientos = async () => {
+    try {
+      const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+        params: { ...paramsFiltroMovimientos(), limit: 20 }
+      })
+      setMovimientos(res.data)
+      setHayMasMovimientos(res.data.length === 20)
+    } catch (err) {
+      console.error(err)
+      setError('No se pudo conectar con el backend.')
+    }
+  }
+
   const cargarMasMovimientos = async () => {
     if (movimientos.length === 0) return
     setCargandoMas(true)
     try {
       const ultimoId = movimientos[movimientos.length - 1].id
-      const res = await axios.get(`https://packtech-production.up.railway.app/movimientos?limit=20&antes_de=${ultimoId}`)
+      const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+        params: { ...paramsFiltroMovimientos(), limit: 20, antes_de: ultimoId }
+      })
       setMovimientos((actual) => [...actual, ...res.data])
       setHayMasMovimientos(res.data.length === 20)
     } catch (err) {
@@ -125,6 +164,23 @@ function Movimientos() {
     cargarDatos()
   }, [])
 
+  // Persiste los filtros para que sobrevivan cambios de pestaña y recargas de página
+  useEffect(() => {
+    guardarFiltros(CLAVE_FILTROS_MOVIMIENTOS, {
+      codigo: filtroCodigo, cliente: filtroCliente, proceso: filtroProceso || '',
+      operario: filtroOperario || '', maquina: filtroMaquina || '',
+      periodo, desde: fechaDesde, hasta: fechaHasta
+    })
+  }, [filtroCodigo, filtroCliente, filtroProceso, filtroOperario, filtroMaquina, periodo, fechaDesde, fechaHasta])
+
+  // Recarga desde el backend cada vez que cambia cualquier filtro (con debounce en texto libre)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      cargarMovimientos()
+    }, 300)
+    return () => clearTimeout(t)
+  }, [filtroCodigo, filtroCliente, filtroProceso, filtroOperario, filtroMaquina, periodo, fechaDesde, fechaHasta])
+
   const nombreOperario = (id) => {
     if (!id) return ''
     return operarios.find(o => o.id === id)?.nombre || ''
@@ -134,7 +190,7 @@ function Movimientos() {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
     try {
       await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
-      cargarDatos()
+      cargarMovimientos()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
     }
@@ -200,7 +256,7 @@ const guardarEdicion = async () => {
       })
 
       setEditando(null)
-      cargarDatos()
+      cargarMovimientos()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al editar el movimiento.')
     } finally {
@@ -259,7 +315,7 @@ const guardarEdicion = async () => {
       setBusquedaOperario('')
       setOperarioSeleccionado(null)
 
-      cargarDatos()
+      cargarMovimientos()
 
       if (esProcesoEspecial) {
         setMovimientoAbierto(respuesta.data)
@@ -321,39 +377,20 @@ const guardarEdicion = async () => {
     return
   }, [form.proceso, esProcesoEspecial])
 
-  const procesosUnicos = [...new Set(movimientos.map(m => m.proceso))].sort()
-  const operariosUnicos = [...new Set(movimientos.filter(m => m.operario_id).map(m => nombreOperario(m.operario_id)))].sort()
+  const operariosUnicos = [...new Set(operarios.map((o) => o.nombre))].sort()
 
-  const [resultadosBusquedaMov, setResultadosBusquedaMov] = useState(null)
+  const hayFiltrosActivos = filtroCodigo || filtroCliente || filtroProceso || filtroOperario || filtroMaquina || periodo !== 'todo'
 
-  useEffect(() => {
-    const termino = (filtroCodigo || filtroCliente || '').trim()
-    if (termino.length < 2) {
-      setResultadosBusquedaMov(null)
-      return
-    }
-    const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/movimientos/buscar?q=${termino}`)
-        .then((res) => setResultadosBusquedaMov(res.data))
-        .catch((err) => console.error(err))
-    }, 300)
-    return () => clearTimeout(t)
-  }, [filtroCodigo, filtroCliente])
-
-  const baseMovimientos = resultadosBusquedaMov !== null ? resultadosBusquedaMov : movimientos
-
-  const movimientosFiltrados = baseMovimientos.filter((mov) => {
-    const codigo = ordenes.find(o => o.id === mov.orden_id)?.codigo || String(mov.orden_id)
-    const cliente = ordenes.find(o => o.id === mov.orden_id)?.cliente || ''
-    if (filtroCodigo && !codigo.toLowerCase().includes(filtroCodigo.toLowerCase())) return false
-    if (filtroCliente && !cliente.toLowerCase().includes(filtroCliente.toLowerCase())) return false
-    if (filtroProceso && mov.proceso !== filtroProceso) return false
-    if (filtroOperario && nombreOperario(mov.operario_id) !== filtroOperario) return false
-    if (filtroMaquina && mov.maquina !== filtroMaquina) return false
-    if (fechaDesde && mov.fecha < fechaDesde) return false
-    if (fechaHasta && mov.fecha > fechaHasta) return false
-    return true
-  })
+  const limpiarFiltros = () => {
+    setFiltroCodigo('')
+    setFiltroCliente('')
+    setFiltroProceso(null)
+    setFiltroOperario(null)
+    setFiltroMaquina(null)
+    setPeriodo('todo')
+    setFechaDesde('')
+    setFechaHasta('')
+  }
 
   return (
     <div className="space-y-8">
@@ -606,71 +643,93 @@ const guardarEdicion = async () => {
 
         {!cargando && !error && (
           <>
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <input
-                type="text"
-                value={filtroCodigo}
-                onChange={(e) => setFiltroCodigo(e.target.value)}
-                placeholder="Buscar N° Pedido..."
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
-              />
-              <input
-                type="text"
-                value={filtroCliente}
-                onChange={(e) => setFiltroCliente(e.target.value)}
-                placeholder="Buscar Cliente..."
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
-              />
-              <FiltroDesplegable
-                etiqueta="Proceso"
-                opciones={procesosUnicos}
-                seleccionado={filtroProceso}
-                onSeleccionar={setFiltroProceso}
-              />
-              <FiltroDesplegable
-                etiqueta="Operario"
-                opciones={operariosUnicos}
-                seleccionado={filtroOperario}
-                onSeleccionar={setFiltroOperario}
-              />
-              <FiltroDesplegable
-                etiqueta="Máquina"
-                opciones={maquinasUnicas}
-                seleccionado={filtroMaquina}
-                onSeleccionar={setFiltroMaquina}
-              />
-              <div className="flex items-center gap-1.5 text-sm text-slate-500">
-                <span>Desde</span>
-                <input
-                  type="date"
-                  value={fechaDesde}
-                  onChange={(e) => setFechaDesde(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
-                />
-                <span>hasta</span>
-                <input
-                  type="date"
-                  value={fechaHasta}
-                  onChange={(e) => setFechaHasta(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
-                />
-              </div>
-              {(filtroCodigo || filtroCliente || filtroProceso || filtroOperario || filtroMaquina || fechaDesde || fechaHasta) && (
+            <div className="space-y-3 mb-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {PERIODOS_RAPIDOS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPeriodo(p.id)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      periodo === p.id
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
                 <button
-                  onClick={() => {
-                    setFiltroCodigo('')
-                    setFiltroCliente('')
-                    setFiltroProceso(null)
-                    setFiltroOperario(null)
-                    setFiltroMaquina(null)
-                    setFechaDesde('')
-                    setFechaHasta('')
-                  }}
-                  className="text-sm text-slate-400 hover:text-slate-700 underline"
+                  onClick={() => setPeriodo('custom')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    periodo === 'custom'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
                 >
-                  Limpiar filtros
+                  Personalizado
                 </button>
-              )}
+                {periodo === 'custom' && (
+                  <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                    <span>Desde</span>
+                    <input
+                      type="date"
+                      value={fechaDesde}
+                      onChange={(e) => setFechaDesde(e.target.value)}
+                      className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+                    />
+                    <span>hasta</span>
+                    <input
+                      type="date"
+                      value={fechaHasta}
+                      onChange={(e) => setFechaHasta(e.target.value)}
+                      className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={filtroCodigo}
+                  onChange={(e) => setFiltroCodigo(e.target.value)}
+                  placeholder="Buscar N° Pedido..."
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+                />
+                <input
+                  type="text"
+                  value={filtroCliente}
+                  onChange={(e) => setFiltroCliente(e.target.value)}
+                  placeholder="Buscar Cliente..."
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40"
+                />
+                <FiltroDesplegable
+                  etiqueta="Proceso"
+                  opciones={PROCESOS_ESPECIALES}
+                  seleccionado={filtroProceso}
+                  onSeleccionar={setFiltroProceso}
+                />
+                <FiltroDesplegable
+                  etiqueta="Operario"
+                  opciones={operariosUnicos}
+                  seleccionado={filtroOperario}
+                  onSeleccionar={setFiltroOperario}
+                />
+                <FiltroDesplegable
+                  etiqueta="Máquina"
+                  opciones={maquinasUnicas}
+                  seleccionado={filtroMaquina}
+                  onSeleccionar={setFiltroMaquina}
+                />
+                {hayFiltrosActivos && (
+                  <button
+                    onClick={limpiarFiltros}
+                    className="text-sm text-slate-400 hover:text-slate-700 underline"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
@@ -691,7 +750,7 @@ const guardarEdicion = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {movimientosFiltrados.map((mov) => (
+                  {movimientos.map((mov) => (
                     <tr
                       key={mov.id}
                       onClick={() => setMovimientoAbierto(mov)}
@@ -732,7 +791,11 @@ const guardarEdicion = async () => {
               </table>
             </div>
 
-            {hayMasMovimientos && (
+            {movimientos.length === 0 && (
+              <p className="text-slate-400 text-center py-8">Ningún movimiento coincide con los filtros aplicados.</p>
+            )}
+
+            {hayMasMovimientos && movimientos.length > 0 && (
               <div className="flex justify-center mt-4">
                 <button
                   onClick={cargarMasMovimientos}
@@ -751,7 +814,7 @@ const guardarEdicion = async () => {
         <DetalleMovimiento
           movimiento={movimientoAbierto}
           orden={ordenes.find(o => o.id === movimientoAbierto.orden_id)}
-          onCerrar={() => { setMovimientoAbierto(null); cargarDatos() }}
+          onCerrar={() => { setMovimientoAbierto(null); cargarMovimientos() }}
         />
       )}
 

@@ -42,6 +42,21 @@ def buscar_movimientos(
     return crud.buscar_movimientos(db, q)
 
 
+@router.get("/movimientos/filtrar", response_model=list[schemas.MovimientoResponse])
+def filtrar_movimientos(
+    q: str | None = None,
+    proceso: str | None = None,
+    maquina: str | None = None,
+    operario: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.filtrar_movimientos(db, q, proceso, maquina, operario, fecha_desde, fecha_hasta, limit, antes_de)
+
+
 @router.put("/movimientos/{movimiento_id}", response_model=schemas.MovimientoResponse)
 def editar_movimiento(
     movimiento_id: int,
