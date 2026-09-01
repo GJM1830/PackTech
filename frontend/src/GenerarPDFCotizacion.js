@@ -125,6 +125,9 @@ export async function generarPDFCotizacion(pedido) {
 
   doc.setFillColor(224, 231, 255)
   doc.rect(M, y, ANCHO, filaAltura, 'F')
+  doc.setDrawColor(...borde)
+  doc.rect(M, y, ANCHO, filaAltura)
+  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
   doc.setTextColor(...slate900)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
@@ -179,9 +182,8 @@ export async function generarPDFCotizacion(pedido) {
   // ---- Totales ----
   const anchoTotales = 55
   const xTotales = M + ANCHO - anchoTotales
+  const yInicioTotales = y
 
-  doc.setDrawColor(...borde)
-  doc.rect(xTotales, y, anchoTotales, 7)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...slate600)
@@ -191,8 +193,6 @@ export async function generarPDFCotizacion(pedido) {
   y += 7
 
   if (pedido.incluye_igv) {
-    doc.setDrawColor(...borde)
-    doc.rect(xTotales, y, anchoTotales, 7)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...slate600)
@@ -209,8 +209,18 @@ export async function generarPDFCotizacion(pedido) {
   doc.setTextColor(255, 255, 255)
   doc.text('TOTAL', xTotales + 2, y + 6)
   doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 2, y + 6, { align: 'right' })
+  y += 9
 
-  y += 14
+  doc.setDrawColor(...borde)
+  doc.rect(xTotales, yInicioTotales, anchoTotales, y - yInicioTotales)
+  if (pedido.incluye_igv) {
+    doc.line(xTotales, yInicioTotales + 7, xTotales + anchoTotales, yInicioTotales + 7)
+    doc.line(xTotales, yInicioTotales + 14, xTotales + anchoTotales, yInicioTotales + 14)
+  } else {
+    doc.line(xTotales, yInicioTotales + 7, xTotales + anchoTotales, yInicioTotales + 7)
+  }
+
+  y += 5
 
   // ---- Condiciones ----
   doc.setFont('helvetica', 'normal')
