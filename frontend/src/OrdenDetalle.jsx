@@ -156,6 +156,9 @@ function OrdenDetalle() {
           {orden?.numero_std != null && (
             <p className="text-slate-400 text-xs mt-1">N° Estándar: {orden.numero_std}</p>
           )}
+          {orden?.observaciones && (
+            <p className="text-slate-400 text-xs mt-1">Obs: {orden.observaciones}</p>
+          )}
         </div>
         {orden && (
           <div className="flex gap-2">

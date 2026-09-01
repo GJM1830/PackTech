@@ -9,6 +9,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
     numero_std: '',
     descripcion: '',
     cantidad: '',
+    observaciones: '',
     estado: 'Pendiente'
   })
 
@@ -84,7 +85,8 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         descripcion: form.descripcion,
         cantidad: parseFloat(form.cantidad),
         unidad: 'kg',
-        estado: form.estado
+        estado: form.estado,
+        observaciones: form.observaciones || null
       })
 
       setExito(true)
@@ -96,6 +98,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         numero_std: '',
         descripcion: '',
         cantidad: '',
+        observaciones: '',
         estado: 'Pendiente'
       })
 
@@ -116,6 +119,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
           numero_std: '',
           descripcion: '',
           cantidad: '',
+          observaciones: '',
           estado: 'Pendiente'
         })
 
@@ -295,6 +299,21 @@ function CrearOrden({ onCreada, duplicarDesde }) {
             onChange={manejarCambio}
             required
             className={estiloInput}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Observaciones
+          </label>
+
+          <textarea
+            name="observaciones"
+            value={form.observaciones}
+            onChange={manejarCambio}
+            rows={2}
+            className={estiloInput}
+            placeholder="Opcional"
           />
         </div>
 

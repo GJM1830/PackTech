@@ -226,7 +226,8 @@ def crear_orden_produccion(
         telefono_cliente=orden.telefono_cliente,
         incluye_igv=orden.incluye_igv,
         observaciones_pedido=orden.observaciones_pedido,
-        imagen_url=orden.imagen_url
+        imagen_url=orden.imagen_url,
+        observaciones=orden.observaciones
     )
 
     db.add(nueva_orden)
@@ -253,7 +254,13 @@ def buscar_clientes(db: Session, q: str):
     )
 
 
-def calcular_estado(proceso: str | None) -> str:
+def calcular_estado(proceso: str | None, procesos_plan: str | None = None, procesos_completados: set | None = None) -> str:
+    if procesos_plan:
+        ruta = [p for p in procesos_plan.split(",") if p]
+        completados = procesos_completados or set()
+        if ruta and all(p in completados for p in ruta):
+            return "Terminado"
+
     if proceso is None:
         return "Pendiente"
 
@@ -266,6 +273,27 @@ def calcular_estado(proceso: str | None) -> str:
     return "En proceso"
 
 
+def _procesos_orden(db: Session, orden_id: int):
+    movimientos = (
+        db.query(models.Movimiento)
+        .filter(models.Movimiento.orden_id == orden_id)
+        .order_by(models.Movimiento.id.desc())
+        .all()
+    )
+    proceso_actual = movimientos[0].proceso if movimientos else None
+    procesos_completados = {m.proceso for m in movimientos}
+    return proceso_actual, procesos_completados
+
+
+def _actualizar_estado_persistido(db: Session, orden):
+    proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
+    nuevo_estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
+    if nuevo_estado != orden.estado:
+        orden.estado = nuevo_estado
+        db.commit()
+        db.refresh(orden)
+
+
 def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     orden = db.get(models.OrdenProduccion, orden_id)
     if orden is None:
@@ -275,18 +303,13 @@ def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     db.commit()
     db.refresh(orden)
 
+    _actualizar_estado_persistido(db, orden)
+
     orden.ruc = orden.cliente_obj.ruc
     orden.cliente = orden.cliente_obj.nombre
 
-    ultimo_movimiento = (
-        db.query(models.Movimiento)
-        .filter(models.Movimiento.orden_id == orden.id)
-        .order_by(models.Movimiento.id.desc())
-        .first()
-    )
-    proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+    proceso_actual, _ = _procesos_orden(db, orden.id)
     orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-    orden.estado = calcular_estado(proceso_actual)
 
     return orden
 
@@ -308,21 +331,10 @@ def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | Non
         orden.ruc = orden.cliente_obj.ruc
         orden.cliente = orden.cliente_obj.nombre
 
-        ultimo_movimiento = (
-            db.query(models.Movimiento)
-            .filter(models.Movimiento.orden_id == orden.id)
-            .order_by(models.Movimiento.id.desc())
-            .first()
-        )
-
-        proceso_actual = (
-            ultimo_movimiento.proceso
-            if ultimo_movimiento
-            else None
-        )
+        proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
 
         orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-        orden.estado = calcular_estado(proceso_actual)
+        orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     return ordenes
 
@@ -689,6 +701,10 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     db.commit()
     db.refresh(nuevo_movimiento)
 
+    orden = db.get(models.OrdenProduccion, movimiento.orden_id)
+    if orden:
+        _actualizar_estado_persistido(db, orden)
+
     return nuevo_movimiento
 
 
@@ -835,21 +851,10 @@ def buscar_ordenes(db: Session, q: str):
         orden.ruc = orden.cliente_obj.ruc
         orden.cliente = orden.cliente_obj.nombre
 
-        ultimo_movimiento = (
-            db.query(models.Movimiento)
-            .filter(models.Movimiento.orden_id == orden.id)
-            .order_by(models.Movimiento.id.desc())
-            .first()
-        )
-
-        proceso_actual = (
-            ultimo_movimiento.proceso
-            if ultimo_movimiento
-            else None
-        )
+        proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
 
         orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-        orden.estado = calcular_estado(proceso_actual)
+        orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     return resultados
 
@@ -901,19 +906,12 @@ def filtrar_ordenes_produccion(
         orden.ruc = orden.cliente_obj.ruc
         orden.cliente = orden.cliente_obj.nombre
 
-        ultimo_movimiento = (
-            db.query(models.Movimiento)
-            .filter(models.Movimiento.orden_id == orden.id)
-            .order_by(models.Movimiento.id.desc())
-            .first()
-        )
-
-        proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+        proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
 
         # El filtro por estado se resuelve contra el estado calculado (dinámico),
         # no contra el campo estado guardado, salvo Terminado/Preaprobada que sí son reales.
         orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-        orden.estado = calcular_estado(proceso_actual)
+        orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     if estado:
         ordenes = [o for o in ordenes if o.estado == estado]
@@ -936,6 +934,8 @@ def eliminar_movimiento(
             detail="El movimiento no existe."
         )
 
+    orden_id = movimiento.orden_id
+
     detalle_merma_ids = [
         d.id for d in
         db.query(models.DetalleMerma.id)
@@ -957,6 +957,10 @@ def eliminar_movimiento(
 
     db.delete(movimiento)
     db.commit()
+
+    orden = db.get(models.OrdenProduccion, orden_id)
+    if orden:
+        _actualizar_estado_persistido(db, orden)
 
 
 # =========================
@@ -1954,6 +1958,7 @@ def editar_orden_produccion(
     orden.incluye_igv = orden_nueva.incluye_igv
     orden.observaciones_pedido = orden_nueva.observaciones_pedido
     orden.imagen_url = orden_nueva.imagen_url
+    orden.observaciones = orden_nueva.observaciones
 
     db.commit()
     db.refresh(orden)
@@ -1961,15 +1966,9 @@ def editar_orden_produccion(
     orden.ruc = cliente.ruc
     orden.cliente = cliente.nombre
 
-    ultimo_movimiento = (
-        db.query(models.Movimiento)
-        .filter(models.Movimiento.orden_id == orden.id)
-        .order_by(models.Movimiento.id.desc())
-        .first()
-    )
-    proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+    proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
     orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-    orden.estado = calcular_estado(proceso_actual)
+    orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     return orden
 
@@ -2016,15 +2015,9 @@ def obtener_orden_por_id(db: Session, orden_id: int):
     orden.ruc = orden.cliente_obj.ruc
     orden.cliente = orden.cliente_obj.nombre
 
-    ultimo_movimiento = (
-        db.query(models.Movimiento)
-        .filter(models.Movimiento.orden_id == orden.id)
-        .order_by(models.Movimiento.id.desc())
-        .first()
-    )
-    proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+    proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
     orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-    orden.estado = calcular_estado(proceso_actual)
+    orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     return orden
 
@@ -2041,15 +2034,9 @@ def obtener_ordenes_seguimiento(db: Session):
         orden.ruc = orden.cliente_obj.ruc
         orden.cliente = orden.cliente_obj.nombre
 
-        ultimo_movimiento = (
-            db.query(models.Movimiento)
-            .filter(models.Movimiento.orden_id == orden.id)
-            .order_by(models.Movimiento.id.desc())
-            .first()
-        )
-        proceso_actual = ultimo_movimiento.proceso if ultimo_movimiento else None
+        proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
         orden.ultimo_proceso = proceso_actual or "Sin iniciar"
-        orden.estado = calcular_estado(proceso_actual)
+        orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     return ordenes
 

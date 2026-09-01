@@ -138,6 +138,7 @@ function Ordenes() {
     descripcion: orden.descripcion || '',
     cantidad: orden.cantidad,
     unidad: orden.unidad,
+    observaciones: orden.observaciones || '',
     estado: orden.estado
   })
 }
@@ -153,6 +154,7 @@ const guardarEdicion = async () => {
       descripcion: editando.descripcion,
       cantidad: parseFloat(editando.cantidad),
       unidad: editando.unidad,
+      observaciones: editando.observaciones || null,
       estado: editando.estado
     })
 
@@ -360,6 +362,7 @@ const guardarEdicion = async () => {
             { name: 'descripcion', label: 'Producto' },
             { name: 'cantidad', label: 'Cantidad', type: 'number' },
             { name: 'unidad', label: 'Unidad' },
+            { name: 'observaciones', label: 'Observaciones' },
             { name: 'estado', label: 'Estado' }
           ]}
           valores={editando}

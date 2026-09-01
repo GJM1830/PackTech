@@ -39,6 +39,7 @@ class OrdenProduccionCreate(BaseModel):
     incluye_igv: bool | None = None
     observaciones_pedido: str | None = None
     imagen_url: str | None = None
+    observaciones: str | None = None
 
 class OrdenProduccionResponse(BaseModel):
     id: int
@@ -72,6 +73,7 @@ class OrdenProduccionResponse(BaseModel):
     incluye_igv: bool | None = None
     observaciones_pedido: str | None = None
     imagen_url: str | None = None
+    observaciones: str | None = None
 
     class Config:
         from_attributes = True

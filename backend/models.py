@@ -129,6 +129,7 @@ class OrdenProduccion(Base):
     incluye_igv: Mapped[bool | None] = mapped_column(Boolean)
     observaciones_pedido: Mapped[str | None] = mapped_column(Text)
     imagen_url: Mapped[str | None] = mapped_column(Text)
+    observaciones: Mapped[str | None] = mapped_column(Text)
 
     id: Mapped[int] = mapped_column(
         Integer,
