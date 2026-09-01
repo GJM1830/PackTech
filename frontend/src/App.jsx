@@ -285,8 +285,7 @@ const guardarEdicion = async () => {
                 <th className="px-4 py-3">N° Pedido</th>
                 <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Producto</th>
-                <th className="px-4 py-3">Cantidad</th>
-                <th className="px-4 py-3">Unidad</th>
+                <th className="px-4 py-3">Cantidad (Kg)</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Último Proceso</th>
                 <th className="px-4 py-3">Fecha</th>
@@ -305,7 +304,6 @@ const guardarEdicion = async () => {
                     <td className="px-4 py-3">{orden.cliente}</td>
                     <td className="px-4 py-3">{orden.descripcion}</td>
                     <td className="px-4 py-3">{orden.cantidad}</td>
-                    <td className="px-4 py-3">{orden.unidad}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :

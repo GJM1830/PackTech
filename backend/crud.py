@@ -2046,9 +2046,11 @@ def obtener_ordenes_seguimiento(db: Session):
 
 
 def reporte_liquidacion(db: Session, codigo: str):
+    from sqlalchemy import func
+
     orden = (
         db.query(models.OrdenProduccion)
-        .filter(models.OrdenProduccion.codigo.ilike(codigo.strip()))
+        .filter(func.trim(models.OrdenProduccion.codigo).ilike(codigo.strip()))
         .first()
     )
     if orden is None:

@@ -96,17 +96,25 @@ export async function generarPDFLiquidacion(data) {
     y += 5
 
     if (p.bobinas_salida.length > 0) {
+      const esSellado = p.proceso === 'Sellado'
+      const hayMaterial = !esSellado && p.bobinas_salida.some((b) => b.tipo_material)
+
+      const cabecera = esSellado
+        ? ['N°', 'Neto', 'Millares']
+        : ['N°', 'Bruto', 'Tuco', 'Neto']
+      if (hayMaterial) cabecera.push('Material')
+
       autoTable(doc, {
         startY: y,
-        head: [['N°', 'Bruto', 'Tuco', 'Neto', 'Millares', 'Material']],
-        body: p.bobinas_salida.map((b) => [
-          b.numero,
-          b.peso_bruto.toFixed(2),
-          (b.peso_tuco || 0).toFixed(2),
-          b.peso_neto.toFixed(2),
-          b.millares != null ? b.millares : '-',
-          b.tipo_material || '-'
-        ]),
+        head: [cabecera],
+        body: p.bobinas_salida.map((b) => {
+          if (esSellado) {
+            return [b.numero, b.peso_neto.toFixed(2), b.millares != null ? b.millares : '-']
+          }
+          const fila = [b.numero, b.peso_bruto.toFixed(2), (b.peso_tuco || 0).toFixed(2), b.peso_neto.toFixed(2)]
+          if (hayMaterial) fila.push(b.tipo_material || '-')
+          return fila
+        }),
         theme: 'grid',
         headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5 },
         bodyStyles: { fontSize: 7.5 },
@@ -143,6 +151,41 @@ export async function generarPDFLiquidacion(data) {
 
     y += 5
   })
+
+  const ultimoProceso = data.procesos[data.procesos.length - 1]
+  if (ultimoProceso && ultimoProceso.proceso === 'Sellado') {
+    if (y > 260) {
+      doc.addPage()
+      y = 16
+    }
+
+    const mermaTotalGeneral = data.procesos.reduce(
+      (s, p) => s + p.mermas.reduce((s2, m) => s2 + m.peso, 0),
+      0
+    )
+    const kgTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + b.peso_neto, 0)
+    const millaresTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
+
+    const anchoResumen = ANCHO
+    const alturaResumen = 22
+
+    doc.setFillColor(15, 23, 42)
+    doc.rect(M, y, anchoResumen, alturaResumen, 'F')
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(255, 255, 255)
+    doc.text('RESUMEN FINAL DE LIQUIDACIÓN', M + 4, y + 6)
+
+    const anchoTercio = (anchoResumen - 8) / 3
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 4, y + 15)
+    doc.text(`Kg totales (Sellado): ${kgTotalFinal.toFixed(2)} kg`, M + 4 + anchoTercio, y + 15)
+    doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 4 + anchoTercio * 2, y + 15)
+
+    y += alturaResumen + 5
+  }
 
   doc.save(`Liquidacion_${data.codigo}.pdf`)
 }
