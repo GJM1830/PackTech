@@ -12,46 +12,39 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+const ITEM_VACIO = {
+  descripcion: '', medidas: '', cantidad: '', moneda: 'Soles', tipo_trabajo: '',
+  precio_unitario: '', unidad_precio: 'kg', cantidad_precio: ''
+}
+
+const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', rollos: 'Rollos' }
+
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
   const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
   const [form, setForm] = useState({
-    codigo: '',
+    codigo_base: '',
     ruc: '',
     nombre_cliente: '',
-    numero_std: '',
-    descripcion: '',
-    medidas: '',
-    cantidad: '',
-    unidad: 'kg',
-    moneda: 'Soles',
     vendedor: '',
     fecha_entrega: '',
-    precio_unitario: '',
-    unidad_precio: 'kg',
-    millares: '',
     direccion_entrega: '',
     numero_contacto: '',
     email_cliente: '',
     telefono_cliente: '',
-    tipo_trabajo: '',
     incluye_igv: false,
     observaciones_pedido: '',
     imagen_url: ''
   })
 
-  const [procesosRuta, setProcesosRuta] = useState([])
+  const [items, setItems] = useState([])
+  const [itemActual, setItemActual] = useState({ ...ITEM_VACIO })
+  const [procesosItemActual, setProcesosItemActual] = useState([])
 
-  const agregarProceso = (proceso) => {
-    setProcesosRuta((actual) => [...actual, proceso])
-  }
-
-  const quitarProceso = (index) => {
-    setProcesosRuta((actual) => actual.filter((_, i) => i !== index))
-  }
-
+  const agregarProceso = (proceso) => setProcesosItemActual((actual) => [...actual, proceso])
+  const quitarProceso = (index) => setProcesosItemActual((actual) => actual.filter((_, i) => i !== index))
   const moverProceso = (index, direccion) => {
-    setProcesosRuta((actual) => {
+    setProcesosItemActual((actual) => {
       const nuevo = [...actual]
       const destino = index + direccion
       if (destino < 0 || destino >= nuevo.length) return actual
@@ -68,9 +61,8 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
   const [error, setError] = useState(null)
   const [exito, setExito] = useState(false)
 
-  const manejarCambio = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
+  const manejarCambio = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const manejarCambioItem = (e) => setItemActual({ ...itemActual, [e.target.name]: e.target.value })
 
   const manejarImagenSubida = (e) => {
     const archivo = e.target.files[0]
@@ -83,20 +75,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
   useEffect(() => {
     if (duplicarDesde) {
       setForm({
-        codigo: '',
+        codigo_base: '',
         ruc: duplicarDesde.ruc || '',
         nombre_cliente: duplicarDesde.cliente || '',
-        numero_std: duplicarDesde.numero_std || '',
-        descripcion: duplicarDesde.descripcion || '',
-        medidas: duplicarDesde.medidas || '',
-        cantidad: duplicarDesde.cantidad || '',
-        unidad: duplicarDesde.unidad || 'kg',
-        moneda: duplicarDesde.moneda || 'Soles',
         vendedor: duplicarDesde.vendedor || '',
         fecha_entrega: '',
-        precio_unitario: duplicarDesde.precio_unitario || '',
-        unidad_precio: duplicarDesde.unidad_precio || 'kg',
-        millares: duplicarDesde.millares || '',
         direccion_entrega: duplicarDesde.direccion_entrega || '',
         numero_contacto: duplicarDesde.numero_contacto || '',
         email_cliente: duplicarDesde.email_cliente || '',
@@ -105,6 +88,21 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         observaciones_pedido: duplicarDesde.observaciones_pedido || '',
         imagen_url: ''
       })
+      setItems(
+        (duplicarDesde.items || []).map((it) => ({
+          descripcion: it.descripcion || '',
+          medidas: it.medidas || '',
+          cantidad: it.cantidad || '',
+          moneda: it.moneda || 'Soles',
+          tipo_trabajo: it.tipo_trabajo || '',
+          precio_unitario: it.precio_unitario || '',
+          unidad_precio: it.unidad_precio || 'kg',
+          cantidad_precio: it.cantidad_precio || '',
+          procesos_plan: it.procesos_plan || null
+        }))
+      )
+      setItemActual({ ...ITEM_VACIO })
+      setProcesosItemActual([])
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }, [duplicarDesde])
@@ -140,13 +138,32 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     return () => clearTimeout(t)
   }, [form.vendedor])
 
-  const costoEstimado = (() => {
-    const precio = parseFloat(form.precio_unitario)
+  const estimarCosto = (it) => {
+    const precio = parseFloat(it.precio_unitario)
     if (!precio) return null
-    const base = form.unidad_precio === 'millares' ? parseFloat(form.millares) : parseFloat(form.cantidad)
+    const base = it.unidad_precio !== 'kg' ? parseFloat(it.cantidad_precio) : parseFloat(it.cantidad)
     if (!base) return null
-    return (precio * base).toFixed(2)
-  })()
+    return precio * base
+  }
+
+  const costoEstimadoActual = estimarCosto(itemActual)
+
+  const agregarItem = () => {
+    if (!itemActual.cantidad) {
+      setError('Indica la cantidad (Kg) del ítem antes de agregarlo.')
+      return
+    }
+    if (itemActual.unidad_precio !== 'kg' && !itemActual.cantidad_precio) {
+      setError(`Indica la cantidad de ${ETIQUETA_CANTIDAD_PRECIO[itemActual.unidad_precio]} para este ítem.`)
+      return
+    }
+    setError(null)
+    setItems((actual) => [...actual, { ...itemActual, procesos_plan: procesosItemActual.join(',') || null }])
+    setItemActual({ ...ITEM_VACIO })
+    setProcesosItemActual([])
+  }
+
+  const quitarItem = (index) => setItems((actual) => actual.filter((_, i) => i !== index))
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
@@ -154,53 +171,62 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     setError(null)
     setExito(false)
 
-    if (form.unidad_precio === 'millares' && !form.millares) {
-      setError('Debes indicar los millares si el precio es por millar.')
+    let itemsFinal = [...items]
+    if (itemActual.cantidad || itemActual.descripcion) {
+      if (itemActual.unidad_precio !== 'kg' && !itemActual.cantidad_precio) {
+        setError(`Indica la cantidad de ${ETIQUETA_CANTIDAD_PRECIO[itemActual.unidad_precio]} para el último ítem.`)
+        setEnviando(false)
+        return
+      }
+      itemsFinal.push({ ...itemActual, procesos_plan: procesosItemActual.join(',') || null })
+    }
+
+    if (itemsFinal.length === 0) {
+      setError('Agrega al menos un ítem al pedido.')
       setEnviando(false)
       return
     }
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/ordenes-produccion', {
-        codigo: form.codigo,
+      await axios.post('https://packtech-production.up.railway.app/pedidos', {
+        codigo_base: form.codigo_base,
         ruc: form.ruc || null,
         nombre_cliente: form.nombre_cliente,
-        numero_std: form.numero_std ? parseInt(form.numero_std) : null,
-        descripcion: form.descripcion,
-        medidas: form.medidas || null,
-        cantidad: parseFloat(form.cantidad),
-        unidad: form.unidad,
-        estado: 'Preaprobada',
-        moneda: form.moneda,
         vendedor: form.vendedor || null,
         fecha_entrega: form.fecha_entrega || null,
-        precio_unitario: form.precio_unitario ? parseFloat(form.precio_unitario) : null,
-        unidad_precio: form.unidad_precio,
-        millares: form.millares ? parseFloat(form.millares) : null,
         direccion_entrega: form.direccion_entrega || null,
         numero_contacto: form.numero_contacto || null,
         email_cliente: form.email_cliente || null,
         telefono_cliente: form.telefono_cliente || null,
-        tipo_trabajo: form.tipo_trabajo || null,
-        procesos_plan: procesosRuta.length > 0 ? procesosRuta.join(',') : null,
         incluye_igv: form.incluye_igv,
         observaciones_pedido: form.observaciones_pedido || null,
-        imagen_url: form.imagen_url || null
+        imagen_url: form.imagen_url || null,
+        items: itemsFinal.map((it) => ({
+          descripcion: it.descripcion || null,
+          medidas: it.medidas || null,
+          cantidad: parseFloat(it.cantidad),
+          tipo_trabajo: it.tipo_trabajo || null,
+          procesos_plan: it.procesos_plan || null,
+          moneda: it.moneda || null,
+          precio_unitario: it.precio_unitario ? parseFloat(it.precio_unitario) : null,
+          unidad_precio: it.unidad_precio || null,
+          cantidad_precio: it.cantidad_precio ? parseFloat(it.cantidad_precio) : null
+        }))
       })
 
       setExito(true)
       setForm({
-        codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '', medidas: '',
-        cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
-        precio_unitario: '', unidad_precio: 'kg', millares: '',
+        codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: '',
         direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
-        tipo_trabajo: '', incluye_igv: false, observaciones_pedido: '', imagen_url: ''
+        incluye_igv: false, observaciones_pedido: '', imagen_url: ''
       })
-      setProcesosRuta([])
+      setItems([])
+      setItemActual({ ...ITEM_VACIO })
+      setProcesosItemActual([])
       setClienteSeleccionado(null)
       if (onCreada) onCreada()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al crear la Pedido.')
+      setError(err.response?.data?.detail || 'Error al crear el Pedido.')
     } finally {
       setEnviando(false)
     }
@@ -213,15 +239,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       <h2 className="text-xl font-bold text-slate-800 mb-4">Nuevo Pedido</h2>
 
       <form onSubmit={manejarEnvio} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">N° de Pedido</label>
-            <input type="text" name="codigo" value={form.codigo} onChange={manejarCambio} required className={estilo} placeholder="OP-118" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">N° Estándar</label>
-            <input type="number" name="numero_std" value={form.numero_std} onChange={manejarCambio} className={estilo} />
-          </div>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Datos del pedido</p>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">N° de Pedido</label>
+          <input type="text" name="codigo_base" value={form.codigo_base} onChange={manejarCambio} required className={estilo} placeholder="OP-118" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
@@ -260,69 +282,6 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
-          <input type="text" name="descripcion" value={form.descripcion} onChange={manejarCambio} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">Medidas</label>
-          <input type="text" name="medidas" value={form.medidas} onChange={manejarCambio} className={estilo} placeholder="Ej. 30x40 cm, calibre 2 (opcional)" />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad</label>
-            <input type="number" step="0.01" name="cantidad" value={form.cantidad} onChange={manejarCambio} required className={estilo} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Unidad</label>
-            <select name="unidad" value={form.unidad} onChange={manejarCambio} className={estilo}>
-              <option value="kg">kg</option>
-              <option value="unidades">unidades</option>
-              <option value="rollos">rollos</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Moneda</label>
-            <select name="moneda" value={form.moneda} onChange={manejarCambio} className={estilo}>
-              <option value="Soles">Soles</option>
-              <option value="Dólares">Dólares</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio (obligatorio para Pedido)</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
-              <input type="number" step="0.01" name="precio_unitario" value={form.precio_unitario} onChange={manejarCambio} required className={estilo} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Precio por</label>
-              <select name="unidad_precio" value={form.unidad_precio} onChange={manejarCambio} className={estilo}>
-                <option value="kg">kg</option>
-                <option value="millares">millares</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Millares {form.unidad_precio === 'millares' ? '' : '(opcional)'}
-              </label>
-              <input
-                type="number" step="0.01" name="millares" value={form.millares} onChange={manejarCambio}
-                required={form.unidad_precio === 'millares'} className={estilo}
-              />
-            </div>
-          </div>
-          {costoEstimado && (
-            <p className="text-sm text-slate-600">
-              Costo total estimado: <span className="font-bold text-slate-800">{form.moneda === 'Dólares' ? '$' : 'S/'} {costoEstimado}</span>
-            </p>
-          )}
-        </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
           <div className="relative">
             <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
@@ -349,70 +308,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo de trabajo y ruta (opcional)</p>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de trabajo</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, tipo_trabajo: form.tipo_trabajo === 'Venta' ? '' : 'Venta' })}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  form.tipo_trabajo === 'Venta' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
-                }`}
-              >
-                Venta
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, tipo_trabajo: form.tipo_trabajo === 'Servicio' ? '' : 'Servicio' })}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  form.tipo_trabajo === 'Servicio' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
-                }`}
-              >
-                Servicio
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-2">Ruta de procesos</label>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {TODOS_LOS_PROCESOS.filter((p) => !procesosRuta.includes(p)).map((proceso) => (
-                <button
-                  key={proceso}
-                  type="button"
-                  onClick={() => agregarProceso(proceso)}
-                  className="px-3 py-1 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
-                >
-                  + {proceso}
-                </button>
-              ))}
-            </div>
-            {procesosRuta.length > 0 && (
-              <div className="space-y-1.5">
-                {procesosRuta.map((proceso, index) => (
-                  <div key={`${proceso}-${index}`} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-                    <span className="text-xs font-bold text-blue-700 bg-white rounded-full w-5 h-5 flex items-center justify-center border border-blue-300">
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 text-sm font-medium text-blue-800">{proceso}</span>
-                    <button type="button" onClick={() => moverProceso(index, -1)} disabled={index === 0} className="text-blue-600 hover:text-blue-800 disabled:opacity-30 px-1">↑</button>
-                    <button type="button" onClick={() => moverProceso(index, 1)} disabled={index === procesosRuta.length - 1} className="text-blue-600 hover:text-blue-800 disabled:opacity-30 px-1">↓</button>
-                    <button type="button" onClick={() => quitarProceso(index)} className="text-red-500 hover:text-red-700 px-1">×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
         <details className="text-sm">
           <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
             + Datos opcionales (dirección, contacto)
           </summary>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 mt-3">
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Dirección de entrega</label>
               <input type="text" name="direccion_entrega" value={form.direccion_entrega} onChange={manejarCambio} className={estilo} />
@@ -477,8 +377,144 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
+        <div className="border-t border-slate-200 pt-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+            Ítems / trabajos del pedido ({items.length + 1})
+          </p>
+
+          {items.length > 0 && (
+            <div className="space-y-1.5 mb-4">
+              {items.map((it, index) => (
+                <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-blue-900">
+                    <span className="font-medium">{it.descripcion || 'Sin descripción'}</span>
+                    {' · '}{it.cantidad} Kg{it.procesos_plan ? ` · ${it.procesos_plan.split(',').join(' → ')}` : ''}
+                  </span>
+                  <button type="button" onClick={() => quitarItem(index)} className="text-red-500 hover:text-red-700 px-1">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
+              <input type="text" name="descripcion" value={itemActual.descripcion} onChange={manejarCambioItem} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Medidas</label>
+              <input type="text" name="medidas" value={itemActual.medidas} onChange={manejarCambioItem} className={estilo} placeholder="Ej. 30x40 cm, calibre 2 (opcional)" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad (Kg)</label>
+                <input type="number" step="0.01" name="cantidad" value={itemActual.cantidad} onChange={manejarCambioItem} className={estilo} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Moneda</label>
+                <select name="moneda" value={itemActual.moneda} onChange={manejarCambioItem} className={estilo}>
+                  <option value="Soles">Soles</option>
+                  <option value="Dólares">Dólares</option>
+                </select>
+              </div>
+            </div>
+
+            <div className={`grid grid-cols-1 ${itemActual.unidad_precio !== 'kg' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
+                <input type="number" step="0.01" name="precio_unitario" value={itemActual.precio_unitario} onChange={manejarCambioItem} className={estilo} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Precio por</label>
+                <select name="unidad_precio" value={itemActual.unidad_precio} onChange={manejarCambioItem} className={estilo}>
+                  <option value="kg">Kg</option>
+                  <option value="millares">Millares</option>
+                  <option value="unidades">Unidades</option>
+                  <option value="rollos">Rollos</option>
+                </select>
+              </div>
+              {itemActual.unidad_precio !== 'kg' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">{ETIQUETA_CANTIDAD_PRECIO[itemActual.unidad_precio]}</label>
+                  <input type="number" step="0.01" name="cantidad_precio" value={itemActual.cantidad_precio} onChange={manejarCambioItem} className={estilo} />
+                </div>
+              )}
+            </div>
+            {costoEstimadoActual != null && (
+              <p className="text-sm text-slate-600">
+                Costo estimado de este ítem: <span className="font-bold text-slate-800">{itemActual.moneda === 'Dólares' ? '$' : 'S/'} {costoEstimadoActual.toFixed(2)}</span>
+              </p>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de trabajo</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setItemActual({ ...itemActual, tipo_trabajo: itemActual.tipo_trabajo === 'Venta' ? '' : 'Venta' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    itemActual.tipo_trabajo === 'Venta' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  Venta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemActual({ ...itemActual, tipo_trabajo: itemActual.tipo_trabajo === 'Servicio' ? '' : 'Servicio' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    itemActual.tipo_trabajo === 'Servicio' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  Servicio
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">Ruta de procesos</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {TODOS_LOS_PROCESOS.filter((p) => !procesosItemActual.includes(p)).map((proceso) => (
+                  <button
+                    key={proceso}
+                    type="button"
+                    onClick={() => agregarProceso(proceso)}
+                    className="px-3 py-1 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
+                  >
+                    + {proceso}
+                  </button>
+                ))}
+              </div>
+              {procesosItemActual.length > 0 && (
+                <div className="space-y-1.5">
+                  {procesosItemActual.map((proceso, index) => (
+                    <div key={`${proceso}-${index}`} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                      <span className="text-xs font-bold text-blue-700 bg-white rounded-full w-5 h-5 flex items-center justify-center border border-blue-300">
+                        {index + 1}
+                      </span>
+                      <span className="flex-1 text-sm font-medium text-blue-800">{proceso}</span>
+                      <button type="button" onClick={() => moverProceso(index, -1)} disabled={index === 0} className="text-blue-600 hover:text-blue-800 disabled:opacity-30 px-1">↑</button>
+                      <button type="button" onClick={() => moverProceso(index, 1)} disabled={index === procesosItemActual.length - 1} className="text-blue-600 hover:text-blue-800 disabled:opacity-30 px-1">↓</button>
+                      <button type="button" onClick={() => quitarProceso(index)} className="text-red-500 hover:text-red-700 px-1">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={agregarItem}
+              className="w-full border-2 border-dashed border-blue-300 text-blue-700 rounded-lg py-2 text-sm font-medium hover:bg-blue-50"
+            >
+              + Añadir otro trabajo al pedido
+            </button>
+          </div>
+        </div>
+
         {error && <p className="text-red-600 text-sm">{error}</p>}
-        {exito && <p className="text-green-700 text-sm font-medium">Pedido creada correctamente.</p>}
+        {exito && <p className="text-green-700 text-sm font-medium">Pedido creado correctamente.</p>}
 
         <button type="submit" disabled={enviando} className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 disabled:opacity-50">
           {enviando ? 'Creando...' : 'Registrar Pedido'}
@@ -675,7 +711,7 @@ function Cotizaciones() {
 
   const cargar = () => {
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/ordenes-produccion/preaprobadas/listar')
+    axios.get('https://packtech-production.up.railway.app/pedidos/preaprobados/listar')
       .then((res) => {
         setOrdenes(res.data)
         setError(null)
@@ -692,10 +728,10 @@ function Cotizaciones() {
   }, [])
 
   const aprobar = async (id) => {
-    if (!confirm('¿Aprobar este pedido y enviarlo a producción?')) return
+    if (!confirm('¿Aprobar este pedido y enviar sus ítems a producción?')) return
     setAprobando(id)
     try {
-      await axios.post(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/aprobar`)
+      await axios.post(`https://packtech-production.up.railway.app/pedidos/${id}/aprobar`)
       cargar()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al aprobar el pedido.')
@@ -704,56 +740,35 @@ function Cotizaciones() {
     }
   }
 
-  const duplicar = (orden) => {
-    setDuplicarDesde({ ...orden, timestamp: Date.now() })
+  const duplicar = (pedido) => {
+    setDuplicarDesde({ ...pedido, timestamp: Date.now() })
   }
 
-  const abrirEdicion = (orden) => {
+  const abrirEdicion = (pedido) => {
     setEditando({
-      id: orden.id,
-      codigo: orden.codigo,
-      ruc: orden.ruc || '',
-      nombre_cliente: orden.cliente,
-      numero_std: orden.numero_std,
-      descripcion: orden.descripcion || '',
-      medidas: orden.medidas || '',
-      cantidad: orden.cantidad,
-      unidad: orden.unidad,
-      moneda: orden.moneda || 'Soles',
-      vendedor: orden.vendedor || '',
-      fecha_entrega: orden.fecha_entrega || '',
-      precio_unitario: orden.precio_unitario || '',
-      unidad_precio: orden.unidad_precio || 'kg',
-      millares: orden.millares || '',
-      direccion_entrega: orden.direccion_entrega || '',
-      numero_contacto: orden.numero_contacto || '',
-      email_cliente: orden.email_cliente || '',
-      telefono_cliente: orden.telefono_cliente || '',
-      incluye_igv: orden.incluye_igv || false,
-      observaciones_pedido: orden.observaciones_pedido || '',
-      imagen_url: orden.imagen_url || ''
+      id: pedido.id,
+      ruc: pedido.ruc || '',
+      nombre_cliente: pedido.cliente,
+      vendedor: pedido.vendedor || '',
+      fecha_entrega: pedido.fecha_entrega || '',
+      direccion_entrega: pedido.direccion_entrega || '',
+      numero_contacto: pedido.numero_contacto || '',
+      email_cliente: pedido.email_cliente || '',
+      telefono_cliente: pedido.telefono_cliente || '',
+      incluye_igv: pedido.incluye_igv || false,
+      observaciones_pedido: pedido.observaciones_pedido || '',
+      imagen_url: pedido.imagen_url || ''
     })
   }
 
   const guardarEdicion = async () => {
     setGuardando(true)
     try {
-      await axios.put(`https://packtech-production.up.railway.app/ordenes-produccion/${editando.id}`, {
-        codigo: editando.codigo,
+      await axios.put(`https://packtech-production.up.railway.app/pedidos/${editando.id}`, {
         ruc: editando.ruc || null,
         nombre_cliente: editando.nombre_cliente,
-        numero_std: parseInt(editando.numero_std) || 0,
-        descripcion: editando.descripcion,
-        medidas: editando.medidas || null,
-        cantidad: parseFloat(editando.cantidad),
-        unidad: editando.unidad,
-        estado: 'Preaprobada',
-        moneda: editando.moneda,
         vendedor: editando.vendedor || null,
         fecha_entrega: editando.fecha_entrega || null,
-        precio_unitario: editando.precio_unitario ? parseFloat(editando.precio_unitario) : null,
-        unidad_precio: editando.unidad_precio,
-        millares: editando.millares ? parseFloat(editando.millares) : null,
         direccion_entrega: editando.direccion_entrega || null,
         numero_contacto: editando.numero_contacto || null,
         email_cliente: editando.email_cliente || null,
@@ -772,9 +787,9 @@ function Cotizaciones() {
   }
 
   const eliminar = async (id) => {
-    if (!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return
+    if (!confirm('¿Eliminar este pedido y todos sus ítems? Esta acción no se puede deshacer.')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
+      await axios.delete(`https://packtech-production.up.railway.app/pedidos/${id}`)
       cargar()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el pedido.')
@@ -828,10 +843,8 @@ function Cotizaciones() {
                 <tr>
                   <th className="px-4 py-3">N° Pedido</th>
                   <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">Producto</th>
-                  <th className="px-4 py-3">Cantidad</th>
+                  <th className="px-4 py-3">Ítems</th>
                   <th className="px-4 py-3">Fecha entrega</th>
-                  {vendedorOAdmin && <th className="px-4 py-3">Precio</th>}
                   {vendedorOAdmin && <th className="px-4 py-3">Total</th>}
                   <th className="px-4 py-3">Vendedor</th>
                   {vendedorOAdmin && <th className="px-4 py-3 text-right"></th>}
@@ -839,45 +852,39 @@ function Cotizaciones() {
                 </tr>
               </thead>
               <tbody>
-                {ordenes.map((o) => (
+                {ordenes.map((p) => (
                   <tr
-                    key={o.id}
-                    onClick={() => setVistaAbierta(o)}
+                    key={p.id}
+                    onClick={() => setVistaAbierta(p)}
                     className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
                   >
-                    <td className="px-4 py-3 font-medium text-slate-800">{o.codigo}</td>
-                    <td className="px-4 py-3">{o.cliente}</td>
-                    <td className="px-4 py-3">{o.descripcion}</td>
-                    <td className="px-4 py-3">{o.cantidad} {o.unidad}</td>
-                    <td className="px-4 py-3">{formatearFecha(o.fecha_entrega)}</td>
-                    {vendedorOAdmin && (
-                      <td className="px-4 py-3">
-                        {o.precio_unitario ? `${o.moneda === 'Dólares' ? '$' : 'S/'} ${o.precio_unitario} / ${o.unidad_precio}` : '—'}
-                      </td>
-                    )}
+                    <td className="px-4 py-3 font-medium text-slate-800">{p.codigo_base}</td>
+                    <td className="px-4 py-3">{p.cliente}</td>
+                    <td className="px-4 py-3">{p.items.length} ítem{p.items.length !== 1 ? 's' : ''}</td>
+                    <td className="px-4 py-3">{formatearFecha(p.fecha_entrega)}</td>
                     {vendedorOAdmin && (
                       <td className="px-4 py-3 font-medium text-slate-800">
-                        {o.costo_total ? `${o.moneda === 'Dólares' ? '$' : 'S/'} ${o.costo_total}` : '—'}
+                        {p.costo_total ? `${p.items[0]?.moneda === 'Dólares' ? '$' : 'S/'} ${p.costo_total.toFixed(2)}` : '—'}
                       </td>
                     )}
-                    <td className="px-4 py-3">{o.vendedor || '—'}</td>
+                    <td className="px-4 py-3">{p.vendedor}</td>
                     {vendedorOAdmin && (
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => aprobar(o.id)}
-                          disabled={aprobando === o.id}
+                          onClick={() => aprobar(p.id)}
+                          disabled={aprobando === p.id}
                           className="bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-green-800 disabled:opacity-50"
                         >
-                          {aprobando === o.id ? 'Aprobando...' : '✓ Aprobar'}
+                          {aprobando === p.id ? 'Aprobando...' : '✓ Aprobar'}
                         </button>
                       </td>
                     )}
                     {vendedorOAdmin && (
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <MenuAcciones
-                          onEditar={() => abrirEdicion(o)}
-                          onDuplicar={() => duplicar(o)}
-                          onEliminar={() => eliminar(o.id)}
+                          onEditar={() => abrirEdicion(p)}
+                          onDuplicar={() => duplicar(p)}
+                          onEliminar={() => eliminar(p.id)}
                         />
                       </td>
                     )}
@@ -885,7 +892,7 @@ function Cotizaciones() {
                 ))}
                 {ordenes.length === 0 && (
                   <tr>
-                    <td colSpan={vendedorOAdmin ? 10 : 6} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={vendedorOAdmin ? 8 : 5} className="px-4 py-6 text-center text-slate-400">
                       No hay pedidos pendientes.
                     </td>
                   </tr>
@@ -904,22 +911,12 @@ function Cotizaciones() {
 
       {editando && (
         <ModalEditar
-          titulo="Editar Pedido"
+          titulo="Editar Pedido (datos compartidos)"
           campos={[
-            { name: 'codigo', label: 'N° de Pedido' },
             { name: 'ruc', label: 'RUC' },
             { name: 'nombre_cliente', label: 'Cliente' },
-            { name: 'numero_std', label: 'N° Estándar', type: 'number' },
-            { name: 'descripcion', label: 'Producto / Descripción' },
-            { name: 'medidas', label: 'Medidas' },
-            { name: 'cantidad', label: 'Cantidad', type: 'number' },
-            { name: 'unidad', label: 'Unidad' },
-            { name: 'moneda', label: 'Moneda' },
             { name: 'vendedor', label: 'Vendedor' },
             { name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date' },
-            { name: 'precio_unitario', label: 'Precio unitario', type: 'number' },
-            { name: 'unidad_precio', label: 'Precio por (kg / millares)' },
-            { name: 'millares', label: 'Millares', type: 'number' },
             { name: 'direccion_entrega', label: 'Dirección de entrega' },
             { name: 'numero_contacto', label: 'N° de contacto' },
             { name: 'email_cliente', label: 'Email del cliente' },

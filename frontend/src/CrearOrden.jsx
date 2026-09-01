@@ -9,7 +9,6 @@ function CrearOrden({ onCreada, duplicarDesde }) {
     numero_std: '',
     descripcion: '',
     cantidad: '',
-    unidad: 'kg',
     estado: 'Pendiente'
   })
 
@@ -84,7 +83,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         numero_std: form.numero_std ? parseInt(form.numero_std) : null,
         descripcion: form.descripcion,
         cantidad: parseFloat(form.cantidad),
-        unidad: form.unidad,
+        unidad: 'kg',
         estado: form.estado
       })
 
@@ -97,7 +96,6 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         numero_std: '',
         descripcion: '',
         cantidad: '',
-        unidad: 'kg',
         estado: 'Pendiente'
       })
 
@@ -118,7 +116,6 @@ function CrearOrden({ onCreada, duplicarDesde }) {
           numero_std: '',
           descripcion: '',
           cantidad: '',
-          unidad: 'kg',
           estado: 'Pendiente'
         })
 
@@ -285,41 +282,20 @@ function CrearOrden({ onCreada, duplicarDesde }) {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Cantidad (Kg)
+          </label>
 
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-600 mb-1.5">
-              Cantidad
-            </label>
-
-            <input
-              type="number"
-              step="0.01"
-              name="cantidad"
-              value={form.cantidad}
-              onChange={manejarCambio}
-              required
-              className={estiloInput}
-            />
-          </div>
-
-          <div className="w-32">
-            <label className="block text-sm font-medium text-slate-600 mb-1.5">
-              Unidad
-            </label>
-
-            <select
-              name="unidad"
-              value={form.unidad}
-              onChange={manejarCambio}
-              className={estiloInput}
-            >
-              <option value="kg">kg</option>
-              <option value="unidades">unidades</option>
-              <option value="rollos">rollos</option>
-            </select>
-          </div>
-
+          <input
+            type="number"
+            step="0.01"
+            name="cantidad"
+            value={form.cantidad}
+            onChange={manejarCambio}
+            required
+            className={estiloInput}
+          />
         </div>
 
         {error && (

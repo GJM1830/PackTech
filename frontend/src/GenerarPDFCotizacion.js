@@ -7,8 +7,9 @@ const formatearFecha = (fecha) => {
 }
 
 const RUC_EMPRESA = '20554000755'
+const ETIQUETA_UNIDAD_PRECIO = { millares: 'millares', unidades: 'unidades', rollos: 'rollos', kg: 'kg' }
 
-export async function generarPDFCotizacion(orden) {
+export async function generarPDFCotizacion(pedido) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
   const logoBase64 = await new Promise((resolve) => {
@@ -24,9 +25,16 @@ export async function generarPDFCotizacion(orden) {
     img.onerror = () => resolve(null)
     img.src = '/logo-packtech.png'
   })
-  const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
-  const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
-  const unidadTabla = orden.unidad_precio === 'millares' ? 'millares' : orden.unidad
+
+  const items = pedido.items || [{
+    descripcion: pedido.descripcion, medidas: pedido.medidas, cantidad: pedido.cantidad,
+    moneda: pedido.moneda, precio_unitario: pedido.precio_unitario, unidad_precio: pedido.unidad_precio,
+    cantidad_precio: pedido.cantidad_precio, costo_total: pedido.costo_total
+  }]
+  const simbolo = items[0]?.moneda === 'Dólares' ? '$' : 'S/'
+  const subtotal = items.reduce((s, it) => s + (it.costo_total || 0), 0)
+  const igv = pedido.incluye_igv ? subtotal * 0.18 : 0
+  const total = subtotal + igv
   const M = 12
   const ANCHO = 210 - M * 2
 
@@ -65,8 +73,8 @@ export async function generarPDFCotizacion(orden) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(...slate900)
-  doc.text(String(orden.codigo), M + ANCHO, y + 4, { align: 'right' })
-  doc.text(formatearFecha(orden.fecha), M + ANCHO, y + 11, { align: 'right' })
+  doc.text(String(pedido.codigo_base || pedido.codigo), M + ANCHO, y + 4, { align: 'right' })
+  doc.text(formatearFecha(pedido.fecha), M + ANCHO, y + 11, { align: 'right' })
 
   y += 20
 
@@ -88,10 +96,10 @@ export async function generarPDFCotizacion(orden) {
     doc.text(String(valor || '-'), M + 32, y + offsetY)
   }
 
-  filaIzq('CLIENTE', orden.cliente, 6)
-  filaIzq('RUC / DNI', orden.ruc, 12)
-  filaIzq('DIRECCIÓN ENTREGA', orden.direccion_entrega, 18)
-  filaIzq('CONTACTO', orden.numero_contacto, 24)
+  filaIzq('CLIENTE', pedido.cliente, 6)
+  filaIzq('RUC / DNI', pedido.ruc, 12)
+  filaIzq('DIRECCIÓN ENTREGA', pedido.direccion_entrega, 18)
+  filaIzq('CONTACTO', pedido.numero_contacto, 24)
 
   const filaDer = (label, valor, offsetY) => {
     doc.setFont('helvetica', 'bold')
@@ -104,20 +112,20 @@ export async function generarPDFCotizacion(orden) {
     doc.text(String(valor || '-'), M + 160, y + offsetY)
   }
 
-  filaDer('MONEDA', orden.moneda, 6)
-  filaDer('VENDEDOR', orden.vendedor, 12)
-  filaDer('F. ENTREGA', formatearFecha(orden.fecha_entrega), 18)
-  filaDer('EMAIL', orden.email_cliente, 24)
+  filaDer('VENDEDOR', pedido.vendedor, 6)
+  filaDer('F. ENTREGA', formatearFecha(pedido.fecha_entrega), 12)
+  filaDer('EMAIL', pedido.email_cliente, 18)
 
   y += alturaBloque
 
-  // ---- Tabla de producto ----
+  // ---- Tabla de productos (azul claro, texto oscuro) ----
   const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
   const filaAltura = 8
+  const filasMinimas = 4
 
-  doc.setFillColor(30, 41, 59)
+  doc.setFillColor(219, 234, 254)
   doc.rect(M, y, ANCHO, filaAltura, 'F')
-  doc.setTextColor(255, 255, 255)
+  doc.setTextColor(...slate900)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
   doc.text('CANT.', colX[0] + 2, y + 5.5)
@@ -128,31 +136,39 @@ export async function generarPDFCotizacion(orden) {
 
   y += filaAltura
 
-  doc.setDrawColor(...borde)
-  doc.rect(M, y, ANCHO, filaAltura)
-  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
+  items.forEach((it) => {
+    const cantidadTabla = it.unidad_precio && it.unidad_precio !== 'kg' ? it.cantidad_precio : it.cantidad
+    const unidadTabla = it.unidad_precio ? (ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg') : 'kg'
+    const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.setTextColor(...slate900)
-  doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
-  doc.text(unidadTabla, colX[1] + 2, y + 5.5)
-  const descripcionPDF = orden.medidas
-    ? `${orden.descripcion || '-'} (${orden.medidas})`
-    : (orden.descripcion || '-')
-  doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
-  doc.text(
-    orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}` : '-',
-    colX[3] + 2, y + 5.5
-  )
-  doc.text(
-    orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
-    colX[4] + 2, y + 5.5
-  )
+    doc.setDrawColor(...borde)
+    doc.rect(M, y, ANCHO, filaAltura)
+    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
 
-  y += filaAltura
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...slate900)
+    doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
+    doc.text(unidadTabla, colX[1] + 2, y + 5.5)
+    const descripcionPDF = it.medidas
+      ? `${it.descripcion || '-'} (${it.medidas})`
+      : (it.descripcion || '-')
+    doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
+    doc.text(
+      it.precio_unitario ? `${simboloItem} ${Number(it.precio_unitario).toFixed(2)}` : '-',
+      colX[3] + 2, y + 5.5
+    )
+    doc.text(
+      it.costo_total ? `${simboloItem} ${Number(it.costo_total).toFixed(2)}` : '-',
+      colX[4] + 2, y + 5.5
+    )
 
-  for (let i = 0; i < 3; i++) {
+    y += filaAltura
+  })
+
+  const filasVacias = Math.max(0, filasMinimas - items.length)
+  for (let i = 0; i < filasVacias; i++) {
+    doc.setDrawColor(...borde)
     doc.rect(M, y, ANCHO, filaAltura)
     colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
     y += filaAltura
@@ -171,11 +187,20 @@ export async function generarPDFCotizacion(orden) {
   doc.setTextColor(...slate600)
   doc.text('SUBTOTAL', xTotales + 2, y + 4.8)
   doc.setTextColor(...slate900)
-  doc.text(
-    orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
-    xTotales + anchoTotales - 2, y + 4.8, { align: 'right' }
-  )
+  doc.text(`${simbolo} ${subtotal.toFixed(2)}`, xTotales + anchoTotales - 2, y + 4.8, { align: 'right' })
   y += 7
+
+  if (pedido.incluye_igv) {
+    doc.setDrawColor(...borde)
+    doc.rect(xTotales, y, anchoTotales, 7)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate600)
+    doc.text('IGV (18%)', xTotales + 2, y + 4.8)
+    doc.setTextColor(...slate900)
+    doc.text(`${simbolo} ${igv.toFixed(2)}`, xTotales + anchoTotales - 2, y + 4.8, { align: 'right' })
+    y += 7
+  }
 
   doc.setFillColor(30, 41, 59)
   doc.rect(xTotales, y, anchoTotales, 9, 'F')
@@ -183,19 +208,9 @@ export async function generarPDFCotizacion(orden) {
   doc.setFontSize(9.5)
   doc.setTextColor(255, 255, 255)
   doc.text('TOTAL', xTotales + 2, y + 6)
-  doc.text(
-    orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-',
-    xTotales + anchoTotales - 2, y + 6, { align: 'right' }
-  )
+  doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 2, y + 6, { align: 'right' })
 
-  if (orden.tipo_trabajo || orden.procesos_plan) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(...slate600)
-    doc.text(orden.tipo_trabajo ? `TIPO DE TRABAJO: ${orden.tipo_trabajo}` : 'RUTA DE PRODUCCIÓN', M, y + 6)
-    
-    y += 10
-  } 
+  y += 14
 
   // ---- Condiciones ----
   doc.setFont('helvetica', 'normal')
@@ -244,5 +259,5 @@ export async function generarPDFCotizacion(orden) {
   doc.setTextColor(...slate600)
   doc.text('Firma / Huella', M, y + 4)
 
-  doc.save(`Pedido_${orden.codigo}.pdf`)
+  doc.save(`Pedido_${pedido.codigo_base || pedido.codigo}.pdf`)
 }

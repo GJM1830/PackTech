@@ -79,6 +79,32 @@ class Operario(Base):
 
 
 # =========================
+# PEDIDOS
+# =========================
+
+class Pedido(Base):
+    __tablename__ = "pedidos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    codigo_base: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"))
+    vendedor: Mapped[str | None] = mapped_column(String(100))
+    fecha_entrega: Mapped[date | None] = mapped_column(Date)
+    direccion_entrega: Mapped[str | None] = mapped_column(String(200))
+    numero_contacto: Mapped[str | None] = mapped_column(String(50))
+    email_cliente: Mapped[str | None] = mapped_column(String(150))
+    telefono_cliente: Mapped[str | None] = mapped_column(String(50))
+    incluye_igv: Mapped[bool | None] = mapped_column(Boolean)
+    observaciones_pedido: Mapped[str | None] = mapped_column(Text)
+    imagen_url: Mapped[str | None] = mapped_column(Text)
+    estado: Mapped[str | None] = mapped_column(String(50))
+    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
+    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+
+    cliente_obj: Mapped["Cliente"] = relationship("Cliente")
+
+
+# =========================
 # ÓRDENES DE PRODUCCIÓN
 # =========================
 
@@ -87,13 +113,14 @@ class OrdenProduccion(Base):
     
     procesos_plan: Mapped[str | None] = mapped_column(Text)
     tipo_trabajo: Mapped[str | None] = mapped_column(String(20))
+    pedido_id: Mapped[int | None] = mapped_column(ForeignKey("pedidos.id"))
 
     moneda: Mapped[str | None] = mapped_column(String(10))
     vendedor: Mapped[str | None] = mapped_column(String(100))
     fecha_entrega: Mapped[date | None] = mapped_column(Date)
     precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
     unidad_precio: Mapped[str | None] = mapped_column(String(20))
-    millares: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    cantidad_precio: Mapped[float | None] = mapped_column(Numeric(10, 2))
     costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
     direccion_entrega: Mapped[str | None] = mapped_column(String(200))
     numero_contacto: Mapped[str | None] = mapped_column(String(50))

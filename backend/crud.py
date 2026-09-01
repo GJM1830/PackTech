@@ -183,13 +183,13 @@ def crear_orden_produccion(
             detail="Ya existe una Orden de Producción con ese código."
         )
 
-    if orden.unidad_precio == "millares" and not orden.millares:
-        raise HTTPException(status_code=400, detail="Debes indicar los millares si el precio es por millar.")
+    if orden.unidad_precio and orden.unidad_precio != "kg" and not orden.cantidad_precio:
+        raise HTTPException(status_code=400, detail="Debes indicar la cantidad para ese tipo de precio.")
 
     costo_total_calc = None
     if orden.precio_unitario is not None and orden.unidad_precio:
-        if orden.unidad_precio == "millares":
-            costo_total_calc = float(orden.precio_unitario) * float(orden.millares)
+        if orden.unidad_precio != "kg":
+            costo_total_calc = float(orden.precio_unitario) * float(orden.cantidad_precio)
         else:
             costo_total_calc = float(orden.precio_unitario) * float(orden.cantidad)
 
@@ -218,7 +218,7 @@ def crear_orden_produccion(
         fecha_entrega=orden.fecha_entrega,
         precio_unitario=orden.precio_unitario,
         unidad_precio=orden.unidad_precio,
-        millares=orden.millares,
+        cantidad_precio=orden.cantidad_precio,
         costo_total=costo_total_calc,
         direccion_entrega=orden.direccion_entrega,
         numero_contacto=orden.numero_contacto,
@@ -381,6 +381,241 @@ def eliminar_orden_produccion(
 
     db.delete(orden)
     db.commit()
+
+
+# =========================
+# PEDIDOS
+# =========================
+
+def _resolver_cliente_pedido(db: Session, ruc: str | None, nombre_cliente: str | None):
+    ruc_limpio = ruc.strip() if ruc and ruc.strip() else None
+    nombre_limpio = nombre_cliente.strip() if nombre_cliente else None
+
+    cliente = None
+    if ruc_limpio:
+        cliente = db.query(models.Cliente).filter(models.Cliente.ruc == ruc_limpio).first()
+    elif nombre_limpio:
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc.is_(None))
+            .filter(models.Cliente.nombre.ilike(nombre_limpio))
+            .first()
+        )
+
+    if cliente is None:
+        if not nombre_limpio:
+            raise HTTPException(status_code=400, detail="Cliente no encontrado. Debe ingresar el nombre.")
+        cliente = models.Cliente(ruc=ruc_limpio, nombre=nombre_limpio)
+        db.add(cliente)
+        db.commit()
+        db.refresh(cliente)
+
+    return cliente
+
+
+def crear_pedido(db: Session, pedido: schemas.PedidoCreate):
+    if not pedido.codigo_base or not pedido.codigo_base.strip():
+        raise HTTPException(status_code=400, detail="El código del pedido no puede estar vacío.")
+
+    if not pedido.items:
+        raise HTTPException(status_code=400, detail="El pedido debe tener al menos un ítem.")
+
+    codigo_base_limpio = pedido.codigo_base.strip()
+
+    existe = (
+        db.query(models.Pedido)
+        .filter(models.Pedido.codigo_base == codigo_base_limpio)
+        .first()
+    )
+    if existe:
+        raise HTTPException(status_code=400, detail="Ya existe un pedido con ese código.")
+
+    cliente = _resolver_cliente_pedido(db, pedido.ruc, pedido.nombre_cliente)
+
+    vendedor_limpio = pedido.vendedor.strip() if pedido.vendedor and pedido.vendedor.strip() else None
+    if vendedor_limpio:
+        crear_vendedor_si_no_existe(db, vendedor_limpio)
+
+    ahora = ahora_lima()
+
+    nuevo_pedido = models.Pedido(
+        codigo_base=codigo_base_limpio,
+        cliente_id=cliente.id,
+        vendedor=vendedor_limpio,
+        fecha_entrega=pedido.fecha_entrega,
+        direccion_entrega=pedido.direccion_entrega,
+        numero_contacto=pedido.numero_contacto,
+        email_cliente=pedido.email_cliente,
+        telefono_cliente=pedido.telefono_cliente,
+        incluye_igv=pedido.incluye_igv,
+        observaciones_pedido=pedido.observaciones_pedido,
+        imagen_url=pedido.imagen_url,
+        estado="Preaprobada",
+        fecha=ahora.date(),
+        hora=ahora.time()
+    )
+    db.add(nuevo_pedido)
+    db.commit()
+    db.refresh(nuevo_pedido)
+
+    for i, item in enumerate(pedido.items, start=1):
+        if item.unidad_precio and item.unidad_precio != "kg" and not item.cantidad_precio:
+            raise HTTPException(status_code=400, detail=f"Ítem {i}: indica la cantidad para el precio por {item.unidad_precio}.")
+
+        costo_total_item = None
+        if item.precio_unitario is not None and item.unidad_precio:
+            base = item.cantidad_precio if item.unidad_precio != "kg" else item.cantidad
+            costo_total_item = float(item.precio_unitario) * float(base or 0)
+
+        orden_item = models.OrdenProduccion(
+            codigo=f"{codigo_base_limpio}-{i}",
+            cliente_id=cliente.id,
+            descripcion=item.descripcion,
+            medidas=item.medidas,
+            cantidad=item.cantidad,
+            unidad="kg",
+            estado="Preaprobada",
+            fecha=ahora.date(),
+            hora=ahora.time(),
+            procesos_plan=item.procesos_plan,
+            tipo_trabajo=item.tipo_trabajo,
+            moneda=item.moneda,
+            vendedor=vendedor_limpio,
+            fecha_entrega=pedido.fecha_entrega,
+            precio_unitario=item.precio_unitario,
+            unidad_precio=item.unidad_precio,
+            cantidad_precio=item.cantidad_precio,
+            costo_total=costo_total_item,
+            direccion_entrega=pedido.direccion_entrega,
+            numero_contacto=pedido.numero_contacto,
+            email_cliente=pedido.email_cliente,
+            telefono_cliente=pedido.telefono_cliente,
+            incluye_igv=pedido.incluye_igv,
+            observaciones_pedido=pedido.observaciones_pedido,
+            imagen_url=pedido.imagen_url,
+            pedido_id=nuevo_pedido.id
+        )
+        db.add(orden_item)
+
+    db.commit()
+
+    return obtener_pedido_por_id(db, nuevo_pedido.id)
+
+
+def _armar_respuesta_pedido(db: Session, pedido: models.Pedido):
+    items = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.pedido_id == pedido.id)
+        .order_by(models.OrdenProduccion.id.asc())
+        .all()
+    )
+
+    costo_total_pedido = 0
+    for item in items:
+        if item.costo_total is not None:
+            item.costo_total = float(item.costo_total)
+            costo_total_pedido += item.costo_total
+
+    pedido.ruc = pedido.cliente_obj.ruc
+    pedido.cliente = pedido.cliente_obj.nombre
+    pedido.items = items
+    pedido.costo_total = costo_total_pedido if costo_total_pedido else None
+
+    return pedido
+
+
+def obtener_pedido_por_id(db: Session, pedido_id: int):
+    pedido = db.get(models.Pedido, pedido_id)
+    if pedido is None:
+        raise HTTPException(status_code=404, detail="El pedido no existe.")
+    return _armar_respuesta_pedido(db, pedido)
+
+
+def obtener_pedidos_preaprobados(db: Session):
+    pedidos = (
+        db.query(models.Pedido)
+        .filter(models.Pedido.estado == "Preaprobada")
+        .order_by(models.Pedido.id.desc())
+        .all()
+    )
+    return [_armar_respuesta_pedido(db, p) for p in pedidos]
+
+
+def aprobar_pedido(db: Session, pedido_id: int):
+    pedido = db.get(models.Pedido, pedido_id)
+    if pedido is None:
+        raise HTTPException(status_code=404, detail="El pedido no existe.")
+    if pedido.estado != "Preaprobada":
+        raise HTTPException(status_code=400, detail="Este pedido no está en estado Preaprobada.")
+
+    pedido.estado = "Pendiente"
+    db.query(models.OrdenProduccion).filter(
+        models.OrdenProduccion.pedido_id == pedido_id
+    ).update({"estado": "Pendiente"}, synchronize_session=False)
+    db.commit()
+    db.refresh(pedido)
+
+    return _armar_respuesta_pedido(db, pedido)
+
+
+def eliminar_pedido(db: Session, pedido_id: int, rol_usuario: str):
+    pedido = db.get(models.Pedido, pedido_id)
+    if pedido is None:
+        raise HTTPException(status_code=404, detail="El pedido no existe.")
+
+    items = (
+        db.query(models.OrdenProduccion)
+        .filter(models.OrdenProduccion.pedido_id == pedido_id)
+        .all()
+    )
+    for item in items:
+        eliminar_orden_produccion(db, item.id, rol_usuario)
+
+    db.delete(pedido)
+    db.commit()
+
+
+def editar_pedido(db: Session, pedido_id: int, datos: schemas.PedidoEditar):
+    pedido = db.get(models.Pedido, pedido_id)
+    if pedido is None:
+        raise HTTPException(status_code=404, detail="El pedido no existe.")
+
+    cliente = _resolver_cliente_pedido(db, datos.ruc, datos.nombre_cliente)
+
+    vendedor_limpio = datos.vendedor.strip() if datos.vendedor and datos.vendedor.strip() else None
+    if vendedor_limpio:
+        crear_vendedor_si_no_existe(db, vendedor_limpio)
+
+    pedido.cliente_id = cliente.id
+    pedido.vendedor = vendedor_limpio
+    pedido.fecha_entrega = datos.fecha_entrega
+    pedido.direccion_entrega = datos.direccion_entrega
+    pedido.numero_contacto = datos.numero_contacto
+    pedido.email_cliente = datos.email_cliente
+    pedido.telefono_cliente = datos.telefono_cliente
+    pedido.incluye_igv = datos.incluye_igv
+    pedido.observaciones_pedido = datos.observaciones_pedido
+    pedido.imagen_url = datos.imagen_url
+
+    db.query(models.OrdenProduccion).filter(
+        models.OrdenProduccion.pedido_id == pedido_id
+    ).update({
+        "cliente_id": cliente.id,
+        "vendedor": vendedor_limpio,
+        "fecha_entrega": datos.fecha_entrega,
+        "direccion_entrega": datos.direccion_entrega,
+        "numero_contacto": datos.numero_contacto,
+        "email_cliente": datos.email_cliente,
+        "telefono_cliente": datos.telefono_cliente,
+        "incluye_igv": datos.incluye_igv,
+        "observaciones_pedido": datos.observaciones_pedido,
+        "imagen_url": datos.imagen_url
+    }, synchronize_session=False)
+
+    db.commit()
+    db.refresh(pedido)
+
+    return _armar_respuesta_pedido(db, pedido)
 
 
 # =========================
@@ -1674,13 +1909,13 @@ def editar_orden_produccion(
         db.commit()
         db.refresh(cliente)
 
-    if orden_nueva.unidad_precio == "millares" and not orden_nueva.millares:
-        raise HTTPException(status_code=400, detail="Debes indicar los millares si el precio es por millar.")
+    if orden_nueva.unidad_precio and orden_nueva.unidad_precio != "kg" and not orden_nueva.cantidad_precio:
+        raise HTTPException(status_code=400, detail="Debes indicar la cantidad para ese tipo de precio.")
 
     costo_total_calc = None
     if orden_nueva.precio_unitario is not None and orden_nueva.unidad_precio:
-        if orden_nueva.unidad_precio == "millares":
-            costo_total_calc = float(orden_nueva.precio_unitario) * float(orden_nueva.millares)
+        if orden_nueva.unidad_precio != "kg":
+            costo_total_calc = float(orden_nueva.precio_unitario) * float(orden_nueva.cantidad_precio)
         else:
             costo_total_calc = float(orden_nueva.precio_unitario) * float(orden_nueva.cantidad)
 
@@ -1703,7 +1938,7 @@ def editar_orden_produccion(
     orden.fecha_entrega = orden_nueva.fecha_entrega
     orden.precio_unitario = orden_nueva.precio_unitario
     orden.unidad_precio = orden_nueva.unidad_precio
-    orden.millares = orden_nueva.millares
+    orden.cantidad_precio = orden_nueva.cantidad_precio
     orden.costo_total = costo_total_calc
     orden.direccion_entrega = orden_nueva.direccion_entrega
     orden.numero_contacto = orden_nueva.numero_contacto

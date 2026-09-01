@@ -7,11 +7,18 @@ const formatearFecha = (fecha) => {
 }
 
 const RUC_EMPRESA = '20554000755'
+const ETIQUETA_UNIDAD_PRECIO = { millares: 'millares', unidades: 'unidades', rollos: 'rollos', kg: 'kg' }
 
-function VistaCotizacion({ orden, onCerrar }) {
-  const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
-  const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
-  const unidadTabla = orden.unidad_precio === 'millares' ? 'millares' : orden.unidad
+function VistaCotizacion({ orden: pedido, onCerrar }) {
+  const items = pedido.items || [{
+    descripcion: pedido.descripcion, medidas: pedido.medidas, cantidad: pedido.cantidad,
+    moneda: pedido.moneda, precio_unitario: pedido.precio_unitario, unidad_precio: pedido.unidad_precio,
+    cantidad_precio: pedido.cantidad_precio, costo_total: pedido.costo_total
+  }]
+  const simbolo = items[0]?.moneda === 'Dólares' ? '$' : 'S/'
+  const subtotal = items.reduce((s, it) => s + (it.costo_total || 0), 0)
+  const igv = pedido.incluye_igv ? subtotal * 0.18 : 0
+  const total = subtotal + igv
 
   const Celda = ({ label, valor, borde = true }) => (
     <div className={`px-3 py-1.5 ${borde ? 'border-b border-slate-200' : ''}`}>
@@ -39,11 +46,11 @@ function VistaCotizacion({ orden, onCerrar }) {
               <div className="flex items-center gap-6 text-right">
                 <div>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wide">Pedido</p>
-                  <p className="text-sm font-bold text-slate-900">{orden.codigo}</p>
+                  <p className="text-sm font-bold text-slate-900">{pedido.codigo_base || pedido.codigo}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wide">Fecha</p>
-                  <p className="text-sm font-bold text-slate-900">{formatearFecha(orden.fecha)}</p>
+                  <p className="text-sm font-bold text-slate-900">{formatearFecha(pedido.fecha)}</p>
                 </div>
               </div>
             </div>
@@ -51,88 +58,91 @@ function VistaCotizacion({ orden, onCerrar }) {
             {/* Cliente / Comercial */}
             <div className="grid grid-cols-2 divide-x divide-slate-200 border-b border-slate-800">
               <div className="divide-y divide-slate-200">
-                <Celda label="Cliente" valor={orden.cliente} />
-                <Celda label="RUC / DNI" valor={orden.ruc} />
-                <Celda label="Dirección de entrega" valor={orden.direccion_entrega} />
-                <Celda label="N° de contacto" valor={orden.numero_contacto} borde={false} />
+                <Celda label="Cliente" valor={pedido.cliente} />
+                <Celda label="RUC / DNI" valor={pedido.ruc} />
+                <Celda label="Dirección de entrega" valor={pedido.direccion_entrega} />
+                <Celda label="N° de contacto" valor={pedido.numero_contacto} borde={false} />
               </div>
               <div className="divide-y divide-slate-200">
-                <Celda label="Moneda" valor={orden.moneda} />
-                <Celda label="Vendedor" valor={orden.vendedor} />
-                <Celda label="Fecha de entrega" valor={formatearFecha(orden.fecha_entrega)} />
-                <Celda label="Email" valor={orden.email_cliente} borde={false} />
+                <Celda label="Vendedor" valor={pedido.vendedor} />
+                <Celda label="Fecha de entrega" valor={formatearFecha(pedido.fecha_entrega)} />
+                <Celda label="Email" valor={pedido.email_cliente} borde={false} />
               </div>
             </div>
 
-            {/* Tabla de producto */}
+            {/* Tabla de productos */}
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-800 text-white text-[10px] uppercase">
+                <tr className="bg-blue-100 text-slate-800 text-[10px] uppercase">
                   <th className="px-2 py-1.5 text-left font-semibold">Cant.</th>
                   <th className="px-2 py-1.5 text-left font-semibold">Unidad</th>
                   <th className="px-2 py-1.5 text-left font-semibold">Descripción</th>
-                  <th className="px-2 py-1.5 text-left font-semibold">P. Unit.</th>
+                  <th className="px-2 py-1.5 text-left font-semibold">P. Unitario</th>
                   <th className="px-2 py-1.5 text-right font-semibold">Total</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-t border-slate-200">
-                  <td className="px-2 py-2">{cantidadTabla || '-'}</td>
-                  <td className="px-2 py-2">{unidadTabla}</td>
-                  <td className="px-2 py-2">
-                    {orden.descripcion || '-'}
-                    {orden.medidas && (
-                      <div className="text-xs text-slate-500">Medidas: {orden.medidas}</div>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}` : '-'}
-                  </td>
-                  <td className="px-2 py-2 text-right font-medium">
-                    {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'}
-                  </td>
-                </tr>
+                {items.map((it, i) => {
+                  const cant = it.unidad_precio && it.unidad_precio !== 'kg' ? it.cantidad_precio : it.cantidad
+                  const unidad = ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg'
+                  const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
+                  return (
+                    <tr key={i} className="border-t border-slate-200">
+                      <td className="px-2 py-2">{cant || '-'}</td>
+                      <td className="px-2 py-2">{unidad}</td>
+                      <td className="px-2 py-2">
+                        {it.descripcion || '-'}
+                        {it.medidas && (
+                          <div className="text-xs text-slate-500">Medidas: {it.medidas}</div>
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        {it.precio_unitario ? `${simboloItem} ${it.precio_unitario}` : '-'}
+                      </td>
+                      <td className="px-2 py-2 text-right font-medium">
+                        {it.costo_total ? `${simboloItem} ${Number(it.costo_total).toFixed(2)}` : '-'}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
 
-            {(orden.tipo_trabajo || orden.procesos_plan) && (
-              <div className="px-3 py-2 border-t border-slate-800 bg-slate-50">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                  {orden.tipo_trabajo || 'Ruta de producción'}
-                </p>
-                {orden.procesos_plan && (
-                  <p className="text-sm text-slate-700">
-                    {orden.procesos_plan.split(',').join('  →  ')}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {(orden.incluye_igv != null || orden.observaciones_pedido) && (
+            {(pedido.incluye_igv != null || pedido.observaciones_pedido) && (
               <div className="px-3 py-2 border-t border-slate-800">
                 <p className="text-xs text-slate-600">
-                  {orden.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV'}
+                  {pedido.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV'}
                 </p>
-                {orden.observaciones_pedido && (
-                  <p className="text-sm text-slate-700 mt-1">Obs: {orden.observaciones_pedido}</p>
+                {pedido.observaciones_pedido && (
+                  <p className="text-sm text-slate-700 mt-1">Obs: {pedido.observaciones_pedido}</p>
                 )}
               </div>
             )}
 
-            {/* Total */}
+            {/* Totales */}
             <div className="flex justify-end border-t border-slate-800">
-              <div className="bg-slate-900 text-white px-4 py-2 flex items-center gap-4">
-                <span className="text-xs uppercase tracking-wide text-slate-300">Total</span>
-                <span className="font-bold">
-                  {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'}
-                </span>
+              <div className="w-56">
+                <div className="flex justify-between px-4 py-1.5 border-b border-slate-200 text-sm">
+                  <span className="text-slate-500">Subtotal</span>
+                  <span className="text-slate-800">{simbolo} {subtotal.toFixed(2)}</span>
+                </div>
+                {pedido.incluye_igv && (
+                  <div className="flex justify-between px-4 py-1.5 border-b border-slate-200 text-sm">
+                    <span className="text-slate-500">IGV (18%)</span>
+                    <span className="text-slate-800">{simbolo} {igv.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wide text-slate-300">Total</span>
+                  <span className="font-bold">{simbolo} {total.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {orden.imagen_url && (
+          {pedido.imagen_url && (
             <div className="mt-5 flex justify-center">
-              <img src={orden.imagen_url} alt="Imagen del pedido" className="max-h-64 rounded-lg border border-slate-200" />
+              <img src={pedido.imagen_url} alt="Imagen del pedido" className="max-h-64 rounded-lg border border-slate-200" />
             </div>
           )}
 
@@ -144,7 +154,7 @@ function VistaCotizacion({ orden, onCerrar }) {
               Cerrar
             </button>
             <button
-              onClick={() => generarPDFCotizacion(orden)}
+              onClick={() => generarPDFCotizacion(pedido)}
               className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
             >
               ⬇ Descargar PDF

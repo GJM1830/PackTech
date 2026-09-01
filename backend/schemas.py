@@ -31,7 +31,7 @@ class OrdenProduccionCreate(BaseModel):
     fecha_entrega: date | None = None
     precio_unitario: float | None = None
     unidad_precio: str | None = None
-    millares: float | None = None
+    cantidad_precio: float | None = None
     direccion_entrega: str | None = None
     numero_contacto: str | None = None
     email_cliente: str | None = None
@@ -62,7 +62,7 @@ class OrdenProduccionResponse(BaseModel):
     fecha_entrega: date | None = None
     precio_unitario: float | None = None
     unidad_precio: str | None = None
-    millares: float | None = None
+    cantidad_precio: float | None = None
     costo_total: float | None = None
     direccion_entrega: str | None = None
     numero_contacto: str | None = None
@@ -79,6 +79,94 @@ class OrdenProduccionResponse(BaseModel):
 class VendedorResponse(BaseModel):
     id: int
     nombre: str
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# PEDIDOS
+# =========================
+
+class PedidoItemCreate(BaseModel):
+    descripcion: str | None = None
+    medidas: str | None = None
+    cantidad: float
+    tipo_trabajo: str | None = None
+    procesos_plan: str | None = None
+    moneda: str | None = None
+    precio_unitario: float | None = None
+    unidad_precio: str | None = None
+    cantidad_precio: float | None = None
+
+
+class PedidoCreate(BaseModel):
+    codigo_base: str
+    ruc: str | None = None
+    nombre_cliente: str | None = None
+    vendedor: str | None = None
+    fecha_entrega: date | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+    incluye_igv: bool | None = None
+    observaciones_pedido: str | None = None
+    imagen_url: str | None = None
+    items: list[PedidoItemCreate]
+
+
+class PedidoEditar(BaseModel):
+    ruc: str | None = None
+    nombre_cliente: str | None = None
+    vendedor: str | None = None
+    fecha_entrega: date | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+    incluye_igv: bool | None = None
+    observaciones_pedido: str | None = None
+    imagen_url: str | None = None
+
+
+class PedidoItemResponse(BaseModel):
+    id: int
+    codigo: str
+    descripcion: str | None
+    medidas: str | None
+    cantidad: float
+    tipo_trabajo: str | None
+    procesos_plan: str | None
+    moneda: str | None
+    precio_unitario: float | None
+    unidad_precio: str | None
+    cantidad_precio: float | None
+    costo_total: float | None
+    estado: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class PedidoResponse(BaseModel):
+    id: int
+    codigo_base: str
+    ruc: str | None
+    cliente: str
+    vendedor: str | None
+    fecha_entrega: date | None
+    direccion_entrega: str | None
+    numero_contacto: str | None
+    email_cliente: str | None
+    telefono_cliente: str | None
+    incluye_igv: bool | None
+    observaciones_pedido: str | None
+    imagen_url: str | None
+    estado: str | None
+    fecha: date
+    items: list[PedidoItemResponse]
+    costo_total: float | None = None
 
     class Config:
         from_attributes = True
