@@ -888,8 +888,9 @@ def filtrar_ordenes_produccion(
     if producto:
         query = query.filter(models.OrdenProduccion.descripcion.ilike(f"%{producto}%"))
 
-    if estado:
-        query = query.filter(models.OrdenProduccion.estado == estado)
+    # El estado real (Pendiente/En proceso/En almacén/Terminado) es calculado
+    # dinámicamente a partir de los movimientos, no se filtra aquí en la BD.
+    # Se filtra más abajo, después de calcularlo para cada orden.
 
     if fecha_desde:
         query = query.filter(models.OrdenProduccion.fecha >= fecha_desde)
@@ -900,7 +901,12 @@ def filtrar_ordenes_produccion(
     if antes_de:
         query = query.filter(models.OrdenProduccion.id < antes_de)
 
-    ordenes = query.order_by(models.OrdenProduccion.id.desc()).limit(limit).all()
+    # Como el estado es calculado dinámicamente y no se filtra en la BD,
+    # se trae un lote más grande cuando hay filtro de estado para no perder
+    # resultados por la paginación antes de calcular y filtrar en Python.
+    limit_consulta = limit * 5 if estado else limit
+
+    ordenes = query.order_by(models.OrdenProduccion.id.desc()).limit(limit_consulta).all()
 
     for orden in ordenes:
         orden.ruc = orden.cliente_obj.ruc
@@ -908,13 +914,11 @@ def filtrar_ordenes_produccion(
 
         proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
 
-        # El filtro por estado se resuelve contra el estado calculado (dinámico),
-        # no contra el campo estado guardado, salvo Terminado/Preaprobada que sí son reales.
         orden.ultimo_proceso = proceso_actual or "Sin iniciar"
         orden.estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
 
     if estado:
-        ordenes = [o for o in ordenes if o.estado == estado]
+        ordenes = [o for o in ordenes if o.estado == estado][:limit]
 
     return ordenes
 
