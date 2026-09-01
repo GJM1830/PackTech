@@ -228,24 +228,24 @@ export async function generarPDFCotizacion(pedido) {
     y += 3.8
   })
 
-  if (orden.incluye_igv != null || orden.observaciones_pedido) {
+  if (pedido.incluye_igv != null || pedido.observaciones_pedido) {
     y += 4
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.5)
     doc.setTextColor(...slate600)
-    doc.text(orden.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV', M, y)
-    if (orden.observaciones_pedido) {
+    doc.text(pedido.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV', M, y)
+    if (pedido.observaciones_pedido) {
       y += 4
       doc.setFont('helvetica', 'normal')
-      doc.text(`Obs: ${orden.observaciones_pedido}`, M, y, { maxWidth: ANCHO })
+      doc.text(`Obs: ${pedido.observaciones_pedido}`, M, y, { maxWidth: ANCHO })
     }
   }
 
-  if (orden.imagen_url) {
+  if (pedido.imagen_url) {
     y += 10
-    const formato = orden.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
+    const formato = pedido.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
     try {
-      doc.addImage(orden.imagen_url, formato, M, y, 60, 60)
+      doc.addImage(pedido.imagen_url, formato, M, y, 60, 60)
       y += 64
     } catch {
       // si la imagen no es válida para el PDF, se omite sin romper la descarga
