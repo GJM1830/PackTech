@@ -36,6 +36,9 @@ class OrdenProduccionCreate(BaseModel):
     numero_contacto: str | None = None
     email_cliente: str | None = None
     telefono_cliente: str | None = None
+    incluye_igv: bool | None = None
+    observaciones_pedido: str | None = None
+    imagen_url: str | None = None
 
 class OrdenProduccionResponse(BaseModel):
     id: int
@@ -65,6 +68,9 @@ class OrdenProduccionResponse(BaseModel):
     numero_contacto: str | None = None
     email_cliente: str | None = None
     telefono_cliente: str | None = None
+    incluye_igv: bool | None = None
+    observaciones_pedido: str | None = None
+    imagen_url: str | None = None
 
     class Config:
         from_attributes = True

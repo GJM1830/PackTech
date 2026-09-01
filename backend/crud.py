@@ -223,7 +223,10 @@ def crear_orden_produccion(
         direccion_entrega=orden.direccion_entrega,
         numero_contacto=orden.numero_contacto,
         email_cliente=orden.email_cliente,
-        telefono_cliente=orden.telefono_cliente
+        telefono_cliente=orden.telefono_cliente,
+        incluye_igv=orden.incluye_igv,
+        observaciones_pedido=orden.observaciones_pedido,
+        imagen_url=orden.imagen_url
     )
 
     db.add(nueva_orden)
@@ -1706,6 +1709,9 @@ def editar_orden_produccion(
     orden.numero_contacto = orden_nueva.numero_contacto
     orden.email_cliente = orden_nueva.email_cliente
     orden.telefono_cliente = orden_nueva.telefono_cliente
+    orden.incluye_igv = orden_nueva.incluye_igv
+    orden.observaciones_pedido = orden_nueva.observaciones_pedido
+    orden.imagen_url = orden_nueva.imagen_url
 
     db.commit()
     db.refresh(orden)

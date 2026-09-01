@@ -34,7 +34,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     numero_contacto: '',
     email_cliente: '',
     telefono_cliente: '',
-    tipo_trabajo: ''
+    tipo_trabajo: '',
+    incluye_igv: false,
+    observaciones_pedido: '',
+    imagen_url: ''
   })
 
   const [procesosRuta, setProcesosRuta] = useState([])
@@ -69,6 +72,14 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
+  const manejarImagenSubida = (e) => {
+    const archivo = e.target.files[0]
+    if (!archivo) return
+    const lector = new FileReader()
+    lector.onload = () => setForm((actual) => ({ ...actual, imagen_url: lector.result }))
+    lector.readAsDataURL(archivo)
+  }
+
   useEffect(() => {
     if (duplicarDesde) {
       setForm({
@@ -89,7 +100,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         direccion_entrega: duplicarDesde.direccion_entrega || '',
         numero_contacto: duplicarDesde.numero_contacto || '',
         email_cliente: duplicarDesde.email_cliente || '',
-        telefono_cliente: duplicarDesde.telefono_cliente || ''
+        telefono_cliente: duplicarDesde.telefono_cliente || '',
+        incluye_igv: duplicarDesde.incluye_igv || false,
+        observaciones_pedido: duplicarDesde.observaciones_pedido || '',
+        imagen_url: ''
       })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
@@ -168,7 +182,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         email_cliente: form.email_cliente || null,
         telefono_cliente: form.telefono_cliente || null,
         tipo_trabajo: form.tipo_trabajo || null,
-        procesos_plan: procesosRuta.length > 0 ? procesosRuta.join(',') : null
+        procesos_plan: procesosRuta.length > 0 ? procesosRuta.join(',') : null,
+        incluye_igv: form.incluye_igv,
+        observaciones_pedido: form.observaciones_pedido || null,
+        imagen_url: form.imagen_url || null
       })
 
       setExito(true)
@@ -177,7 +194,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
         precio_unitario: '', unidad_precio: 'kg', millares: '',
         direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
-        tipo_trabajo: ''
+        tipo_trabajo: '', incluye_igv: false, observaciones_pedido: '', imagen_url: ''
       })
       setProcesosRuta([])
       setClienteSeleccionado(null)
@@ -414,6 +431,51 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
             </div>
           </div>
         </details>
+
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">IGV, observaciones e imagen</p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, incluye_igv: true })}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                form.incluye_igv ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+              }`}
+            >
+              Con IGV
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, incluye_igv: false })}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                !form.incluye_igv ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+              }`}
+            >
+              Sin IGV
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Observaciones</label>
+            <textarea
+              name="observaciones_pedido"
+              value={form.observaciones_pedido}
+              onChange={manejarCambio}
+              rows={2}
+              className={estilo}
+              placeholder="Cualquier detalle adicional del pedido"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Imagen del pedido</label>
+            <input type="file" accept="image/*" onChange={manejarImagenSubida} className="text-sm" />
+            {form.imagen_url && (
+              <img src={form.imagen_url} alt="Vista previa" className="mt-2 h-24 rounded-lg border border-slate-200" />
+            )}
+          </div>
+        </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {exito && <p className="text-green-700 text-sm font-medium">Pedido creada correctamente.</p>}
@@ -666,7 +728,10 @@ function Cotizaciones() {
       direccion_entrega: orden.direccion_entrega || '',
       numero_contacto: orden.numero_contacto || '',
       email_cliente: orden.email_cliente || '',
-      telefono_cliente: orden.telefono_cliente || ''
+      telefono_cliente: orden.telefono_cliente || '',
+      incluye_igv: orden.incluye_igv || false,
+      observaciones_pedido: orden.observaciones_pedido || '',
+      imagen_url: orden.imagen_url || ''
     })
   }
 
@@ -692,7 +757,10 @@ function Cotizaciones() {
         direccion_entrega: editando.direccion_entrega || null,
         numero_contacto: editando.numero_contacto || null,
         email_cliente: editando.email_cliente || null,
-        telefono_cliente: editando.telefono_cliente || null
+        telefono_cliente: editando.telefono_cliente || null,
+        incluye_igv: editando.incluye_igv,
+        observaciones_pedido: editando.observaciones_pedido || null,
+        imagen_url: editando.imagen_url || null
       })
       setEditando(null)
       cargar()

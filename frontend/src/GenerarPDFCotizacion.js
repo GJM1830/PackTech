@@ -6,6 +6,8 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+const RUC_EMPRESA = '20554000755'
+
 export async function generarPDFCotizacion(orden) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
@@ -49,6 +51,11 @@ export async function generarPDFCotizacion(orden) {
     doc.setTextColor(...azul)
     doc.text('PACKTECH', M, y + 6)
   }
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...slate400)
+  doc.text(`RUC: ${RUC_EMPRESA}`, M, y + 15)
 
   doc.setFontSize(8)
   doc.setTextColor(...slate600)
@@ -135,7 +142,7 @@ export async function generarPDFCotizacion(orden) {
     : (orden.descripcion || '-')
   doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
   doc.text(
-    orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
+    orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}` : '-',
     colX[3] + 2, y + 5.5
   )
   doc.text(
@@ -205,6 +212,30 @@ export async function generarPDFCotizacion(orden) {
     doc.text(linea, M, y)
     y += 3.8
   })
+
+  if (orden.incluye_igv != null || orden.observaciones_pedido) {
+    y += 4
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text(orden.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV', M, y)
+    if (orden.observaciones_pedido) {
+      y += 4
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Obs: ${orden.observaciones_pedido}`, M, y, { maxWidth: ANCHO })
+    }
+  }
+
+  if (orden.imagen_url) {
+    y += 10
+    const formato = orden.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
+    try {
+      doc.addImage(orden.imagen_url, formato, M, y, 60, 60)
+      y += 64
+    } catch {
+      // si la imagen no es válida para el PDF, se omite sin romper la descarga
+    }
+  }
 
   y += 14
   doc.setDrawColor(...slate400)

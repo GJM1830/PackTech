@@ -1425,7 +1425,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     numero_contacto: '',
     email_cliente: '',
     telefono_cliente: '',
-    tipo_trabajo: ''
+    tipo_trabajo: '',
+    incluye_igv: false,
+    observaciones_pedido: '',
+    imagen_url: ''
   })
 
   const [procesosRuta, setProcesosRuta] = useState([])
@@ -1459,6 +1462,14 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
+  const manejarImagenSubida = (e) => {
+    const archivo = e.target.files[0]
+    if (!archivo) return
+    const lector = new FileReader()
+    lector.onload = () => setForm((actual) => ({ ...actual, imagen_url: lector.result }))
+    lector.readAsDataURL(archivo)
+  }
+
   useEffect(() => {
     if (duplicarDesde) {
       setForm({
@@ -1479,7 +1490,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         direccion_entrega: duplicarDesde.direccion_entrega || '',
         numero_contacto: duplicarDesde.numero_contacto || '',
         email_cliente: duplicarDesde.email_cliente || '',
-        telefono_cliente: duplicarDesde.telefono_cliente || ''
+        telefono_cliente: duplicarDesde.telefono_cliente || '',
+        incluye_igv: duplicarDesde.incluye_igv || false,
+        observaciones_pedido: duplicarDesde.observaciones_pedido || '',
+        imagen_url: ''
       })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
@@ -1558,7 +1572,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         email_cliente: form.email_cliente || null,
         telefono_cliente: form.telefono_cliente || null,
         tipo_trabajo: form.tipo_trabajo || null,
-        procesos_plan: procesosRuta.length > 0 ? procesosRuta.join(',') : null
+        procesos_plan: procesosRuta.length > 0 ? procesosRuta.join(',') : null,
+        incluye_igv: form.incluye_igv,
+        observaciones_pedido: form.observaciones_pedido || null,
+        imagen_url: form.imagen_url || null
       })
 
       setExito(true)
@@ -1567,7 +1584,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         cantidad: '', unidad: 'kg', moneda: 'Soles', vendedor: '', fecha_entrega: '',
         precio_unitario: '', unidad_precio: 'kg', millares: '',
         direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
-        tipo_trabajo: ''
+        tipo_trabajo: '', incluye_igv: false, observaciones_pedido: '', imagen_url: ''
       })
       setProcesosRuta([])
       setClienteSeleccionado(null)
@@ -1804,6 +1821,51 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
             </div>
           </div>
         </details>
+
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">IGV, observaciones e imagen</p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, incluye_igv: true })}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                form.incluye_igv ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+              }`}
+            >
+              Con IGV
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, incluye_igv: false })}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                !form.incluye_igv ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+              }`}
+            >
+              Sin IGV
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Observaciones</label>
+            <textarea
+              name="observaciones_pedido"
+              value={form.observaciones_pedido}
+              onChange={manejarCambio}
+              rows={2}
+              className={estilo}
+              placeholder="Cualquier detalle adicional del pedido"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Imagen del pedido</label>
+            <input type="file" accept="image/*" onChange={manejarImagenSubida} className="text-sm" />
+            {form.imagen_url && (
+              <img src={form.imagen_url} alt="Vista previa" className="mt-2 h-24 rounded-lg border border-slate-200" />
+            )}
+          </div>
+        </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {exito && <p className="text-green-700 text-sm font-medium">Pedido creada correctamente.</p>}
@@ -2056,7 +2118,10 @@ function Cotizaciones() {
       direccion_entrega: orden.direccion_entrega || '',
       numero_contacto: orden.numero_contacto || '',
       email_cliente: orden.email_cliente || '',
-      telefono_cliente: orden.telefono_cliente || ''
+      telefono_cliente: orden.telefono_cliente || '',
+      incluye_igv: orden.incluye_igv || false,
+      observaciones_pedido: orden.observaciones_pedido || '',
+      imagen_url: orden.imagen_url || ''
     })
   }
 
@@ -2082,7 +2147,10 @@ function Cotizaciones() {
         direccion_entrega: editando.direccion_entrega || null,
         numero_contacto: editando.numero_contacto || null,
         email_cliente: editando.email_cliente || null,
-        telefono_cliente: editando.telefono_cliente || null
+        telefono_cliente: editando.telefono_cliente || null,
+        incluye_igv: editando.incluye_igv,
+        observaciones_pedido: editando.observaciones_pedido || null,
+        imagen_url: editando.imagen_url || null
       })
       setEditando(null)
       cargar()
@@ -3779,6 +3847,8 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+const RUC_EMPRESA = '20554000755'
+
 export async function generarPDFCotizacion(orden) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
@@ -3822,6 +3892,11 @@ export async function generarPDFCotizacion(orden) {
     doc.setTextColor(...azul)
     doc.text('PACKTECH', M, y + 6)
   }
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...slate400)
+  doc.text(`RUC: ${RUC_EMPRESA}`, M, y + 15)
 
   doc.setFontSize(8)
   doc.setTextColor(...slate600)
@@ -3908,7 +3983,7 @@ export async function generarPDFCotizacion(orden) {
     : (orden.descripcion || '-')
   doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
   doc.text(
-    orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}/${orden.unidad_precio}` : '-',
+    orden.precio_unitario ? `${simbolo} ${Number(orden.precio_unitario).toFixed(2)}` : '-',
     colX[3] + 2, y + 5.5
   )
   doc.text(
@@ -3986,6 +4061,30 @@ export async function generarPDFCotizacion(orden) {
     doc.text(linea, M, y)
     y += 3.8
   })
+
+  if (orden.incluye_igv != null || orden.observaciones_pedido) {
+    y += 4
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...slate600)
+    doc.text(orden.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV', M, y)
+    if (orden.observaciones_pedido) {
+      y += 4
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Obs: ${orden.observaciones_pedido}`, M, y, { maxWidth: ANCHO })
+    }
+  }
+
+  if (orden.imagen_url) {
+    y += 10
+    const formato = orden.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
+    try {
+      doc.addImage(orden.imagen_url, formato, M, y, 60, 60)
+      y += 64
+    } catch {
+      // si la imagen no es válida para el PDF, se omite sin romper la descarga
+    }
+  }
 
   y += 14
   doc.setDrawColor(...slate400)
@@ -7636,6 +7735,8 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+const RUC_EMPRESA = '20554000755'
+
 function VistaCotizacion({ orden, onCerrar }) {
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
   const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
@@ -7660,7 +7761,10 @@ function VistaCotizacion({ orden, onCerrar }) {
           <div className="border border-slate-800 rounded-md overflow-hidden text-slate-800">
             {/* Encabezado */}
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-              <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
+              <div>
+                <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
+                <p className="text-[10px] text-slate-500 mt-1">RUC: {RUC_EMPRESA}</p>
+              </div>
               <div className="flex items-center gap-6 text-right">
                 <div>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wide">Pedido</p>
@@ -7711,7 +7815,7 @@ function VistaCotizacion({ orden, onCerrar }) {
                     )}
                   </td>
                   <td className="px-2 py-2">
-                    {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}/${orden.unidad_precio}` : '-'}
+                    {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}` : '-'}
                   </td>
                   <td className="px-2 py-2 text-right font-medium">
                     {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'}
@@ -7733,6 +7837,17 @@ function VistaCotizacion({ orden, onCerrar }) {
               </div>
             )}
 
+            {(orden.incluye_igv != null || orden.observaciones_pedido) && (
+              <div className="px-3 py-2 border-t border-slate-800">
+                <p className="text-xs text-slate-600">
+                  {orden.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV'}
+                </p>
+                {orden.observaciones_pedido && (
+                  <p className="text-sm text-slate-700 mt-1">Obs: {orden.observaciones_pedido}</p>
+                )}
+              </div>
+            )}
+
             {/* Total */}
             <div className="flex justify-end border-t border-slate-800">
               <div className="bg-slate-900 text-white px-4 py-2 flex items-center gap-4">
@@ -7743,6 +7858,12 @@ function VistaCotizacion({ orden, onCerrar }) {
               </div>
             </div>
           </div>
+
+          {orden.imagen_url && (
+            <div className="mt-5 flex justify-center">
+              <img src={orden.imagen_url} alt="Imagen del pedido" className="max-h-64 rounded-lg border border-slate-200" />
+            </div>
+          )}
 
           <div className="flex gap-3 mt-5">
             <button

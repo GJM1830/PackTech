@@ -4,7 +4,7 @@
 
 from datetime import datetime, date, time
 
-from sqlalchemy import DateTime, Date, Time, Integer, String, Numeric, Text, ForeignKey
+from sqlalchemy import DateTime, Date, Time, Integer, String, Numeric, Text, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -99,6 +99,9 @@ class OrdenProduccion(Base):
     numero_contacto: Mapped[str | None] = mapped_column(String(50))
     email_cliente: Mapped[str | None] = mapped_column(String(150))
     telefono_cliente: Mapped[str | None] = mapped_column(String(50))
+    incluye_igv: Mapped[bool | None] = mapped_column(Boolean)
+    observaciones_pedido: Mapped[str | None] = mapped_column(Text)
+    imagen_url: Mapped[str | None] = mapped_column(Text)
 
     id: Mapped[int] = mapped_column(
         Integer,

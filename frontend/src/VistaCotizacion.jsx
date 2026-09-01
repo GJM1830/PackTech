@@ -6,6 +6,8 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+const RUC_EMPRESA = '20554000755'
+
 function VistaCotizacion({ orden, onCerrar }) {
   const simbolo = orden.moneda === 'Dólares' ? '$' : 'S/'
   const cantidadTabla = orden.unidad_precio === 'millares' ? orden.millares : orden.cantidad
@@ -30,7 +32,10 @@ function VistaCotizacion({ orden, onCerrar }) {
           <div className="border border-slate-800 rounded-md overflow-hidden text-slate-800">
             {/* Encabezado */}
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-              <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
+              <div>
+                <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
+                <p className="text-[10px] text-slate-500 mt-1">RUC: {RUC_EMPRESA}</p>
+              </div>
               <div className="flex items-center gap-6 text-right">
                 <div>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wide">Pedido</p>
@@ -81,7 +86,7 @@ function VistaCotizacion({ orden, onCerrar }) {
                     )}
                   </td>
                   <td className="px-2 py-2">
-                    {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}/${orden.unidad_precio}` : '-'}
+                    {orden.precio_unitario ? `${simbolo} ${orden.precio_unitario}` : '-'}
                   </td>
                   <td className="px-2 py-2 text-right font-medium">
                     {orden.costo_total ? `${simbolo} ${Number(orden.costo_total).toFixed(2)}` : '-'}
@@ -103,6 +108,17 @@ function VistaCotizacion({ orden, onCerrar }) {
               </div>
             )}
 
+            {(orden.incluye_igv != null || orden.observaciones_pedido) && (
+              <div className="px-3 py-2 border-t border-slate-800">
+                <p className="text-xs text-slate-600">
+                  {orden.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV'}
+                </p>
+                {orden.observaciones_pedido && (
+                  <p className="text-sm text-slate-700 mt-1">Obs: {orden.observaciones_pedido}</p>
+                )}
+              </div>
+            )}
+
             {/* Total */}
             <div className="flex justify-end border-t border-slate-800">
               <div className="bg-slate-900 text-white px-4 py-2 flex items-center gap-4">
@@ -113,6 +129,12 @@ function VistaCotizacion({ orden, onCerrar }) {
               </div>
             </div>
           </div>
+
+          {orden.imagen_url && (
+            <div className="mt-5 flex justify-center">
+              <img src={orden.imagen_url} alt="Imagen del pedido" className="max-h-64 rounded-lg border border-slate-200" />
+            </div>
+          )}
 
           <div className="flex gap-3 mt-5">
             <button
