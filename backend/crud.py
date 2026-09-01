@@ -467,10 +467,17 @@ def crear_pedido(db: Session, pedido: schemas.PedidoCreate):
             base = item.cantidad_precio if item.unidad_precio != "kg" else item.cantidad
             costo_total_item = float(item.precio_unitario) * float(base or 0)
 
+        descripcion_limpia = item.descripcion.strip() if item.descripcion and item.descripcion.strip() else None
+        medidas_limpia = item.medidas.strip() if item.medidas and item.medidas.strip() else None
+        if descripcion_limpia and medidas_limpia:
+            descripcion_combinada = f"{descripcion_limpia} / {medidas_limpia}"
+        else:
+            descripcion_combinada = descripcion_limpia or medidas_limpia
+
         orden_item = models.OrdenProduccion(
             codigo=f"{codigo_base_limpio}-{i}",
             cliente_id=cliente.id,
-            descripcion=item.descripcion,
+            descripcion=descripcion_combinada,
             medidas=item.medidas,
             cantidad=item.cantidad,
             unidad="kg",
