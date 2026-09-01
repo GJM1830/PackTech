@@ -42,7 +42,7 @@ export async function generarPDFCotizacion(pedido) {
   const slate900 = [15, 23, 42]
   const slate600 = [71, 85, 105]
   const slate400 = [148, 163, 184]
-  const borde = [203, 213, 225]
+  const borde = [0, 0, 0]
 
   let y = 14
 
@@ -123,7 +123,7 @@ export async function generarPDFCotizacion(pedido) {
   const filaAltura = 8
   const filasMinimas = 4
 
-  doc.setFillColor(219, 234, 254)
+  doc.setFillColor(224, 231, 255)
   doc.rect(M, y, ANCHO, filaAltura, 'F')
   doc.setTextColor(...slate900)
   doc.setFont('helvetica', 'bold')

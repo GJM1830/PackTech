@@ -37,6 +37,8 @@ function OrdenDetalle() {
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
   const [verHojaPedido, setVerHojaPedido] = useState(false)
   const [generandoLiquidacion, setGenerandoLiquidacion] = useState(false)
+  const [pedidoCompleto, setPedidoCompleto] = useState(null)
+  const [cargandoPedido, setCargandoPedido] = useState(false)
 
   const descargarLiquidacion = async () => {
     setGenerandoLiquidacion(true)
@@ -51,6 +53,7 @@ function OrdenDetalle() {
   }
 
   const cargar = async () => {
+    setPedidoCompleto(null)
     try {
       const [ordenRes, movRes, opRes] = await Promise.all([
         axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`),
@@ -67,6 +70,21 @@ function OrdenDetalle() {
       setError(err.response?.data?.detail || 'No se pudo cargar el historial.')
       setCargando(false)
     }
+  }
+
+  const abrirHojaPedido = async () => {
+    if (orden?.pedido_id && !pedidoCompleto) {
+      setCargandoPedido(true)
+      try {
+        const res = await axios.get(`https://packtech-production.up.railway.app/pedidos/${orden.pedido_id}`)
+        setPedidoCompleto(res.data)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setCargandoPedido(false)
+      }
+    }
+    setVerHojaPedido(true)
   }
 
   useEffect(() => {
@@ -142,10 +160,11 @@ function OrdenDetalle() {
         {orden && (
           <div className="flex gap-2">
             <button
-              onClick={() => setVerHojaPedido(true)}
-              className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 whitespace-nowrap"
+              onClick={abrirHojaPedido}
+              disabled={cargandoPedido}
+              className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
             >
-              📄 Hoja de Pedido
+              {cargandoPedido ? 'Cargando...' : '📄 Hoja de Pedido'}
             </button>
             <button
               onClick={descargarLiquidacion}
@@ -388,7 +407,7 @@ function OrdenDetalle() {
       )}
 
       {verHojaPedido && orden && (
-        <VistaCotizacion orden={orden} onCerrar={() => setVerHojaPedido(false)} />
+        <VistaCotizacion orden={pedidoCompleto || orden} onCerrar={() => setVerHojaPedido(false)} />
       )}
     </div>
   )

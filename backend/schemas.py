@@ -44,6 +44,7 @@ class OrdenProduccionResponse(BaseModel):
     id: int
     codigo: str
     cliente_id: int
+    pedido_id: int | None = None
     numero_std: int | None
     descripcion: str | None = None
     medidas: str | None = None

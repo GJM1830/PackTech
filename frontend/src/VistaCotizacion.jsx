@@ -21,7 +21,7 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
   const total = subtotal + igv
 
   const Celda = ({ label, valor, borde = true }) => (
-    <div className={`px-3 py-1.5 ${borde ? 'border-b border-slate-200' : ''}`}>
+    <div className={`px-3 py-1.5 ${borde ? 'border-b border-black' : ''}`}>
       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
       <p className="text-sm text-slate-800">{valor || '-'}</p>
     </div>
@@ -36,9 +36,9 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
         </div>
 
         <div className="p-5">
-          <div className="border border-slate-800 rounded-md overflow-hidden text-slate-800">
+          <div className="border border-black rounded-md overflow-hidden text-slate-800">
             {/* Encabezado */}
-            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-black px-4 py-3">
               <div>
                 <img src="/logo-packtech.png" alt="PackTech" className="h-10" />
                 <p className="text-[10px] text-slate-500 mt-1">RUC: {RUC_EMPRESA}</p>
@@ -56,14 +56,14 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
             </div>
 
             {/* Cliente / Comercial */}
-            <div className="grid grid-cols-2 divide-x divide-slate-200 border-b border-slate-800">
-              <div className="divide-y divide-slate-200">
+            <div className="grid grid-cols-2 divide-x divide-black border-b border-black">
+              <div className="divide-y divide-black">
                 <Celda label="Cliente" valor={pedido.cliente} />
                 <Celda label="RUC / DNI" valor={pedido.ruc} />
                 <Celda label="Dirección de entrega" valor={pedido.direccion_entrega} />
                 <Celda label="N° de contacto" valor={pedido.numero_contacto} borde={false} />
               </div>
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-black">
                 <Celda label="Vendedor" valor={pedido.vendedor} />
                 <Celda label="Fecha de entrega" valor={formatearFecha(pedido.fecha_entrega)} />
                 <Celda label="Email" valor={pedido.email_cliente} borde={false} />
@@ -73,7 +73,7 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
             {/* Tabla de productos */}
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-blue-100 text-slate-800 text-[10px] uppercase">
+                <tr className="bg-indigo-100 text-slate-800 text-[10px] uppercase">
                   <th className="px-2 py-1.5 text-left font-semibold">Cant.</th>
                   <th className="px-2 py-1.5 text-left font-semibold">Unidad</th>
                   <th className="px-2 py-1.5 text-left font-semibold">Descripción</th>
@@ -87,7 +87,7 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
                   const unidad = ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg'
                   const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
                   return (
-                    <tr key={i} className="border-t border-slate-200">
+                    <tr key={i} className="border-t border-black">
                       <td className="px-2 py-2">{cant || '-'}</td>
                       <td className="px-2 py-2">{unidad}</td>
                       <td className="px-2 py-2">
@@ -109,7 +109,7 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
             </table>
 
             {(pedido.incluye_igv != null || pedido.observaciones_pedido) && (
-              <div className="px-3 py-2 border-t border-slate-800">
+              <div className="px-3 py-2 border-t border-black">
                 <p className="text-xs text-slate-600">
                   {pedido.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV'}
                 </p>
@@ -120,14 +120,14 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
             )}
 
             {/* Totales */}
-            <div className="flex justify-end border-t border-slate-800">
+            <div className="flex justify-end border-t border-black">
               <div className="w-56">
-                <div className="flex justify-between px-4 py-1.5 border-b border-slate-200 text-sm">
+                <div className="flex justify-between px-4 py-1.5 border-b border-black text-sm">
                   <span className="text-slate-500">Subtotal</span>
                   <span className="text-slate-800">{simbolo} {subtotal.toFixed(2)}</span>
                 </div>
                 {pedido.incluye_igv && (
-                  <div className="flex justify-between px-4 py-1.5 border-b border-slate-200 text-sm">
+                  <div className="flex justify-between px-4 py-1.5 border-b border-black text-sm">
                     <span className="text-slate-500">IGV (18%)</span>
                     <span className="text-slate-800">{simbolo} {igv.toFixed(2)}</span>
                   </div>
