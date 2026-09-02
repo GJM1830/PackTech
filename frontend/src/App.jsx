@@ -229,12 +229,9 @@ const guardarEdicion = async () => {
       <CrearOrden onCreada={cargarOrdenes} duplicarDesde={duplicarDesde} />
 
       <div>
-      {cargando && <p className="text-slate-500">Cargando...</p>}
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="text-red-600 mb-3">{error}</p>}
 
-      {!cargando && !error && (
-        <>
-          <div className="space-y-3 mb-4">
+      <div className="space-y-3 mb-4">
             <div className="flex flex-wrap items-center gap-2">
               {PERIODOS_RAPIDOS.map((p) => (
                 <button
@@ -325,6 +322,10 @@ const guardarEdicion = async () => {
             </div>
           </div>
 
+      {cargando && ordenes.length === 0 ? (
+        <p className="text-slate-500">Cargando...</p>
+      ) : (
+        <>
           <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
             <table className="min-w-full text-sm text-left">
               <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
@@ -377,7 +378,7 @@ const guardarEdicion = async () => {
             </table>
             </div>
 
-            {ordenes.length === 0 && (
+            {ordenes.length === 0 && !cargando && (
               <p className="text-slate-400 text-center py-8">Ninguna orden coincide con los filtros aplicados.</p>
             )}
 
@@ -402,13 +403,12 @@ const guardarEdicion = async () => {
           campos={[
             { name: 'codigo', label: 'N° Pedido' },
             { name: 'ruc', label: 'RUC del Cliente' },
-            { name: 'nombre_cliente', label: 'Nombre del Cliente' },
+            { name: 'nombre_cliente', label: 'Cliente' },
             { name: 'numero_std', label: 'Número Estándar', type: 'number' },
             { name: 'descripcion', label: 'Producto' },
-            { name: 'cantidad', label: 'Cantidad', type: 'number' },
-            { name: 'unidad', label: 'Unidad' },
+            { name: 'cantidad', label: 'Cantidad (Kg)', type: 'number' },
             { name: 'observaciones', label: 'Observaciones' },
-            { name: 'estado', label: 'Estado' }
+            { name: 'estado', label: 'Estado', type: 'select', opciones: [...new Set([...ESTADOS_OP, editando.estado].filter(Boolean))] }
           ]}
           valores={editando}
           onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}

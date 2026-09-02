@@ -954,12 +954,9 @@ const guardarEdicion = async () => {
       <CrearOrden onCreada={cargarOrdenes} duplicarDesde={duplicarDesde} />
 
       <div>
-      {cargando && <p className="text-slate-500">Cargando...</p>}
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="text-red-600 mb-3">{error}</p>}
 
-      {!cargando && !error && (
-        <>
-          <div className="space-y-3 mb-4">
+      <div className="space-y-3 mb-4">
             <div className="flex flex-wrap items-center gap-2">
               {PERIODOS_RAPIDOS.map((p) => (
                 <button
@@ -1050,6 +1047,10 @@ const guardarEdicion = async () => {
             </div>
           </div>
 
+      {cargando && ordenes.length === 0 ? (
+        <p className="text-slate-500">Cargando...</p>
+      ) : (
+        <>
           <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
             <table className="min-w-full text-sm text-left">
               <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
@@ -1102,7 +1103,7 @@ const guardarEdicion = async () => {
             </table>
             </div>
 
-            {ordenes.length === 0 && (
+            {ordenes.length === 0 && !cargando && (
               <p className="text-slate-400 text-center py-8">Ninguna orden coincide con los filtros aplicados.</p>
             )}
 
@@ -1127,13 +1128,12 @@ const guardarEdicion = async () => {
           campos={[
             { name: 'codigo', label: 'N° Pedido' },
             { name: 'ruc', label: 'RUC del Cliente' },
-            { name: 'nombre_cliente', label: 'Nombre del Cliente' },
+            { name: 'nombre_cliente', label: 'Cliente' },
             { name: 'numero_std', label: 'Número Estándar', type: 'number' },
             { name: 'descripcion', label: 'Producto' },
-            { name: 'cantidad', label: 'Cantidad', type: 'number' },
-            { name: 'unidad', label: 'Unidad' },
+            { name: 'cantidad', label: 'Cantidad (Kg)', type: 'number' },
             { name: 'observaciones', label: 'Observaciones' },
-            { name: 'estado', label: 'Estado' }
+            { name: 'estado', label: 'Estado', type: 'select', opciones: [...new Set([...ESTADOS_OP, editando.estado].filter(Boolean))] }
           ]}
           valores={editando}
           onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
@@ -5327,12 +5327,24 @@ function ModalEditar({ titulo, campos, valores, onCambio, onGuardar, onCerrar, g
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 {campo.label}
               </label>
-              <input
-                type={campo.type || 'text'}
-                value={valores[campo.name] ?? ''}
-                onChange={(e) => onCambio(campo.name, e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              />
+              {campo.type === 'select' ? (
+                <select
+                  value={valores[campo.name] ?? ''}
+                  onChange={(e) => onCambio(campo.name, e.target.value)}
+                  className="w-full border border-slate-300 rounded px-3 py-2 bg-white"
+                >
+                  {(campo.opciones || []).map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={campo.type || 'text'}
+                  value={valores[campo.name] ?? ''}
+                  onChange={(e) => onCambio(campo.name, e.target.value)}
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              )}
             </div>
           ))}
         </div>
@@ -6246,11 +6258,10 @@ const guardarEdicion = async () => {
         <ModalEditar
           titulo="Editar Movimiento"
           campos={[
-            { name: 'orden_id', label: 'Código de Orden' },
-            { name: 'proceso', label: 'Proceso' },
+            { name: 'orden_id', label: 'N° Pedido' },
+            { name: 'proceso', label: 'Proceso', type: 'select', opciones: [...new Set([...PROCESOS_ESPECIALES, editando.proceso].filter(Boolean))] },
             { name: 'nombre_operario', label: 'Operario' },
-            { name: 'maquina', label: 'Máquina' },
-            { name: 'unidad', label: 'Unidad' },
+            { name: 'maquina', label: 'Máquina', type: 'select', opciones: [...new Set([...(MAQUINAS_POR_PROCESO[editando.proceso] || []), editando.maquina].filter(Boolean))] },
             ...(editando.esEspecial ? [] : [
               { name: 'entrada', label: 'Entrada', type: 'number' },
               { name: 'salida', label: 'Salida', type: 'number' }

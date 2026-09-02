@@ -882,11 +882,10 @@ const guardarEdicion = async () => {
         <ModalEditar
           titulo="Editar Movimiento"
           campos={[
-            { name: 'orden_id', label: 'Código de Orden' },
-            { name: 'proceso', label: 'Proceso' },
+            { name: 'orden_id', label: 'N° Pedido' },
+            { name: 'proceso', label: 'Proceso', type: 'select', opciones: [...new Set([...PROCESOS_ESPECIALES, editando.proceso].filter(Boolean))] },
             { name: 'nombre_operario', label: 'Operario' },
-            { name: 'maquina', label: 'Máquina' },
-            { name: 'unidad', label: 'Unidad' },
+            { name: 'maquina', label: 'Máquina', type: 'select', opciones: [...new Set([...(MAQUINAS_POR_PROCESO[editando.proceso] || []), editando.maquina].filter(Boolean))] },
             ...(editando.esEspecial ? [] : [
               { name: 'entrada', label: 'Entrada', type: 'number' },
               { name: 'salida', label: 'Salida', type: 'number' }

@@ -10,12 +10,24 @@ function ModalEditar({ titulo, campos, valores, onCambio, onGuardar, onCerrar, g
               <label className="block text-sm font-medium text-slate-600 mb-1">
                 {campo.label}
               </label>
-              <input
-                type={campo.type || 'text'}
-                value={valores[campo.name] ?? ''}
-                onChange={(e) => onCambio(campo.name, e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              />
+              {campo.type === 'select' ? (
+                <select
+                  value={valores[campo.name] ?? ''}
+                  onChange={(e) => onCambio(campo.name, e.target.value)}
+                  className="w-full border border-slate-300 rounded px-3 py-2 bg-white"
+                >
+                  {(campo.opciones || []).map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={campo.type || 'text'}
+                  value={valores[campo.name] ?? ''}
+                  onChange={(e) => onCambio(campo.name, e.target.value)}
+                  className="w-full border border-slate-300 rounded px-3 py-2"
+                />
+              )}
             </div>
           ))}
         </div>
