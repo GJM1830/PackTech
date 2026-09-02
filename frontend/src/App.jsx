@@ -14,6 +14,7 @@ import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
 import ModalEditar from './ModalEditar'
 import { PERIODOS_RAPIDOS, cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+import { generarPDFOrdenes } from './GenerarPDFRegistros'
 
 const CLAVE_FILTROS_ORDENES = 'packtech_filtros_ordenes'
 const ESTADOS_OP = ['Pendiente', 'En proceso', 'En almacén', 'Terminado']
@@ -41,6 +42,7 @@ function Ordenes() {
 
   const [hayMasOrdenes, setHayMasOrdenes] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
+  const [descargandoPDF, setDescargandoPDF] = useState(false)
 
   const rangoPeriodo = () => {
     if (periodo === 'custom') return { desde: fechaDesde, hasta: fechaHasta }
@@ -97,6 +99,44 @@ function Ordenes() {
       })
       .catch((err) => console.error(err))
       .finally(() => setCargandoMas(false))
+  }
+
+  const descargarOrdenesPDF = async () => {
+    setDescargandoPDF(true)
+    try {
+      let todas = []
+      let antesDe = undefined
+      while (true) {
+        const respuesta = await axios.get('https://packtech-production.up.railway.app/ordenes-produccion/filtrar', {
+          params: { ...paramsFiltro(), limit: 200, antes_de: antesDe }
+        })
+        todas = [...todas, ...respuesta.data]
+        if (respuesta.data.length < 200) break
+        antesDe = respuesta.data[respuesta.data.length - 1].id
+      }
+
+      if (todas.length === 0) {
+        alert('No hay órdenes que coincidan con los filtros para descargar.')
+        return
+      }
+
+      const p = PERIODOS_RAPIDOS.find((x) => x.id === periodo) || PERIODOS_RAPIDOS[0]
+      const { desde, hasta } = rangoPeriodo()
+
+      generarPDFOrdenes(todas, {
+        periodoLabel: periodo === 'custom' ? 'Personalizado' : p.label,
+        desde,
+        hasta,
+        filtros: {
+          codigo: filtroCodigo, cliente: filtroCliente, producto: filtroProducto, estado: filtroEstado
+        }
+      })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF de órdenes.')
+    } finally {
+      setDescargandoPDF(false)
+    }
   }
 
   // Recarga desde el backend cada vez que cambia cualquier filtro (con pequeño debounce en texto libre)
@@ -275,6 +315,13 @@ const guardarEdicion = async () => {
                   Limpiar filtros
                 </button>
               )}
+              <button
+                onClick={descargarOrdenesPDF}
+                disabled={descargandoPDF || ordenes.length === 0}
+                className="ml-auto text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+              >
+                {descargandoPDF ? 'Generando...' : `⬇ Descargar (${periodo === 'custom' ? 'Personalizado' : (PERIODOS_RAPIDOS.find((p) => p.id === periodo)?.label || 'Todo')})`}
+              </button>
             </div>
           </div>
 

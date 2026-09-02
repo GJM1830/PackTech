@@ -6,6 +6,7 @@ import DetalleMovimiento from './DetalleMovimiento'
 import FiltroDesplegable from './FiltroDesplegable'
 import { puedeCrear, esProduccionOMas } from './roles'
 import { PERIODOS_RAPIDOS, cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+import { generarPDFMovimientos } from './GenerarPDFRegistros'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -89,6 +90,7 @@ const horaActualLima = () => {
 
   const [hayMasMovimientos, setHayMasMovimientos] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
+  const [descargandoPDF, setDescargandoPDF] = useState(false)
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -157,6 +159,59 @@ const horaActualLima = () => {
       console.error(err)
     } finally {
       setCargandoMas(false)
+    }
+  }
+
+  const descargarMovimientosPDF = async () => {
+    setDescargandoPDF(true)
+    try {
+      let todos = []
+      let antesDe = undefined
+      while (true) {
+        const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+          params: { ...paramsFiltroMovimientos(), limit: 200, antes_de: antesDe }
+        })
+        todos = [...todos, ...res.data]
+        if (res.data.length < 200) break
+        antesDe = res.data[res.data.length - 1].id
+      }
+
+      if (todos.length === 0) {
+        alert('No hay movimientos que coincidan con los filtros para descargar.')
+        return
+      }
+
+      const filas = todos.map((mov) => {
+        const orden = ordenes.find((o) => o.id === mov.orden_id)
+        return {
+          codigo: orden?.codigo || mov.orden_id,
+          cliente: orden?.cliente || '—',
+          proceso: mov.proceso,
+          maquina: mov.maquina || '—',
+          operario: mov.operario_id ? nombreOperario(mov.operario_id) : '—',
+          entrada: mov.entrada,
+          salida: mov.salida,
+          fecha: mov.fecha,
+          hora: mov.hora
+        }
+      })
+
+      const p = PERIODOS_RAPIDOS.find((x) => x.id === periodo) || PERIODOS_RAPIDOS[0]
+      const { desde, hasta } = rangoPeriodo()
+
+      generarPDFMovimientos(filas, {
+        periodoLabel: periodo === 'custom' ? 'Personalizado' : p.label,
+        desde,
+        hasta,
+        filtros: {
+          codigo: filtroCodigo, cliente: filtroCliente, proceso: filtroProceso, operario: filtroOperario, maquina: filtroMaquina
+        }
+      })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF de movimientos.')
+    } finally {
+      setDescargandoPDF(false)
     }
   }
 
@@ -729,6 +784,13 @@ const guardarEdicion = async () => {
                     Limpiar filtros
                   </button>
                 )}
+                <button
+                  onClick={descargarMovimientosPDF}
+                  disabled={descargandoPDF || movimientos.length === 0}
+                  className="ml-auto text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {descargandoPDF ? 'Generando...' : `⬇ Descargar (${periodo === 'custom' ? 'Personalizado' : (PERIODOS_RAPIDOS.find((p) => p.id === periodo)?.label || 'Todo')})`}
+                </button>
               </div>
             </div>
 

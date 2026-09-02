@@ -739,6 +739,7 @@ import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
 import ModalEditar from './ModalEditar'
 import { PERIODOS_RAPIDOS, cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+import { generarPDFOrdenes } from './GenerarPDFRegistros'
 
 const CLAVE_FILTROS_ORDENES = 'packtech_filtros_ordenes'
 const ESTADOS_OP = ['Pendiente', 'En proceso', 'En almacén', 'Terminado']
@@ -766,6 +767,7 @@ function Ordenes() {
 
   const [hayMasOrdenes, setHayMasOrdenes] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
+  const [descargandoPDF, setDescargandoPDF] = useState(false)
 
   const rangoPeriodo = () => {
     if (periodo === 'custom') return { desde: fechaDesde, hasta: fechaHasta }
@@ -822,6 +824,44 @@ function Ordenes() {
       })
       .catch((err) => console.error(err))
       .finally(() => setCargandoMas(false))
+  }
+
+  const descargarOrdenesPDF = async () => {
+    setDescargandoPDF(true)
+    try {
+      let todas = []
+      let antesDe = undefined
+      while (true) {
+        const respuesta = await axios.get('https://packtech-production.up.railway.app/ordenes-produccion/filtrar', {
+          params: { ...paramsFiltro(), limit: 200, antes_de: antesDe }
+        })
+        todas = [...todas, ...respuesta.data]
+        if (respuesta.data.length < 200) break
+        antesDe = respuesta.data[respuesta.data.length - 1].id
+      }
+
+      if (todas.length === 0) {
+        alert('No hay órdenes que coincidan con los filtros para descargar.')
+        return
+      }
+
+      const p = PERIODOS_RAPIDOS.find((x) => x.id === periodo) || PERIODOS_RAPIDOS[0]
+      const { desde, hasta } = rangoPeriodo()
+
+      generarPDFOrdenes(todas, {
+        periodoLabel: periodo === 'custom' ? 'Personalizado' : p.label,
+        desde,
+        hasta,
+        filtros: {
+          codigo: filtroCodigo, cliente: filtroCliente, producto: filtroProducto, estado: filtroEstado
+        }
+      })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF de órdenes.')
+    } finally {
+      setDescargandoPDF(false)
+    }
   }
 
   // Recarga desde el backend cada vez que cambia cualquier filtro (con pequeño debounce en texto libre)
@@ -1000,6 +1040,13 @@ const guardarEdicion = async () => {
                   Limpiar filtros
                 </button>
               )}
+              <button
+                onClick={descargarOrdenesPDF}
+                disabled={descargandoPDF || ordenes.length === 0}
+                className="ml-auto text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+              >
+                {descargandoPDF ? 'Generando...' : `⬇ Descargar (${periodo === 'custom' ? 'Personalizado' : (PERIODOS_RAPIDOS.find((p) => p.id === periodo)?.label || 'Todo')})`}
+              </button>
             </div>
           </div>
 
@@ -4362,6 +4409,199 @@ export async function generarPDFLiquidacion(data) {
   doc.save(`Liquidacion_${data.codigo}.pdf`)
 }
 
+
+GenerarPDFRegistros.js:
+
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+
+const M = 12
+
+const COLOR = {
+  slate900: [15, 23, 42],
+  slate700: [51, 65, 85],
+  slate600: [71, 85, 105],
+  slate400: [148, 163, 184],
+  slate200: [226, 232, 240],
+  slate100: [241, 245, 249],
+  azul: [30, 64, 175]
+}
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return '-'
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio.slice(2)}`
+}
+
+const fmt = (n) => (Number(n) || 0).toLocaleString('es-PE', { maximumFractionDigits: 1 })
+
+async function cargarLogo() {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      canvas.getContext('2d').drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => resolve(null)
+    img.src = '/logo-packtech.png'
+  })
+}
+
+function dibujarEncabezado(doc, logo, ancho, titulo, subtitulo) {
+  const y = 12
+  doc.setDrawColor(...COLOR.slate900)
+  doc.setLineWidth(0.3)
+  doc.line(M, y + 14, M + ancho, y + 14)
+
+  if (logo) {
+    doc.addImage(logo, 'PNG', M, y - 2, 58, 14.5)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    doc.setTextColor(...COLOR.azul)
+    doc.text('PACKTECH', M, y + 6)
+  }
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.setTextColor(...COLOR.slate900)
+  doc.text(titulo, M + ancho, y + 4, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(...COLOR.slate600)
+  doc.text(subtitulo, M + ancho, y + 10, { align: 'right', maxWidth: ancho - 60 })
+
+  return y + 22
+}
+
+function dibujarResumen(doc, x, y, ancho, alto, total, etiquetaTotal, filtrosTexto) {
+  doc.setFillColor(...COLOR.slate100)
+  doc.roundedRect(x, y, ancho, alto, 1.5, 1.5, 'F')
+  doc.setFillColor(...COLOR.azul)
+  doc.rect(x, y, 1.5, alto, 'F')
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...COLOR.slate900)
+  doc.text(`${total} ${etiquetaTotal}`, x + 5, y + 7)
+
+  if (filtrosTexto) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...COLOR.slate600)
+    doc.text(`Filtros: ${filtrosTexto}`, x + 5, y + 13, { maxWidth: ancho - 10 })
+  }
+}
+
+function piePagina(doc, ancho) {
+  const paginas = doc.internal.getNumberOfPages()
+  const generado = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.8)
+    doc.setTextColor(...COLOR.slate400)
+    doc.text(`Generado el ${generado} · PackTech`, M, 200)
+    doc.text(`Página ${i} de ${paginas}`, M + ancho, 200, { align: 'right' })
+  }
+}
+
+function textoFiltros(filtros) {
+  const partes = []
+  if (filtros.codigo) partes.push(`N° Pedido: "${filtros.codigo}"`)
+  if (filtros.cliente) partes.push(`Cliente: "${filtros.cliente}"`)
+  if (filtros.producto) partes.push(`Producto: "${filtros.producto}"`)
+  if (filtros.estado) partes.push(`Estado: ${filtros.estado}`)
+  if (filtros.proceso) partes.push(`Proceso: ${filtros.proceso}`)
+  if (filtros.operario) partes.push(`Operario: ${filtros.operario}`)
+  if (filtros.maquina) partes.push(`Máquina: ${filtros.maquina}`)
+  return partes.length > 0 ? partes.join(' · ') : null
+}
+
+export async function generarPDFOrdenes(ordenes, config) {
+  const { periodoLabel, desde, hasta, filtros } = config
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  const ANCHO = 297 - M * 2
+  const logo = await cargarLogo()
+
+  const subtitulo = `${periodoLabel}${desde ? ` · ${formatearFecha(desde)} – ${formatearFecha(hasta)}` : ''}`
+  let y = dibujarEncabezado(doc, logo, ANCHO, 'LISTADO DE ÓRDENES DE PRODUCCIÓN', subtitulo)
+
+  const filtrosTxt = filtros ? textoFiltros(filtros) : null
+  const altoResumen = filtrosTxt ? 16 : 10
+  dibujarResumen(doc, M, y, ANCHO, altoResumen, ordenes.length, `orden${ordenes.length !== 1 ? 'es' : ''} de producción`, filtrosTxt)
+  y += altoResumen + 6
+
+  autoTable(doc, {
+    startY: y,
+    head: [['N° Pedido', 'Cliente', 'Producto', 'Cantidad', 'Estado', 'Último proceso', 'Fecha', 'Hora']],
+    body: ordenes.map((o) => [
+      o.codigo,
+      o.cliente,
+      o.descripcion || '-',
+      `${fmt(o.cantidad)} ${o.unidad || ''}`,
+      o.estado || '-',
+      o.ultimo_proceso || '-',
+      formatearFecha(o.fecha),
+      o.hora?.slice(0, 5) || '-'
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: COLOR.slate100, textColor: COLOR.slate900, fontStyle: 'bold', fontSize: 8, lineColor: COLOR.slate600, lineWidth: 0.15 },
+    bodyStyles: { fontSize: 7.8, lineColor: COLOR.slate200 },
+    margin: { left: M, right: M }
+  })
+
+  piePagina(doc, ANCHO)
+
+  const sufijo = desde ? `${desde}_a_${hasta}` : 'Todo'
+  doc.save(`Ordenes_${sufijo}.pdf`)
+}
+
+export async function generarPDFMovimientos(filas, config) {
+  const { periodoLabel, desde, hasta, filtros } = config
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  const ANCHO = 297 - M * 2
+  const logo = await cargarLogo()
+
+  const subtitulo = `${periodoLabel}${desde ? ` · ${formatearFecha(desde)} – ${formatearFecha(hasta)}` : ''}`
+  let y = dibujarEncabezado(doc, logo, ANCHO, 'LISTADO DE MOVIMIENTOS DE PRODUCCIÓN', subtitulo)
+
+  const filtrosTxt = filtros ? textoFiltros(filtros) : null
+  const altoResumen = filtrosTxt ? 16 : 10
+  dibujarResumen(doc, M, y, ANCHO, altoResumen, filas.length, `movimiento${filas.length !== 1 ? 's' : ''}`, filtrosTxt)
+  y += altoResumen + 6
+
+  autoTable(doc, {
+    startY: y,
+    head: [['N° Pedido', 'Cliente', 'Proceso', 'Máquina', 'Operario', 'Entrada', 'Salida', 'Fecha', 'Hora']],
+    body: filas.map((m) => [
+      m.codigo,
+      m.cliente,
+      m.proceso,
+      m.maquina,
+      m.operario,
+      fmt(m.entrada),
+      fmt(m.salida),
+      formatearFecha(m.fecha),
+      m.hora?.slice(0, 5) || '-'
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: COLOR.slate100, textColor: COLOR.slate900, fontStyle: 'bold', fontSize: 8, lineColor: COLOR.slate600, lineWidth: 0.15 },
+    bodyStyles: { fontSize: 7.8, lineColor: COLOR.slate200 },
+    margin: { left: M, right: M }
+  })
+
+  piePagina(doc, ANCHO)
+
+  const sufijo = desde ? `${desde}_a_${hasta}` : 'Todo'
+  doc.save(`Movimientos_${sufijo}.pdf`)
+}
+
+
 GenerarPDFReporte.js:
 
 import jsPDF from 'jspdf'
@@ -5110,6 +5350,7 @@ import DetalleMovimiento from './DetalleMovimiento'
 import FiltroDesplegable from './FiltroDesplegable'
 import { puedeCrear, esProduccionOMas } from './roles'
 import { PERIODOS_RAPIDOS, cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+import { generarPDFMovimientos } from './GenerarPDFRegistros'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -5193,6 +5434,7 @@ const horaActualLima = () => {
 
   const [hayMasMovimientos, setHayMasMovimientos] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
+  const [descargandoPDF, setDescargandoPDF] = useState(false)
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -5261,6 +5503,59 @@ const horaActualLima = () => {
       console.error(err)
     } finally {
       setCargandoMas(false)
+    }
+  }
+
+  const descargarMovimientosPDF = async () => {
+    setDescargandoPDF(true)
+    try {
+      let todos = []
+      let antesDe = undefined
+      while (true) {
+        const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+          params: { ...paramsFiltroMovimientos(), limit: 200, antes_de: antesDe }
+        })
+        todos = [...todos, ...res.data]
+        if (res.data.length < 200) break
+        antesDe = res.data[res.data.length - 1].id
+      }
+
+      if (todos.length === 0) {
+        alert('No hay movimientos que coincidan con los filtros para descargar.')
+        return
+      }
+
+      const filas = todos.map((mov) => {
+        const orden = ordenes.find((o) => o.id === mov.orden_id)
+        return {
+          codigo: orden?.codigo || mov.orden_id,
+          cliente: orden?.cliente || '—',
+          proceso: mov.proceso,
+          maquina: mov.maquina || '—',
+          operario: mov.operario_id ? nombreOperario(mov.operario_id) : '—',
+          entrada: mov.entrada,
+          salida: mov.salida,
+          fecha: mov.fecha,
+          hora: mov.hora
+        }
+      })
+
+      const p = PERIODOS_RAPIDOS.find((x) => x.id === periodo) || PERIODOS_RAPIDOS[0]
+      const { desde, hasta } = rangoPeriodo()
+
+      generarPDFMovimientos(filas, {
+        periodoLabel: periodo === 'custom' ? 'Personalizado' : p.label,
+        desde,
+        hasta,
+        filtros: {
+          codigo: filtroCodigo, cliente: filtroCliente, proceso: filtroProceso, operario: filtroOperario, maquina: filtroMaquina
+        }
+      })
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo generar el PDF de movimientos.')
+    } finally {
+      setDescargandoPDF(false)
     }
   }
 
@@ -5833,6 +6128,13 @@ const guardarEdicion = async () => {
                     Limpiar filtros
                   </button>
                 )}
+                <button
+                  onClick={descargarMovimientosPDF}
+                  disabled={descargandoPDF || movimientos.length === 0}
+                  className="ml-auto text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {descargandoPDF ? 'Generando...' : `⬇ Descargar (${periodo === 'custom' ? 'Personalizado' : (PERIODOS_RAPIDOS.find((p) => p.id === periodo)?.label || 'Todo')})`}
+                </button>
               </div>
             </div>
 
