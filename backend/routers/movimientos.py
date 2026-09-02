@@ -136,6 +136,6 @@ def eliminar_detalle_merma(
 def siguiente_proceso(
     datos: schemas.SiguienteProcesoRequest,
     db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
+    _: None = Depends(requiere_rol("produccion"))
 ):
     return crud.crear_siguiente_movimiento(db, datos.orden_id)

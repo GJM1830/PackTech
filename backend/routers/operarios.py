@@ -35,17 +35,17 @@ def editar_operario(
     db: Session = Depends(obtener_db),
     _: None = Depends(requiere_rol("vendedor"))
 ):
+    return crud.editar_operario(db, operario_id, operario)
+
+
+@router.delete("/{operario_id}")
+def eliminar_operario(
+    operario_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
     crud.eliminar_operario(db, operario_id)
     return {"mensaje": "Operario eliminado correctamente."}
-
-@router.put("/{operario_id}", response_model=schemas.OperarioResponse)
-def editar_operario(
-    operario_id: int,
-    operario: schemas.OperarioCreate,
-    db: Session = Depends(obtener_db),
-    _: None = Depends(requiere_rol("operario"))
-):
-    return crud.editar_operario(db, operario_id, operario)
 
 @router.get("/buscar", response_model=list[schemas.OperarioResponse])
 def buscar_operarios(

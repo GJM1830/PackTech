@@ -52,6 +52,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [importando, setImportando] = useState(false)
   const esExtrusionReal = movimiento.proceso === 'Extrusión'
   const [materialSeleccionado, setMaterialSeleccionado] = useState('')
+  const [materialOtroTexto, setMaterialOtroTexto] = useState('')
   const [cantidadMaterial, setCantidadMaterial] = useState('')
   const [enviandoMaterial, setEnviandoMaterial] = useState(false)
   const [tipoMaterial, setTipoMaterial] = useState('')
@@ -150,10 +151,14 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const agregarMaterial = async (e) => {
     e.preventDefault()
     if (!materialSeleccionado) return
+    if (materialSeleccionado === 'OTROS' && !materialOtroTexto.trim()) return
     setEnviandoMaterial(true)
     setError(null)
     try {
       const siguienteNumero = materialesUsados.length + 1
+      const tipoMaterialFinal = materialSeleccionado === 'OTROS'
+        ? materialOtroTexto.trim().toUpperCase()
+        : materialSeleccionado
       await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
         tipo: 'material',
         lado: 'entrada',
@@ -161,9 +166,10 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
         peso_bruto: parseFloat(cantidadMaterial),
         peso_tuco: 0,
         millares: null,
-        tipo_material: materialSeleccionado
+        tipo_material: tipoMaterialFinal
       })
       setMaterialSeleccionado('')
+      setMaterialOtroTexto('')
       setCantidadMaterial('')
       cargarDetalles()
     } catch (err) {
@@ -479,7 +485,7 @@ const duplicarMerma = (detalle) => {
                     <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
                     <select
                       value={materialSeleccionado}
-                      onChange={(e) => setMaterialSeleccionado(e.target.value)}
+                      onChange={(e) => { setMaterialSeleccionado(e.target.value); setMaterialOtroTexto('') }}
                       required
                       className="w-full border border-slate-300 rounded px-3 py-2 bg-white"
                     >
@@ -489,6 +495,20 @@ const duplicarMerma = (detalle) => {
                       ))}
                     </select>
                   </div>
+                  {materialSeleccionado === 'OTROS' && (
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-slate-600 mb-1">Especifica el material</label>
+                      <input
+                        type="text"
+                        value={materialOtroTexto}
+                        onChange={(e) => setMaterialOtroTexto(e.target.value.toUpperCase())}
+                        required
+                        autoComplete="off"
+                        className="w-full border border-slate-300 rounded px-3 py-2"
+                        placeholder="Ej. PVC RECICLADO"
+                      />
+                    </div>
+                  )}
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad (kg)</label>
                     <input
