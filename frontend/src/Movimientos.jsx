@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
@@ -87,6 +87,7 @@ const horaActualLima = () => {
   const [movimientoAbierto, setMovimientoAbierto] = useState(null)
 
   const esProcesoEspecial = PROCESOS_ESPECIALES.includes(form.proceso)
+  const controladorRef = useRef(null)
 
   const [hayMasMovimientos, setHayMasMovimientos] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
@@ -133,13 +134,19 @@ const horaActualLima = () => {
   }
 
   const cargarMovimientos = async () => {
+    if (controladorRef.current) controladorRef.current.abort()
+    const controlador = new AbortController()
+    controladorRef.current = controlador
+
     try {
       const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
-        params: { ...paramsFiltroMovimientos(), limit: 20 }
+        params: { ...paramsFiltroMovimientos(), limit: 20 },
+        signal: controlador.signal
       })
       setMovimientos(res.data)
       setHayMasMovimientos(res.data.length === 20)
     } catch (err) {
+      if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return
       console.error(err)
       setError('No se pudo conectar con el backend.')
     }

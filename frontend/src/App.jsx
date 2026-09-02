@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
 import axios from './api'
 import CrearOrden from './CrearOrden'
@@ -69,10 +69,17 @@ function Ordenes() {
     })
   }, [filtroCodigo, filtroCliente, filtroProducto, filtroEstado, periodo, fechaDesde, fechaHasta])
 
+  const controladorRef = useRef(null)
+
   const cargarOrdenes = () => {
+    if (controladorRef.current) controladorRef.current.abort()
+    const controlador = new AbortController()
+    controladorRef.current = controlador
+
     setCargando(true)
     axios.get('https://packtech-production.up.railway.app/ordenes-produccion/filtrar', {
-      params: { ...paramsFiltro(), limit: 20 }
+      params: { ...paramsFiltro(), limit: 20 },
+      signal: controlador.signal
     })
       .then((respuesta) => {
         setOrdenes(respuesta.data)
@@ -80,10 +87,13 @@ function Ordenes() {
         setError(null)
       })
       .catch((err) => {
+        if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return
         console.error(err)
         setError('No se pudo conectar con el backend.')
       })
-      .finally(() => setCargando(false))
+      .finally(() => {
+        if (controladorRef.current === controlador) setCargando(false)
+      })
   }
 
   const cargarMasOrdenes = () => {
