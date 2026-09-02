@@ -123,7 +123,7 @@ export async function generarPDFCotizacion(pedido) {
   const filaAltura = 8
   const filasMinimas = 4
 
-  doc.setFillColor(224, 231, 255)
+  doc.setFillColor(241, 245, 249)
   doc.rect(M, y, ANCHO, filaAltura, 'F')
   doc.setDrawColor(...borde)
   doc.rect(M, y, ANCHO, filaAltura)
@@ -202,12 +202,16 @@ export async function generarPDFCotizacion(pedido) {
     y += 7
   }
 
-  doc.setFillColor(30, 41, 59)
+  doc.setFillColor(241, 245, 249)
   doc.rect(xTotales, y, anchoTotales, 9, 'F')
+  doc.setDrawColor(...slate900)
+  doc.setLineWidth(0.4)
+  doc.rect(xTotales, y, anchoTotales, 9)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9.5)
-  doc.setTextColor(255, 255, 255)
+  doc.setTextColor(...slate900)
   doc.text('TOTAL', xTotales + 2, y + 6)
+  doc.setTextColor(...azul)
   doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 2, y + 6, { align: 'right' })
   y += 9
 

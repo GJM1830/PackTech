@@ -6,6 +6,7 @@ import VistaCotizacion from './VistaCotizacion'
 import { generarPDFLiquidacion } from './GenerarPDFLiquidacion'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+const ORDEN_PROCESOS_BASE = ['Extrusión', 'Impresión', 'Laminado', 'Corte', 'Sellado', 'Almacén', 'Despacho']
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -61,8 +62,14 @@ function OrdenDetalle() {
         axios.get('https://packtech-production.up.railway.app/operarios?limit=1000')
       ])
 
+      const movimientosOrdenados = [...movRes.data].sort((a, b) => {
+        const iA = ORDEN_PROCESOS_BASE.indexOf(a.proceso)
+        const iB = ORDEN_PROCESOS_BASE.indexOf(b.proceso)
+        return (iA === -1 ? 999 : iA) - (iB === -1 ? 999 : iB)
+      })
+
       setOrden(ordenRes.data)
-      setMovimientos(movRes.data)
+      setMovimientos(movimientosOrdenados)
       setOperarios(opRes.data)
       setCargando(false)
     } catch (err) {

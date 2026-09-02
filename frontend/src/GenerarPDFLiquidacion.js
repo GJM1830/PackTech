@@ -72,8 +72,8 @@ export async function generarPDFLiquidacion(data) {
       head: [['Material', 'Cantidad (kg)']],
       body: data.materiales_extrusion.map((m) => [m.tipo_material || '-', m.cantidad.toFixed(2)]),
       theme: 'grid',
-      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 8 },
-      bodyStyles: { fontSize: 8 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8, lineColor: [100, 116, 139], lineWidth: 0.15 },
+      bodyStyles: { fontSize: 8, lineColor: [203, 213, 225] },
       margin: { left: M, right: M }
     })
     y = doc.lastAutoTable.finalY + 8
@@ -116,8 +116,8 @@ export async function generarPDFLiquidacion(data) {
           return fila
         }),
         theme: 'grid',
-        headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5 },
-        bodyStyles: { fontSize: 7.5 },
+        headStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 7.5, lineColor: [100, 116, 139], lineWidth: 0.15 },
+        bodyStyles: { fontSize: 7.5, lineColor: [203, 213, 225] },
         margin: { left: M, right: M }
       })
       y = doc.lastAutoTable.finalY + 3
@@ -134,8 +134,8 @@ export async function generarPDFLiquidacion(data) {
         head: [['Merma (kg)', 'Tipo']],
         body: p.mermas.map((m) => [m.peso.toFixed(2), m.tipo_merma || 'Sin especificar']),
         theme: 'grid',
-        headStyles: { fillColor: [153, 27, 27], textColor: 255, fontSize: 7.5 },
-        bodyStyles: { fontSize: 7.5 },
+        headStyles: { fillColor: [254, 226, 226], textColor: [153, 27, 27], fontStyle: 'bold', fontSize: 7.5, lineColor: [220, 38, 38], lineWidth: 0.15 },
+        bodyStyles: { fontSize: 7.5, lineColor: [203, 213, 225] },
         margin: { left: M, right: M },
         tableWidth: 90
       })
@@ -172,26 +172,32 @@ export async function generarPDFLiquidacion(data) {
     const anchoResumen = ANCHO
     const alturaResumen = 22
 
-    doc.setFillColor(15, 23, 42)
+    doc.setFillColor(248, 250, 252)
     doc.rect(M, y, anchoResumen, alturaResumen, 'F')
+    doc.setDrawColor(15, 23, 42)
+    doc.setLineWidth(0.4)
+    doc.rect(M, y, anchoResumen, alturaResumen)
+    doc.setFillColor(30, 64, 175)
+    doc.rect(M, y, 1.5, alturaResumen, 'F')
 
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
-    doc.setTextColor(255, 255, 255)
-    doc.text('RESUMEN FINAL DE LIQUIDACIÓN', M + 4, y + 6)
+    doc.setTextColor(15, 23, 42)
+    doc.text('RESUMEN FINAL DE LIQUIDACIÓN', M + 5, y + 6)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
+    doc.setTextColor(51, 65, 85)
 
     if (esSelladoFinal) {
-      const anchoTercio = (anchoResumen - 8) / 3
-      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 4, y + 15)
-      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 4 + anchoTercio, y + 15)
-      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 4 + anchoTercio * 2, y + 15)
+      const anchoTercio = (anchoResumen - 10) / 3
+      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
+      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio, y + 15)
+      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 5 + anchoTercio * 2, y + 15)
     } else {
-      const anchoMitad = (anchoResumen - 8) / 2
-      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 4, y + 15)
-      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 4 + anchoMitad, y + 15)
+      const anchoMitad = (anchoResumen - 10) / 2
+      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
+      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 5 + anchoMitad, y + 15)
     }
 
     y += alturaResumen + 5
