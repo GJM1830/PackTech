@@ -4305,7 +4305,7 @@ export async function generarPDFLiquidacion(data) {
   })
 
   const ultimoProceso = data.procesos[data.procesos.length - 1]
-  if (ultimoProceso && ultimoProceso.proceso === 'Sellado') {
+  if (ultimoProceso) {
     if (y > 260) {
       doc.addPage()
       y = 16
@@ -4316,7 +4316,10 @@ export async function generarPDFLiquidacion(data) {
       0
     )
     const kgTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + b.peso_neto, 0)
-    const millaresTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
+    const esSelladoFinal = ultimoProceso.proceso === 'Sellado'
+    const millaresTotalFinal = esSelladoFinal
+      ? ultimoProceso.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
+      : null
 
     const anchoResumen = ANCHO
     const alturaResumen = 22
@@ -4329,12 +4332,19 @@ export async function generarPDFLiquidacion(data) {
     doc.setTextColor(255, 255, 255)
     doc.text('RESUMEN FINAL DE LIQUIDACIÓN', M + 4, y + 6)
 
-    const anchoTercio = (anchoResumen - 8) / 3
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
-    doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 4, y + 15)
-    doc.text(`Kg totales (Sellado): ${kgTotalFinal.toFixed(2)} kg`, M + 4 + anchoTercio, y + 15)
-    doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 4 + anchoTercio * 2, y + 15)
+
+    if (esSelladoFinal) {
+      const anchoTercio = (anchoResumen - 8) / 3
+      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 4, y + 15)
+      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 4 + anchoTercio, y + 15)
+      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 4 + anchoTercio * 2, y + 15)
+    } else {
+      const anchoMitad = (anchoResumen - 8) / 2
+      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 4, y + 15)
+      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 4 + anchoMitad, y + 15)
+    }
 
     y += alturaResumen + 5
   }

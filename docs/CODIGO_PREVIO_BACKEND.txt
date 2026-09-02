@@ -430,7 +430,7 @@ def _resolver_cliente_pedido(db: Session, ruc: str | None, nombre_cliente: str |
             db.query(models.Cliente)
             .filter(models.Cliente.ruc.is_(None))
             .filter(models.Cliente.nombre.ilike(nombre_limpio))
-            .first()
+            .first() 
         )
 
     if cliente is None:
