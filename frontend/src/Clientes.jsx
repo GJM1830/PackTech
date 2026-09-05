@@ -95,8 +95,8 @@ function Clientes()   {
   }
 
   const clientesFiltrados = clientes.filter((c) =>
-    c.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-    c.ruc.includes(filtro)
+    (c.nombre || '').toLowerCase().includes(filtro.toLowerCase()) ||
+    (c.ruc || '').toLowerCase().includes(filtro.toLowerCase())
   )
 
   return (
