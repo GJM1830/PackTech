@@ -4033,14 +4033,18 @@ export async function generarPDFCotizacion(pedido) {
 
   // ---- Tabla de productos (azul claro, texto oscuro) ----
   const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
-  const filaAltura = 8
+  const anchoDescripcion = colX[3] - colX[2] - 4
+  const anchoPUnitario = colX[4] - colX[3] - 4
+  const anchoTotalCelda = (M + ANCHO) - colX[4] - 4
+  const alturaLineaTexto = 3.6
+  const filaAlturaMin = 8
   const filasMinimas = 4
 
   doc.setFillColor(241, 245, 249)
-  doc.rect(M, y, ANCHO, filaAltura, 'F')
+  doc.rect(M, y, ANCHO, filaAlturaMin, 'F')
   doc.setDrawColor(...borde)
-  doc.rect(M, y, ANCHO, filaAltura)
-  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
+  doc.rect(M, y, ANCHO, filaAlturaMin)
+  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
   doc.setTextColor(...slate900)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
@@ -4050,12 +4054,24 @@ export async function generarPDFCotizacion(pedido) {
   doc.text('P. UNITARIO', colX[3] + 2, y + 5.5)
   doc.text('TOTAL', colX[4] + 2, y + 5.5)
 
-  y += filaAltura
+  y += filaAlturaMin
 
   items.forEach((it) => {
     const cantidadTabla = it.unidad_precio && it.unidad_precio !== 'kg' ? it.cantidad_precio : it.cantidad
     const unidadTabla = it.unidad_precio ? (ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg') : 'kg'
     const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
+
+    const descripcionPDF = it.medidas
+      ? `${it.descripcion || '-'} (${it.medidas})`
+      : (it.descripcion || '-')
+    const lineasDescripcion = doc.splitTextToSize(String(descripcionPDF), anchoDescripcion)
+    const filaAltura = Math.max(filaAlturaMin, lineasDescripcion.length * alturaLineaTexto + 4.5)
+
+    // Salvaguarda: si la fila (por descripciones largas) no cabe en la página, se abre una nueva
+    if (y + filaAltura > 280) {
+      doc.addPage()
+      y = 16
+    }
 
     doc.setDrawColor(...borde)
     doc.rect(M, y, ANCHO, filaAltura)
@@ -4066,17 +4082,16 @@ export async function generarPDFCotizacion(pedido) {
     doc.setTextColor(...slate900)
     doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
     doc.text(unidadTabla, colX[1] + 2, y + 5.5)
-    const descripcionPDF = it.medidas
-      ? `${it.descripcion || '-'} (${it.medidas})`
-      : (it.descripcion || '-')
-    doc.text(descripcionPDF, colX[2] + 2, y + 5.5)
+    doc.text(lineasDescripcion, colX[2] + 2, y + 5.5)
     doc.text(
       it.precio_unitario ? `${simboloItem} ${Number(it.precio_unitario).toFixed(2)}` : '-',
-      colX[3] + 2, y + 5.5
+      colX[3] + 2, y + 5.5,
+      { maxWidth: anchoPUnitario }
     )
     doc.text(
       it.costo_total ? `${simboloItem} ${Number(it.costo_total).toFixed(2)}` : '-',
-      colX[4] + 2, y + 5.5
+      colX[4] + 2, y + 5.5,
+      { maxWidth: anchoTotalCelda }
     )
 
     y += filaAltura
@@ -4085,9 +4100,9 @@ export async function generarPDFCotizacion(pedido) {
   const filasVacias = Math.max(0, filasMinimas - items.length)
   for (let i = 0; i < filasVacias; i++) {
     doc.setDrawColor(...borde)
-    doc.rect(M, y, ANCHO, filaAltura)
-    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
-    y += filaAltura
+    doc.rect(M, y, ANCHO, filaAlturaMin)
+    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
+    y += filaAlturaMin
   }
 
   y += 4
