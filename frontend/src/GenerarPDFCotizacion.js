@@ -120,7 +120,7 @@ export async function generarPDFCotizacion(pedido) {
 
   // ---- Tabla de productos (azul claro, texto oscuro) ----
   const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
-  const anchoDescripcion = colX[3] - colX[2] - 4
+  const anchoDescripcion = colX[3] - colX[2] - 6
   const anchoPUnitario = colX[4] - colX[3] - 4
   const anchoTotalCelda = (M + ANCHO) - colX[4] - 4
   const alturaLineaTexto = 3.6
