@@ -148,6 +148,12 @@ export async function generarPDFCotizacion(pedido) {
     const unidadTabla = it.unidad_precio ? (ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg') : 'kg'
     const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
 
+    // La fuente se fija ANTES de calcular el ajuste de línea: splitTextToSize debe medir
+    // con la misma fuente/tamaño con la que luego se dibuja el texto, o el cálculo de
+    // cuántos caracteres caben por línea queda mal y el texto se desborda de su columna.
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+
     const descripcionPDF = it.medidas
       ? `${it.descripcion || '-'} (${it.medidas})`
       : (it.descripcion || '-')
