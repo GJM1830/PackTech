@@ -20,7 +20,7 @@ const ITEM_VACIO = {
 const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', rollos: 'Rollos' }
 
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
-  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
 
   const [form, setForm] = useState({
     codigo_base: '',

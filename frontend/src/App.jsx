@@ -360,10 +360,12 @@ const guardarEdicion = async () => {
                   >
                     <td className="px-4 py-3 font-medium text-slate-800">{orden.codigo}</td>
                     <td className="px-4 py-3">{orden.cliente}</td>
-                    <td className="px-4 py-3">{orden.descripcion}</td>
+                    <td className="px-4 py-3 max-w-[240px]">
+                      <span className="block truncate" title={orden.descripcion}>{orden.descripcion}</span>
+                    </td>
                     <td className="px-4 py-3">{orden.cantidad}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <span className={`inline-block whitespace-nowrap px-2 py-1 rounded-full text-xs font-medium ${
                         orden.estado === 'Terminado' ? 'bg-green-100 text-green-700' :
                         orden.estado === 'En almacén' ? 'bg-blue-100 text-blue-700' :
                         orden.estado === 'En proceso' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
