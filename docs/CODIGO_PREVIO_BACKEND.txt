@@ -690,7 +690,7 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     tipo_merma_limpio = movimiento.tipo_merma.strip() if movimiento.tipo_merma and movimiento.tipo_merma.strip() else None
 
     if tipo_laminado_limpio:
-        crear_tipo_merma_si_no_existe(db, "Laminado", tipo_laminado_limpio)
+        crear_tipo_merma_si_no_existe(db, movimiento.proceso, tipo_laminado_limpio)
 
     if tipo_merma_limpio:
         crear_tipo_merma_si_no_existe(db, movimiento.proceso, tipo_merma_limpio)
@@ -1691,7 +1691,7 @@ def reporte_orden(db: Session, codigo: str):
     }
     
     
-PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
+PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
 
 
 def editar_movimiento(db: Session, movimiento_id: int, datos: schemas.MovimientoEditar):

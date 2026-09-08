@@ -17,6 +17,7 @@ const formatearFecha = (fecha) => {
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
   'Laminado': ['Laminadora-01', 'Laminadora-02'],
+  'Pegado': ['Pegadora-01', 'Pegadora-02'],
   'Impresión': ['Impresora-01', 'Impresora-02', 'Impresora-03'],
   'Sellado': [
     'Selladora-01', 'Selladora-02', 'Selladora-03',
@@ -25,8 +26,9 @@ const MAQUINAS_POR_PROCESO = {
   'Corte': ['Cortadora-01', 'Cortadora-02']
 }
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
+const PROCESOS_TIPO_LAMINADO = ['Laminado', 'Pegado']
 const CLAVE_FILTROS_MOVIMIENTOS = 'packtech_filtros_movimientos'
 
 function Movimientos() {
@@ -393,12 +395,12 @@ const guardarEdicion = async () => {
   const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
 
   useEffect(() => {
-    if (form.proceso !== 'Laminado' || form.tipo_laminado.trim().length < 2) {
+    if (!PROCESOS_TIPO_LAMINADO.includes(form.proceso) || form.tipo_laminado.trim().length < 2) {
       setSugerenciasTipoLaminado([])
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=Laminado&q=${form.tipo_laminado}`)
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${form.proceso}&q=${form.tipo_laminado}`)
         .then((res) => setSugerenciasTipoLaminado(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -563,6 +565,7 @@ const guardarEdicion = async () => {
                 <option value="">Seleccionar...</option>
                 <option value="Extrusión">Extrusión</option>
                 <option value="Laminado">Laminado</option>
+                <option value="Pegado">Pegado</option>
                 <option value="Impresión">Impresión</option>
                 <option value="Sellado">Sellado</option>
                 <option value="Corte">Corte</option>
@@ -605,10 +608,10 @@ const guardarEdicion = async () => {
                 </p>
               )}
 
-              {form.proceso === 'Laminado' && (
+              {PROCESOS_TIPO_LAMINADO.includes(form.proceso) && (
                 <div className="relative">
                   <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Tipo de laminado
+                    {form.proceso === 'Laminado' ? 'Tipo de laminado' : 'Tipo de pegado'}
                   </label>
                   <input
                     type="text"

@@ -5,8 +5,8 @@ import DetalleMovimiento from './DetalleMovimiento'
 import VistaCotizacion from './VistaCotizacion'
 import { generarPDFLiquidacion } from './GenerarPDFLiquidacion'
 
-const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
-const ORDEN_PROCESOS_BASE = ['Extrusión', 'Impresión', 'Laminado', 'Corte', 'Sellado', 'Almacén', 'Despacho']
+const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+const ORDEN_PROCESOS_BASE = ['Extrusión', 'Impresión', 'Laminado', 'Pegado', 'Corte', 'Sellado', 'Almacén', 'Despacho']
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''

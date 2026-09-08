@@ -20,7 +20,7 @@ const ITEM_VACIO = {
 const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', rollos: 'Rollos' }
 
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
-  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
   const [form, setForm] = useState({
     codigo_base: '',
@@ -468,6 +468,15 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
                   }`}
                 >
                   Servicio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemActual({ ...itemActual, tipo_trabajo: itemActual.tipo_trabajo === 'Reposición' ? '' : 'Reposición' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    itemActual.tipo_trabajo === 'Reposición' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  Reposición
                 </button>
               </div>
             </div>

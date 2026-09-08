@@ -13,7 +13,7 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
-const PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte']
+const PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
 
 function Aglomerado() {
   const rol = localStorage.getItem('packtech_rol')
@@ -1469,7 +1469,7 @@ const ITEM_VACIO = {
 const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', rollos: 'Rollos' }
 
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
-  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+  const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
 
   const [form, setForm] = useState({
     codigo_base: '',
@@ -1917,6 +1917,15 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
                   }`}
                 >
                   Servicio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemActual({ ...itemActual, tipo_trabajo: itemActual.tipo_trabajo === 'Reposición' ? '' : 'Reposición' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    itemActual.tipo_trabajo === 'Reposición' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  Reposición
                 </button>
               </div>
             </div>
@@ -2742,9 +2751,10 @@ import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import { esProduccionOMas } from './roles'
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
 const PROCESOS_SALIDA_FARDO = ['Sellado']
+const PROCESOS_CON_MATERIAL = ['Laminado', 'Pegado']
 
 const calcularDuracion = (inicio, fin) => {
   if (!inicio || !fin) return null
@@ -2817,7 +2827,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   }
   
   useEffect(() => {
-    if (movimiento.proceso !== 'Laminado' || tipoMaterial.trim().length < 2) {
+    if (!PROCESOS_CON_MATERIAL.includes(movimiento.proceso) || tipoMaterial.trim().length < 2) {
       setSugerenciasTipoMaterial([])
       return
     }
@@ -2924,7 +2934,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 
     const lado = esDobleLado ? ladoActivo : 'salida'
     const siguienteNumero = detallesLado(lado).length + 1
-    const esMaterialAplicable = movimiento.proceso === 'Laminado' && lado === 'entrada'
+    const esMaterialAplicable = PROCESOS_CON_MATERIAL.includes(movimiento.proceso) && lado === 'entrada'
 
     try {
       await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
@@ -3405,7 +3415,7 @@ const duplicarMerma = (detalle) => {
           className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
         />
       </div>
-      {movimiento.proceso === 'Laminado' && ladoActivo === 'entrada' && (
+      {PROCESOS_CON_MATERIAL.includes(movimiento.proceso) && ladoActivo === 'entrada' && (
   <div className="flex-1 relative">
     <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
     <input
@@ -3453,7 +3463,7 @@ const duplicarMerma = (detalle) => {
               <p className="text-slate-500 text-sm">Cargando...</p>
             ) : esDobleLado ? (
               ladoActivo === 'entrada'
-                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} mostrarMaterial={movimiento.proceso === 'Laminado'} />
+                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} mostrarMaterial={PROCESOS_CON_MATERIAL.includes(movimiento.proceso)} />
                 : <TablaBobinas lista={salidaBobinas} titulo="Fardos de Salida" mostrarMillares={salidaEsFardo} />
             ) : (
               <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" mostrarMillares={false} />
@@ -5424,6 +5434,7 @@ const formatearFecha = (fecha) => {
 const MAQUINAS_POR_PROCESO = {
   'Extrusión': ['Extrusora-01', 'Extrusora-02', 'Extrusora-03'],
   'Laminado': ['Laminadora-01', 'Laminadora-02'],
+  'Pegado': ['Pegadora-01', 'Pegadora-02'],
   'Impresión': ['Impresora-01', 'Impresora-02', 'Impresora-03'],
   'Sellado': [
     'Selladora-01', 'Selladora-02', 'Selladora-03',
@@ -5432,8 +5443,9 @@ const MAQUINAS_POR_PROCESO = {
   'Corte': ['Cortadora-01', 'Cortadora-02']
 }
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
+const PROCESOS_TIPO_LAMINADO = ['Laminado', 'Pegado']
 const CLAVE_FILTROS_MOVIMIENTOS = 'packtech_filtros_movimientos'
 
 function Movimientos() {
@@ -5800,12 +5812,12 @@ const guardarEdicion = async () => {
   const maquinasDisponibles = form.proceso ? MAQUINAS_POR_PROCESO[form.proceso] || [] : []
 
   useEffect(() => {
-    if (form.proceso !== 'Laminado' || form.tipo_laminado.trim().length < 2) {
+    if (!PROCESOS_TIPO_LAMINADO.includes(form.proceso) || form.tipo_laminado.trim().length < 2) {
       setSugerenciasTipoLaminado([])
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=Laminado&q=${form.tipo_laminado}`)
+      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${form.proceso}&q=${form.tipo_laminado}`)
         .then((res) => setSugerenciasTipoLaminado(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -5970,6 +5982,7 @@ const guardarEdicion = async () => {
                 <option value="">Seleccionar...</option>
                 <option value="Extrusión">Extrusión</option>
                 <option value="Laminado">Laminado</option>
+                <option value="Pegado">Pegado</option>
                 <option value="Impresión">Impresión</option>
                 <option value="Sellado">Sellado</option>
                 <option value="Corte">Corte</option>
@@ -6012,10 +6025,10 @@ const guardarEdicion = async () => {
                 </p>
               )}
 
-              {form.proceso === 'Laminado' && (
+              {PROCESOS_TIPO_LAMINADO.includes(form.proceso) && (
                 <div className="relative">
                   <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Tipo de laminado
+                    {form.proceso === 'Laminado' ? 'Tipo de laminado' : 'Tipo de pegado'}
                   </label>
                   <input
                     type="text"
@@ -6550,8 +6563,8 @@ import DetalleMovimiento from './DetalleMovimiento'
 import VistaCotizacion from './VistaCotizacion'
 import { generarPDFLiquidacion } from './GenerarPDFLiquidacion'
 
-const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
-const ORDEN_PROCESOS_BASE = ['Extrusión', 'Impresión', 'Laminado', 'Corte', 'Sellado', 'Almacén', 'Despacho']
+const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte', 'Almacén', 'Despacho']
+const ORDEN_PROCESOS_BASE = ['Extrusión', 'Impresión', 'Laminado', 'Pegado', 'Corte', 'Sellado', 'Almacén', 'Despacho']
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''

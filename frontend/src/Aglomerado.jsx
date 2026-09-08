@@ -9,7 +9,7 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
-const PROCESOS = ['Extrusión', 'Laminado', 'Impresión', 'Sellado', 'Corte']
+const PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
 
 function Aglomerado() {
   const rol = localStorage.getItem('packtech_rol')

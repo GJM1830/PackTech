@@ -4,9 +4,10 @@ import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import { esProduccionOMas } from './roles'
 
-const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado']
-const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado']
+const PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
+const PROCESOS_DOBLE_LADO = ['Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
 const PROCESOS_SALIDA_FARDO = ['Sellado']
+const PROCESOS_CON_MATERIAL = ['Laminado', 'Pegado']
 
 const calcularDuracion = (inicio, fin) => {
   if (!inicio || !fin) return null
@@ -79,7 +80,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   }
   
   useEffect(() => {
-    if (movimiento.proceso !== 'Laminado' || tipoMaterial.trim().length < 2) {
+    if (!PROCESOS_CON_MATERIAL.includes(movimiento.proceso) || tipoMaterial.trim().length < 2) {
       setSugerenciasTipoMaterial([])
       return
     }
@@ -186,7 +187,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 
     const lado = esDobleLado ? ladoActivo : 'salida'
     const siguienteNumero = detallesLado(lado).length + 1
-    const esMaterialAplicable = movimiento.proceso === 'Laminado' && lado === 'entrada'
+    const esMaterialAplicable = PROCESOS_CON_MATERIAL.includes(movimiento.proceso) && lado === 'entrada'
 
     try {
       await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
@@ -667,7 +668,7 @@ const duplicarMerma = (detalle) => {
           className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-600"
         />
       </div>
-      {movimiento.proceso === 'Laminado' && ladoActivo === 'entrada' && (
+      {PROCESOS_CON_MATERIAL.includes(movimiento.proceso) && ladoActivo === 'entrada' && (
   <div className="flex-1 relative">
     <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de material</label>
     <input
@@ -715,7 +716,7 @@ const duplicarMerma = (detalle) => {
               <p className="text-slate-500 text-sm">Cargando...</p>
             ) : esDobleLado ? (
               ladoActivo === 'entrada'
-                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} mostrarMaterial={movimiento.proceso === 'Laminado'} />
+                ? <TablaBobinas lista={entradaBobinas} titulo="Bobinas de Entrada" mostrarMillares={false} mostrarMaterial={PROCESOS_CON_MATERIAL.includes(movimiento.proceso)} />
                 : <TablaBobinas lista={salidaBobinas} titulo="Fardos de Salida" mostrarMillares={salidaEsFardo} />
             ) : (
               <TablaBobinas lista={salidaBobinas} titulo="Bobinas de Salida" mostrarMillares={false} />
