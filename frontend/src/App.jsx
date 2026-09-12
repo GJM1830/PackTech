@@ -8,7 +8,7 @@ import Clientes from './Clientes'
 import Operarios from './Operarios'
 import Aglomerado from './Aglomerado'
 import Reportes from './Reportes'
-import Cotizaciones from './Cotizaciones'
+import Pedidos from './Pedidos'
 import MenuAcciones from './MenuAcciones'
 import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
@@ -458,7 +458,7 @@ function App() {
         <div className="hidden sm:block h-5 w-px bg-slate-700" />
         <span className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold w-full sm:w-auto">Ventas</span>
         {rol !== 'observador' && (
-          <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Pedidos</Link>
+          <Link to="/pedidos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Pedidos</Link>
         )}
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
 
@@ -488,7 +488,7 @@ function App() {
             <Route path="/operarios" element={<Operarios />} />
             <Route path="/aglomerado" element={<Aglomerado />} />
             <Route path="/reportes" element={<Reportes />} />
-            <Route path="/cotizaciones" element={<Cotizaciones />} />
+            <Route path="/pedidos" element={<Pedidos />} />
           </Routes>
         </div>
       </div>

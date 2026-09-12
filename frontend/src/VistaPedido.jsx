@@ -1,4 +1,4 @@
-import { generarPDFCotizacion } from './GenerarPDFCotizacion'
+import { generarPDFPedido } from './GenerarPDFPedido'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return '-'
@@ -9,7 +9,7 @@ const formatearFecha = (fecha) => {
 const RUC_EMPRESA = '20554000755'
 const ETIQUETA_UNIDAD_PRECIO = { millares: 'millares', unidades: 'unidades', rollos: 'rollos', kg: 'kg' }
 
-function VistaCotizacion({ orden: pedido, onCerrar }) {
+function VistaPedido({ orden: pedido, onCerrar }) {
   const items = pedido.items || [{
     descripcion: pedido.descripcion, medidas: pedido.medidas, cantidad: pedido.cantidad,
     moneda: pedido.moneda, precio_unitario: pedido.precio_unitario, unidad_precio: pedido.unidad_precio,
@@ -154,7 +154,7 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
               Cerrar
             </button>
             <button
-              onClick={() => generarPDFCotizacion(pedido)}
+              onClick={() => generarPDFPedido(pedido)}
               className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
             >
               ⬇ Descargar PDF
@@ -166,4 +166,4 @@ function VistaCotizacion({ orden: pedido, onCerrar }) {
   )
 }
 
-export default VistaCotizacion
+export default VistaPedido

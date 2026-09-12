@@ -9,7 +9,7 @@ const formatearFecha = (fecha) => {
 const RUC_EMPRESA = '20554000755'
 const ETIQUETA_UNIDAD_PRECIO = { millares: 'millares', unidades: 'unidades', rollos: 'rollos', kg: 'kg' }
 
-export async function generarPDFCotizacion(pedido) {
+export async function generarPDFPedido(pedido) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
   const logoBase64 = await new Promise((resolve) => {

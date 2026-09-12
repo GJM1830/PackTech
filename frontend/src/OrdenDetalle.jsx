@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from './api'
 import DetalleMovimiento from './DetalleMovimiento'
-import VistaCotizacion from './VistaCotizacion'
+import VistaPedido from './VistaPedido'
 import { generarPDFLiquidacion } from './GenerarPDFLiquidacion'
 
 const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
@@ -417,7 +417,7 @@ function OrdenDetalle() {
       )}
 
       {verHojaPedido && orden && (
-        <VistaCotizacion orden={pedidoCompleto || orden} onCerrar={() => setVerHojaPedido(false)} />
+        <VistaPedido orden={pedidoCompleto || orden} onCerrar={() => setVerHojaPedido(false)} />
       )}
     </div>
   )

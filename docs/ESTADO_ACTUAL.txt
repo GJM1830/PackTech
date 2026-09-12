@@ -63,9 +63,9 @@ Frontend:
 Prioridad inmediata:
 - Corregir errores para poder utilizarse sin fallos
 - Revisar las acciones de las tablas y hacerlas consistentes.
-- Pestaña cotizaciones funcional
+- Pestaña Pedidos funcional
 - Seguridad de uso en caso real
-- Descargar PDFs de las cotizaciones
+- Descargar PDFs de los pedidos
 - Mejorar búsquedas y filtros. (Cubierto por ahora)
 
 Después:

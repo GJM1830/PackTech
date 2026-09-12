@@ -3,7 +3,7 @@ import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
-import VistaCotizacion from './VistaCotizacion'
+import VistaPedido from './VistaPedido'
 import FiltroDesplegable from './FiltroDesplegable'
 
 const formatearFecha = (fecha) => {
@@ -700,13 +700,13 @@ function VistaSeguimiento() {
       )}
 
       {vistaAbierta && (
-        <VistaCotizacion orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
+        <VistaPedido orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
       )}
     </div>
   )
 }
 
-function Cotizaciones() {
+function Pedidos() {
   const [vista, setVista] = useState('preaprobadas')
   const [ordenes, setOrdenes] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -915,7 +915,7 @@ function Cotizaciones() {
       )}
 
       {vistaAbierta && (
-        <VistaCotizacion orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
+        <VistaPedido orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
       )}
 
       {editando && (
@@ -942,4 +942,4 @@ function Cotizaciones() {
   )
 }
 
-export default Cotizaciones
+export default Pedidos
