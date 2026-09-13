@@ -2165,8 +2165,21 @@ def _armar_respuesta_cotizacion(cotizacion: models.Cotizacion, items: list[model
 
 
 def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
+    if not datos.codigo or not datos.codigo.strip():
+        raise HTTPException(status_code=400, detail="El número de cotización no puede estar vacío.")
+
     if not datos.items:
         raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem.")
+
+    codigo_limpio = datos.codigo.strip()
+
+    existe = (
+        db.query(models.Cotizacion)
+        .filter(models.Cotizacion.codigo == codigo_limpio)
+        .first()
+    )
+    if existe:
+        raise HTTPException(status_code=400, detail="Ya existe una cotización con ese número.")
 
     ruc_limpio = datos.ruc.strip() if datos.ruc and datos.ruc.strip() else None
     nombre_limpio = datos.nombre_cliente.strip() if datos.nombre_cliente else None
@@ -2197,7 +2210,7 @@ def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
     ahora = ahora_lima()
 
     nueva = models.Cotizacion(
-        codigo=_siguiente_codigo_cotizacion(db),
+        codigo=codigo_limpio,
         cliente_id=cliente.id,
         vendedor=vendedor_limpio,
         moneda=datos.moneda,
@@ -2304,8 +2317,22 @@ def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.Cotizacion
     if cotizacion is None:
         raise HTTPException(status_code=404, detail="La cotización no existe.")
 
+    if not datos.codigo or not datos.codigo.strip():
+        raise HTTPException(status_code=400, detail="El número de cotización no puede estar vacío.")
+
     if not datos.items:
         raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem.")
+
+    codigo_limpio = datos.codigo.strip()
+
+    existe = (
+        db.query(models.Cotizacion)
+        .filter(models.Cotizacion.codigo == codigo_limpio)
+        .filter(models.Cotizacion.id != cotizacion_id)
+        .first()
+    )
+    if existe:
+        raise HTTPException(status_code=400, detail="Ya existe otra cotización con ese número.")
 
     ruc_limpio = datos.ruc.strip() if datos.ruc and datos.ruc.strip() else None
     nombre_limpio = datos.nombre_cliente.strip() if datos.nombre_cliente else None
@@ -2333,6 +2360,7 @@ def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.Cotizacion
     if vendedor_limpio:
         crear_vendedor_si_no_existe(db, vendedor_limpio)
 
+    cotizacion.codigo = codigo_limpio
     cotizacion.cliente_id = cliente.id
     cotizacion.vendedor = vendedor_limpio
     cotizacion.moneda = datos.moneda

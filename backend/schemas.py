@@ -530,6 +530,7 @@ class CotizacionItemCreate(BaseModel):
 
 
 class CotizacionCreate(BaseModel):
+    codigo: str
     ruc: str | None = None
     nombre_cliente: str | None = None
     vendedor: str | None = None

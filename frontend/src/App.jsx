@@ -9,6 +9,7 @@ import Operarios from './Operarios'
 import Aglomerado from './Aglomerado'
 import Reportes from './Reportes'
 import Pedidos from './Pedidos'
+import Cotizaciones from './Cotizaciones'
 import MenuAcciones from './MenuAcciones'
 import FiltroDesplegable from './FiltroDesplegable'
 import Login from './Login'
@@ -460,6 +461,9 @@ function App() {
         {rol !== 'observador' && (
           <Link to="/pedidos" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Pedidos</Link>
         )}
+        {rol !== 'observador' && (
+          <Link to="/cotizaciones" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Cotizaciones</Link>
+        )}
         <Link to="/clientes" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">Clientes</Link>
 
         <div className="hidden sm:block h-5 w-px bg-slate-700" />
@@ -489,6 +493,7 @@ function App() {
             <Route path="/aglomerado" element={<Aglomerado />} />
             <Route path="/reportes" element={<Reportes />} />
             <Route path="/pedidos" element={<Pedidos />} />
+            <Route path="/cotizaciones" element={<Cotizaciones />} />
           </Routes>
         </div>
       </div>
