@@ -28,7 +28,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   const items = cotizacion.items || []
   const simbolo = cotizacion.moneda === 'Dólares' ? '$' : 'S/'
   const M = 12
-  const ANCHO = 210 - M * 2
+  const ANCHO = 210 - M * 2 // 186mm imprimibles, de x=12 a x=198
 
   const azul = [30, 64, 175]
   const azulClaro = [219, 234, 254]
@@ -43,25 +43,36 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   let y = 14
 
   // ================= ENCABEZADO =================
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(20)
-  doc.setTextColor(...slate900)
-  doc.text('COTIZACIÓN', M, y + 6)
+  // Logo a la izquierda
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', M, y, 42, 11)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.setTextColor(...azul)
+    doc.text('PACKTECH', M, y + 7)
+  }
 
-  // Caja de datos N° / RUC / FECHA (recuadro real, como en la muestra física)
-  const anchoCaja = 58
+  // Título centrado: "Cotización - (código)"
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(17)
+  doc.setTextColor(...slate900)
+  doc.text(`Cotización - ${cotizacion.codigo}`, M + ANCHO / 2, y + 8, { align: 'center' })
+
+  y += 18
+
+  // Caja RUC / FECHA (a la derecha, debajo del encabezado, ya sin N° porque va en el título)
+  const anchoCaja = 52
   const xCaja = M + ANCHO - anchoCaja
-  const altoCaja = 18
-  const anchoEtiquetaCaja = 16
+  const altoCaja = 12
 
   doc.setFillColor(...grisFondo)
-  doc.rect(xCaja, y - 8, anchoCaja, altoCaja, 'F')
+  doc.rect(xCaja, y, anchoCaja, altoCaja, 'F')
   doc.setDrawColor(...bordeGris)
   doc.setLineWidth(0.3)
-  doc.rect(xCaja, y - 8, anchoCaja, altoCaja)
-  doc.line(xCaja + anchoEtiquetaCaja, y - 8, xCaja + anchoEtiquetaCaja, y - 8 + altoCaja)
-  doc.line(xCaja, y - 8 + altoCaja / 3, xCaja + anchoCaja, y - 8 + altoCaja / 3)
-  doc.line(xCaja, y - 8 + (altoCaja / 3) * 2, xCaja + anchoCaja, y - 8 + (altoCaja / 3) * 2)
+  doc.rect(xCaja, y, anchoCaja, altoCaja)
+  doc.line(xCaja + 16, y, xCaja + 16, y + altoCaja)
+  doc.line(xCaja, y + altoCaja / 2, xCaja + anchoCaja, y + altoCaja / 2)
 
   const filaCaja = (label, valor, offsetY) => {
     doc.setFont('helvetica', 'bold')
@@ -71,24 +82,12 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8.5)
     doc.setTextColor(...slate900)
-    doc.text(String(valor || '-'), xCaja + anchoEtiquetaCaja + 2, offsetY, { maxWidth: anchoCaja - anchoEtiquetaCaja - 3 })
+    doc.text(String(valor || '-'), xCaja + 18, offsetY, { maxWidth: anchoCaja - 20 })
   }
-  filaCaja('N°', cotizacion.codigo, y - 2.5)
-  filaCaja('RUC', RUC_EMPRESA, y + 3.5)
-  filaCaja('FECHA', formatearFecha(cotizacion.fecha), y + 9.5)
+  filaCaja('RUC', RUC_EMPRESA, y + 4.5)
+  filaCaja('FECHA', formatearFecha(cotizacion.fecha), y + 10.5)
 
-  y += 22
-
-  if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', M, y, 48, 12)
-  } else {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(13)
-    doc.setTextColor(...azul)
-    doc.text('PACKTECH', M, y + 8)
-  }
-
-  y += 18
+  y += altoCaja + 8
 
   // ================= BLOQUE CLIENTE =================
   const altoBloqueCliente = 14
@@ -124,7 +123,8 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   y += 6
 
   // ================= TABLA =================
-  const colX = [M, M + 65, M + 90, M + 115, M + 150, M + 190]
+  // Anchos calculados para sumar EXACTO el ancho imprimible (186mm): 68+26+16+20+26+30 = 186
+  const colX = [M, M + 68, M + 94, M + 110, M + 130, M + 156]
   const anchoDescripcion = colX[1] - colX[0] - 4
   const filaAlturaMin = 8
   const alturaLineaTexto = 3.6
@@ -135,7 +135,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setDrawColor(...bordeGris)
     doc.setLineWidth(0.3)
     doc.rect(M, y, ANCHO, filaAlturaMin)
-    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
+    colX.slice(1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7)
     doc.setTextColor(...slate900)
@@ -157,7 +157,9 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setFontSize(8)
 
     const descripcionBase = it.descripcion || '-'
-    const rutaTexto = it.procesos_plan ? it.procesos_plan.split(',').join(' → ') : null
+    // "->" en vez de "→": la fuente Helvetica estándar de jsPDF no tiene el glifo de flecha
+    // Unicode y lo dibuja como caracteres inválidos (el bug del PDF anterior).
+    const rutaTexto = it.procesos_plan ? it.procesos_plan.split(',').join(' -> ') : null
     const lineasDescripcion = doc.splitTextToSize(String(descripcionBase), anchoDescripcion)
     if (rutaTexto) {
       const lineasRuta = doc.splitTextToSize(`Ruta: ${rutaTexto}`, anchoDescripcion)
@@ -187,7 +189,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setDrawColor(...bordeGris)
     doc.setLineWidth(0.2)
     doc.rect(M, y, ANCHO, filaAltura)
-    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
+    colX.slice(1).forEach((x) => doc.line(x, y, x, y + filaAltura))
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
