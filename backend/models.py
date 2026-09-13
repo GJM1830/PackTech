@@ -383,4 +383,41 @@ class Vendedor(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100))
+
+
+# =========================
+# COTIZACIONES (documento de venta simple, no genera producción)
+# =========================
+
+class Cotizacion(Base):
+    __tablename__ = "cotizaciones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    codigo: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"))
+    vendedor: Mapped[str | None] = mapped_column(String(100))
+    moneda: Mapped[str | None] = mapped_column(String(10))
+    incluye_igv: Mapped[bool | None] = mapped_column(Boolean)
+    forma_pago: Mapped[str | None] = mapped_column(String(200))
+    tiempo_entrega: Mapped[str | None] = mapped_column(String(200))
+    validez_oferta: Mapped[str | None] = mapped_column(String(200))
+    observaciones: Mapped[str | None] = mapped_column(Text)
+    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
+    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+
+    cliente_obj: Mapped["Cliente"] = relationship("Cliente")
+
+
+class CotizacionItem(Base):
+    __tablename__ = "cotizacion_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cotizacion_id: Mapped[int] = mapped_column(ForeignKey("cotizaciones.id"))
+    descripcion: Mapped[str | None] = mapped_column(String(200))
+    medidas: Mapped[str | None] = mapped_column(String(200))
+    cantidad: Mapped[float] = mapped_column(Numeric(10, 2))
+    unidad: Mapped[str] = mapped_column(String(20))
+    precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    procesos_plan: Mapped[str | None] = mapped_column(Text)
     

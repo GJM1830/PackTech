@@ -2395,6 +2395,9 @@ function Pedidos() {
 
 export default Pedidos
 
+Cotizaciones.jsx
+
+
 
 CrearOrden.jsx:
 

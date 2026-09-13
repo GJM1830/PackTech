@@ -2148,6 +2148,261 @@ def reporte_liquidacion(db: Session, codigo: str):
         "procesos": procesos
     }
 
+# =========================
+# COTIZACIONES
+# =========================
+
+def _siguiente_codigo_cotizacion(db: Session) -> str:
+    ultima = (
+        db.query(models.Cotizacion)
+        .order_by(models.Cotizacion.id.desc())
+        .first()
+    )
+    siguiente_numero = 1
+    if ultima and ultima.codigo:
+        try:
+            siguiente_numero = int(ultima.codigo.split("-")[-1]) + 1
+        except ValueError:
+            siguiente_numero = ultima.id + 1
+    return f"COT-{siguiente_numero}"
+
+
+def _armar_respuesta_cotizacion(cotizacion: models.Cotizacion, items: list[models.CotizacionItem]):
+    cotizacion.ruc = cotizacion.cliente_obj.ruc
+    cotizacion.cliente = cotizacion.cliente_obj.nombre
+    cotizacion.items = items
+
+    subtotal = sum(float(it.costo_total or 0) for it in items)
+    igv = subtotal * 0.18 if cotizacion.incluye_igv else 0
+    cotizacion.subtotal = subtotal
+    cotizacion.igv = igv
+    cotizacion.total = subtotal + igv
+
+    return cotizacion
+
+
+def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
+    if not datos.items:
+        raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem.")
+
+    ruc_limpio = datos.ruc.strip() if datos.ruc and datos.ruc.strip() else None
+    nombre_limpio = datos.nombre_cliente.strip() if datos.nombre_cliente else None
+
+    cliente = None
+    if ruc_limpio:
+        cliente = db.query(models.Cliente).filter(models.Cliente.ruc == ruc_limpio).first()
+    elif nombre_limpio:
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc.is_(None))
+            .filter(models.Cliente.nombre.ilike(nombre_limpio))
+            .first()
+        )
+
+    if cliente is None:
+        if not nombre_limpio:
+            raise HTTPException(status_code=400, detail="Cliente no encontrado. Debe ingresar el nombre.")
+        cliente = models.Cliente(ruc=ruc_limpio, nombre=nombre_limpio)
+        db.add(cliente)
+        db.commit()
+        db.refresh(cliente)
+
+    vendedor_limpio = datos.vendedor.strip() if datos.vendedor and datos.vendedor.strip() else None
+    if vendedor_limpio:
+        crear_vendedor_si_no_existe(db, vendedor_limpio)
+
+    ahora = ahora_lima()
+
+    nueva = models.Cotizacion(
+        codigo=_siguiente_codigo_cotizacion(db),
+        cliente_id=cliente.id,
+        vendedor=vendedor_limpio,
+        moneda=datos.moneda,
+        incluye_igv=datos.incluye_igv,
+        forma_pago=datos.forma_pago,
+        tiempo_entrega=datos.tiempo_entrega,
+        validez_oferta=datos.validez_oferta,
+        observaciones=datos.observaciones,
+        fecha=ahora.date(),
+        hora=ahora.time()
+    )
+    db.add(nueva)
+    db.commit()
+    db.refresh(nueva)
+
+    items_creados = []
+    for it in datos.items:
+        costo_total_item = None
+        if it.precio_unitario is not None:
+            costo_total_item = float(it.precio_unitario) * float(it.cantidad)
+
+        item = models.CotizacionItem(
+            cotizacion_id=nueva.id,
+            descripcion=it.descripcion,
+            medidas=it.medidas,
+            cantidad=it.cantidad,
+            unidad=it.unidad,
+            precio_unitario=it.precio_unitario,
+            costo_total=costo_total_item,
+            procesos_plan=it.procesos_plan
+        )
+        db.add(item)
+        items_creados.append(item)
+
+    db.commit()
+    for item in items_creados:
+        db.refresh(item)
+
+    return _armar_respuesta_cotizacion(nueva, items_creados)
+
+
+def obtener_cotizaciones(db: Session, limit: int = 20, antes_de: int | None = None):
+    query = db.query(models.Cotizacion)
+    if antes_de:
+        query = query.filter(models.Cotizacion.id < antes_de)
+
+    cotizaciones = query.order_by(models.Cotizacion.id.desc()).limit(limit).all()
+
+    resultado = []
+    for cot in cotizaciones:
+        items = (
+            db.query(models.CotizacionItem)
+            .filter(models.CotizacionItem.cotizacion_id == cot.id)
+            .order_by(models.CotizacionItem.id.asc())
+            .all()
+        )
+        resultado.append(_armar_respuesta_cotizacion(cot, items))
+
+    return resultado
+
+
+def buscar_cotizaciones(db: Session, q: str):
+    cotizaciones = (
+        db.query(models.Cotizacion)
+        .join(models.Cliente, models.Cotizacion.cliente_id == models.Cliente.id)
+        .filter(
+            (models.Cotizacion.codigo.ilike(f"%{q}%")) |
+            (models.Cliente.nombre.ilike(f"%{q}%"))
+        )
+        .order_by(models.Cotizacion.id.desc())
+        .limit(50)
+        .all()
+    )
+
+    resultado = []
+    for cot in cotizaciones:
+        items = (
+            db.query(models.CotizacionItem)
+            .filter(models.CotizacionItem.cotizacion_id == cot.id)
+            .order_by(models.CotizacionItem.id.asc())
+            .all()
+        )
+        resultado.append(_armar_respuesta_cotizacion(cot, items))
+
+    return resultado
+
+
+def obtener_cotizacion_por_id(db: Session, cotizacion_id: int):
+    cotizacion = db.get(models.Cotizacion, cotizacion_id)
+    if cotizacion is None:
+        raise HTTPException(status_code=404, detail="La cotización no existe.")
+
+    items = (
+        db.query(models.CotizacionItem)
+        .filter(models.CotizacionItem.cotizacion_id == cotizacion_id)
+        .order_by(models.CotizacionItem.id.asc())
+        .all()
+    )
+    return _armar_respuesta_cotizacion(cotizacion, items)
+
+
+def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.CotizacionCreate):
+    cotizacion = db.get(models.Cotizacion, cotizacion_id)
+    if cotizacion is None:
+        raise HTTPException(status_code=404, detail="La cotización no existe.")
+
+    if not datos.items:
+        raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem.")
+
+    ruc_limpio = datos.ruc.strip() if datos.ruc and datos.ruc.strip() else None
+    nombre_limpio = datos.nombre_cliente.strip() if datos.nombre_cliente else None
+
+    cliente = None
+    if ruc_limpio:
+        cliente = db.query(models.Cliente).filter(models.Cliente.ruc == ruc_limpio).first()
+    elif nombre_limpio:
+        cliente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.ruc.is_(None))
+            .filter(models.Cliente.nombre.ilike(nombre_limpio))
+            .first()
+        )
+
+    if cliente is None:
+        if not nombre_limpio:
+            raise HTTPException(status_code=400, detail="Cliente no encontrado. Debe ingresar el nombre.")
+        cliente = models.Cliente(ruc=ruc_limpio, nombre=nombre_limpio)
+        db.add(cliente)
+        db.commit()
+        db.refresh(cliente)
+
+    vendedor_limpio = datos.vendedor.strip() if datos.vendedor and datos.vendedor.strip() else None
+    if vendedor_limpio:
+        crear_vendedor_si_no_existe(db, vendedor_limpio)
+
+    cotizacion.cliente_id = cliente.id
+    cotizacion.vendedor = vendedor_limpio
+    cotizacion.moneda = datos.moneda
+    cotizacion.incluye_igv = datos.incluye_igv
+    cotizacion.forma_pago = datos.forma_pago
+    cotizacion.tiempo_entrega = datos.tiempo_entrega
+    cotizacion.validez_oferta = datos.validez_oferta
+    cotizacion.observaciones = datos.observaciones
+
+    db.query(models.CotizacionItem).filter(
+        models.CotizacionItem.cotizacion_id == cotizacion_id
+    ).delete()
+
+    items_creados = []
+    for it in datos.items:
+        costo_total_item = None
+        if it.precio_unitario is not None:
+            costo_total_item = float(it.precio_unitario) * float(it.cantidad)
+
+        item = models.CotizacionItem(
+            cotizacion_id=cotizacion.id,
+            descripcion=it.descripcion,
+            medidas=it.medidas,
+            cantidad=it.cantidad,
+            unidad=it.unidad,
+            precio_unitario=it.precio_unitario,
+            costo_total=costo_total_item,
+            procesos_plan=it.procesos_plan
+        )
+        db.add(item)
+        items_creados.append(item)
+
+    db.commit()
+    db.refresh(cotizacion)
+    for item in items_creados:
+        db.refresh(item)
+
+    return _armar_respuesta_cotizacion(cotizacion, items_creados)
+
+
+def eliminar_cotizacion(db: Session, cotizacion_id: int):
+    cotizacion = db.get(models.Cotizacion, cotizacion_id)
+    if cotizacion is None:
+        raise HTTPException(status_code=404, detail="La cotización no existe.")
+
+    db.query(models.CotizacionItem).filter(
+        models.CotizacionItem.cotizacion_id == cotizacion_id
+    ).delete()
+
+    db.delete(cotizacion)
+    db.commit()
+
+
 def obtener_maquinas_unicas(db: Session):
     resultados = (
         db.query(models.Movimiento.maquina)
@@ -2469,6 +2724,7 @@ from routers.aglomerado import router as aglomerado_router
 from routers.reportes import router as reportes_router
 from routers.tipos_merma import router as tipos_merma_router
 from routers.pedidos import router as pedidos_router
+from routers.cotizaciones import router as cotizaciones_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -2499,6 +2755,7 @@ app.include_router(aglomerado_router)
 app.include_router(reportes_router)
 app.include_router(tipos_merma_router)
 app.include_router(pedidos_router)
+app.include_router(cotizaciones_router)
 
 @app.get("/")
 def root():
@@ -2894,6 +3151,43 @@ class Vendedor(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100))
+
+
+# =========================
+# COTIZACIONES (documento de venta simple, no genera producción)
+# =========================
+
+class Cotizacion(Base):
+    __tablename__ = "cotizaciones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    codigo: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"))
+    vendedor: Mapped[str | None] = mapped_column(String(100))
+    moneda: Mapped[str | None] = mapped_column(String(10))
+    incluye_igv: Mapped[bool | None] = mapped_column(Boolean)
+    forma_pago: Mapped[str | None] = mapped_column(String(200))
+    tiempo_entrega: Mapped[str | None] = mapped_column(String(200))
+    validez_oferta: Mapped[str | None] = mapped_column(String(200))
+    observaciones: Mapped[str | None] = mapped_column(Text)
+    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
+    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+
+    cliente_obj: Mapped["Cliente"] = relationship("Cliente")
+
+
+class CotizacionItem(Base):
+    __tablename__ = "cotizacion_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cotizacion_id: Mapped[int] = mapped_column(ForeignKey("cotizaciones.id"))
+    descripcion: Mapped[str | None] = mapped_column(String(200))
+    medidas: Mapped[str | None] = mapped_column(String(200))
+    cantidad: Mapped[float] = mapped_column(Numeric(10, 2))
+    unidad: Mapped[str] = mapped_column(String(20))
+    precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    procesos_plan: Mapped[str | None] = mapped_column(Text)
         
     
 
@@ -3419,6 +3713,68 @@ class AlertaOrdenMermaExcesiva(BaseModel):
     fecha: date
 
 
+# =========================
+# COTIZACIONES
+# =========================
+
+class CotizacionItemCreate(BaseModel):
+    descripcion: str | None = None
+    medidas: str | None = None
+    cantidad: float
+    unidad: str
+    precio_unitario: float | None = None
+    procesos_plan: str | None = None
+
+
+class CotizacionCreate(BaseModel):
+    ruc: str | None = None
+    nombre_cliente: str | None = None
+    vendedor: str | None = None
+    moneda: str | None = None
+    incluye_igv: bool | None = None
+    forma_pago: str | None = None
+    tiempo_entrega: str | None = None
+    validez_oferta: str | None = None
+    observaciones: str | None = None
+    items: list[CotizacionItemCreate]
+
+
+class CotizacionItemResponse(BaseModel):
+    id: int
+    descripcion: str | None
+    medidas: str | None
+    cantidad: float
+    unidad: str
+    precio_unitario: float | None
+    costo_total: float | None
+    procesos_plan: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class CotizacionResponse(BaseModel):
+    id: int
+    codigo: str
+    ruc: str | None
+    cliente: str
+    vendedor: str | None
+    moneda: str | None
+    incluye_igv: bool | None
+    forma_pago: str | None
+    tiempo_entrega: str | None
+    validez_oferta: str | None
+    observaciones: str | None
+    fecha: date
+    items: list[CotizacionItemResponse]
+    subtotal: float | None = None
+    igv: float | None = None
+    total: float | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class ReporteAlertas(BaseModel):
     ordenes_sin_movimientos: list[AlertaOrdenSinMovimiento]
     ordenes_estancadas: list[AlertaOrdenEstancada]
@@ -3624,6 +3980,76 @@ def editar_cliente(
     _: None = Depends(requiere_rol("vendedor"))
 ):
     return crud.editar_cliente(db, cliente_id, cliente)
+
+################################################################################
+backend/routers/cotizaciones.py
+################################################################################
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+import crud
+import schemas
+from dependencias import obtener_db, requiere_rol
+
+router = APIRouter(
+    prefix="/cotizaciones",
+    tags=["Cotizaciones"]
+)
+
+
+@router.post("", response_model=schemas.CotizacionResponse)
+def crear_cotizacion(
+    datos: schemas.CotizacionCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    return crud.crear_cotizacion(db, datos)
+
+
+@router.get("", response_model=list[schemas.CotizacionResponse])
+def listar_cotizaciones(
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_cotizaciones(db, limit, antes_de)
+
+
+@router.get("/buscar", response_model=list[schemas.CotizacionResponse])
+def buscar_cotizaciones(
+    q: str,
+    db: Session = Depends(obtener_db)
+):
+    return crud.buscar_cotizaciones(db, q)
+
+
+@router.get("/{cotizacion_id}", response_model=schemas.CotizacionResponse)
+def obtener_cotizacion(
+    cotizacion_id: int,
+    db: Session = Depends(obtener_db)
+):
+    return crud.obtener_cotizacion_por_id(db, cotizacion_id)
+
+
+@router.put("/{cotizacion_id}", response_model=schemas.CotizacionResponse)
+def editar_cotizacion(
+    cotizacion_id: int,
+    datos: schemas.CotizacionCreate,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    return crud.editar_cotizacion(db, cotizacion_id, datos)
+
+
+@router.delete("/{cotizacion_id}")
+def eliminar_cotizacion(
+    cotizacion_id: int,
+    db: Session = Depends(obtener_db),
+    _: None = Depends(requiere_rol("vendedor"))
+):
+    crud.eliminar_cotizacion(db, cotizacion_id)
+    return {"mensaje": "Cotización eliminada correctamente."}
+
 
 ################################################################################
 backend/routers/detalles.py

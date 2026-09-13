@@ -516,6 +516,68 @@ class AlertaOrdenMermaExcesiva(BaseModel):
     fecha: date
 
 
+# =========================
+# COTIZACIONES
+# =========================
+
+class CotizacionItemCreate(BaseModel):
+    descripcion: str | None = None
+    medidas: str | None = None
+    cantidad: float
+    unidad: str
+    precio_unitario: float | None = None
+    procesos_plan: str | None = None
+
+
+class CotizacionCreate(BaseModel):
+    ruc: str | None = None
+    nombre_cliente: str | None = None
+    vendedor: str | None = None
+    moneda: str | None = None
+    incluye_igv: bool | None = None
+    forma_pago: str | None = None
+    tiempo_entrega: str | None = None
+    validez_oferta: str | None = None
+    observaciones: str | None = None
+    items: list[CotizacionItemCreate]
+
+
+class CotizacionItemResponse(BaseModel):
+    id: int
+    descripcion: str | None
+    medidas: str | None
+    cantidad: float
+    unidad: str
+    precio_unitario: float | None
+    costo_total: float | None
+    procesos_plan: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class CotizacionResponse(BaseModel):
+    id: int
+    codigo: str
+    ruc: str | None
+    cliente: str
+    vendedor: str | None
+    moneda: str | None
+    incluye_igv: bool | None
+    forma_pago: str | None
+    tiempo_entrega: str | None
+    validez_oferta: str | None
+    observaciones: str | None
+    fecha: date
+    items: list[CotizacionItemResponse]
+    subtotal: float | None = None
+    igv: float | None = None
+    total: float | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class ReporteAlertas(BaseModel):
     ordenes_sin_movimientos: list[AlertaOrdenSinMovimiento]
     ordenes_estancadas: list[AlertaOrdenEstancada]

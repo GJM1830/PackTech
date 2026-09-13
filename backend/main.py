@@ -14,6 +14,7 @@ from routers.aglomerado import router as aglomerado_router
 from routers.reportes import router as reportes_router
 from routers.tipos_merma import router as tipos_merma_router
 from routers.pedidos import router as pedidos_router
+from routers.cotizaciones import router as cotizaciones_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -44,6 +45,7 @@ app.include_router(aglomerado_router)
 app.include_router(reportes_router)
 app.include_router(tipos_merma_router)
 app.include_router(pedidos_router)
+app.include_router(cotizaciones_router)
 
 @app.get("/")
 def root():
