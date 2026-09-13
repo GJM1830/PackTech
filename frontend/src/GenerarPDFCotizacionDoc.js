@@ -31,37 +31,56 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   const ANCHO = 210 - M * 2
 
   const azul = [30, 64, 175]
+  const azulClaro = [219, 234, 254]
   const slate900 = [15, 23, 42]
+  const slate700 = [51, 65, 85]
   const slate600 = [71, 85, 105]
   const slate400 = [148, 163, 184]
-  const borde = [0, 0, 0]
+  const grisFondo = [248, 250, 252]
+  const grisZebra = [246, 248, 251]
+  const bordeGris = [100, 116, 139]
 
   let y = 14
 
-  // ---- Encabezado ----
+  // ================= ENCABEZADO =================
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
+  doc.setFontSize(20)
   doc.setTextColor(...slate900)
-  doc.text('COTIZACIÓN', M, y + 4)
+  doc.text('COTIZACIÓN', M, y + 6)
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(...slate600)
-  doc.text('N°', M + 140, y)
-  doc.text('RUC', M + 140, y + 6)
-  doc.text('FECHA', M + 140, y + 12)
+  // Caja de datos N° / RUC / FECHA (recuadro real, como en la muestra física)
+  const anchoCaja = 58
+  const xCaja = M + ANCHO - anchoCaja
+  const altoCaja = 18
+  const anchoEtiquetaCaja = 16
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(...slate900)
-  doc.text(String(cotizacion.codigo), M + ANCHO, y, { align: 'right' })
-  doc.text(RUC_EMPRESA, M + ANCHO, y + 6, { align: 'right' })
-  doc.text(formatearFecha(cotizacion.fecha), M + ANCHO, y + 12, { align: 'right' })
+  doc.setFillColor(...grisFondo)
+  doc.rect(xCaja, y - 8, anchoCaja, altoCaja, 'F')
+  doc.setDrawColor(...bordeGris)
+  doc.setLineWidth(0.3)
+  doc.rect(xCaja, y - 8, anchoCaja, altoCaja)
+  doc.line(xCaja + anchoEtiquetaCaja, y - 8, xCaja + anchoEtiquetaCaja, y - 8 + altoCaja)
+  doc.line(xCaja, y - 8 + altoCaja / 3, xCaja + anchoCaja, y - 8 + altoCaja / 3)
+  doc.line(xCaja, y - 8 + (altoCaja / 3) * 2, xCaja + anchoCaja, y - 8 + (altoCaja / 3) * 2)
 
-  y += 20
+  const filaCaja = (label, valor, offsetY) => {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(...slate600)
+    doc.text(label, xCaja + 1.5, offsetY)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...slate900)
+    doc.text(String(valor || '-'), xCaja + anchoEtiquetaCaja + 2, offsetY, { maxWidth: anchoCaja - anchoEtiquetaCaja - 3 })
+  }
+  filaCaja('N°', cotizacion.codigo, y - 2.5)
+  filaCaja('RUC', RUC_EMPRESA, y + 3.5)
+  filaCaja('FECHA', formatearFecha(cotizacion.fecha), y + 9.5)
+
+  y += 22
 
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', M, y, 50, 12)
+    doc.addImage(logoBase64, 'PNG', M, y, 48, 12)
   } else {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(13)
@@ -69,49 +88,71 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.text('PACKTECH', M, y + 8)
   }
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(...slate900)
-  doc.text('Sr(as):', M, y + 20)
-  doc.text('Estimada(os):', M, y + 25)
-  doc.setFont('helvetica', 'bold')
-  doc.text(String(cotizacion.cliente || '-'), M + 28, y + 22.5)
+  y += 18
 
-  y += 32
+  // ================= BLOQUE CLIENTE =================
+  const altoBloqueCliente = 14
+  doc.setFillColor(...grisFondo)
+  doc.rect(M, y, ANCHO, altoBloqueCliente, 'F')
+  doc.setDrawColor(...bordeGris)
+  doc.setLineWidth(0.3)
+  doc.rect(M, y, ANCHO, altoBloqueCliente)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...slate600)
+  doc.text('SR(AS) / ESTIMADA(OS)', M + 3, y + 5)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...slate900)
+  doc.text(String(cotizacion.cliente || '-'), M + 3, y + 11)
+
+  if (cotizacion.vendedor) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate600)
+    doc.text(`Vendedor: ${cotizacion.vendedor}`, M + ANCHO - 3, y + 8, { align: 'right' })
+  }
+
+  y += altoBloqueCliente + 6
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...slate600)
-  const intro = 'Es grato dirigirnos a ustedes para proponer a su consideración la siguiente cotización:'
-  doc.text(intro, M, y)
+  doc.text('Es grato dirigirnos a ustedes para proponer a su consideración la siguiente cotización:', M, y)
   y += 6
 
-  // ---- Tabla ----
+  // ================= TABLA =================
   const colX = [M, M + 65, M + 90, M + 115, M + 150, M + 190]
   const anchoDescripcion = colX[1] - colX[0] - 4
   const filaAlturaMin = 8
   const alturaLineaTexto = 3.6
 
-  doc.setFillColor(219, 234, 254)
-  doc.rect(M, y, ANCHO, filaAlturaMin, 'F')
-  doc.setDrawColor(...borde)
-  doc.rect(M, y, ANCHO, filaAlturaMin)
-  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7)
-  doc.setTextColor(...slate900)
-  doc.text('DESCRIPCIÓN', colX[0] + 2, y + 5.5)
-  doc.text('MEDIDAS', colX[1] + 2, y + 5.5)
-  doc.text('CANT.', colX[2] + 2, y + 5.5)
-  doc.text('UNIDAD', colX[3] + 2, y + 5.5)
-  doc.text('P. UNIT.', colX[4] + 2, y + 5.5)
-  doc.text('SUBTOTAL', colX[5] + 2, y + 5.5)
+  const dibujarCabeceraTabla = () => {
+    doc.setFillColor(...azulClaro)
+    doc.rect(M, y, ANCHO, filaAlturaMin, 'F')
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.3)
+    doc.rect(M, y, ANCHO, filaAlturaMin)
+    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(...slate900)
+    doc.text('DESCRIPCIÓN', colX[0] + 2, y + 5.5)
+    doc.text('MEDIDAS', colX[1] + 2, y + 5.5)
+    doc.text('CANT.', colX[2] + 2, y + 5.5)
+    doc.text('UNIDAD', colX[3] + 2, y + 5.5)
+    doc.text('P. UNIT.', colX[4] + 2, y + 5.5)
+    doc.text('SUBTOTAL', colX[5] + 2, y + 5.5)
+    y += filaAlturaMin
+  }
 
-  y += filaAlturaMin
+  dibujarCabeceraTabla()
 
   let subtotal = 0
 
-  items.forEach((it) => {
+  items.forEach((it, index) => {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
 
@@ -130,17 +171,29 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       Math.max(lineasDescripcion.length, lineasMedidas.length) * alturaLineaTexto + 4.5
     )
 
-    if (y + filaAltura > 270) {
+    // Salvaguarda de salto de página: si no cabe, se repite la cabecera en la página nueva
+    if (y + filaAltura > 265) {
       doc.addPage()
       y = 16
+      dibujarCabeceraTabla()
     }
 
-    doc.setDrawColor(...borde)
+    // Zebra striping sutil para lectura tipo hoja de cálculo
+    if (index % 2 === 1) {
+      doc.setFillColor(...grisZebra)
+      doc.rect(M, y, ANCHO, filaAltura, 'F')
+    }
+
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.2)
     doc.rect(M, y, ANCHO, filaAltura)
     colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
 
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
     doc.setTextColor(...slate900)
     doc.text(lineasDescripcion, colX[0] + 2, y + 5.5)
+    doc.setTextColor(...slate700)
     doc.text(lineasMedidas, colX[1] + 2, y + 5.5)
     doc.text(String(it.cantidad ?? '-'), colX[2] + 2, y + 5.5)
     doc.text(String(it.unidad || '-'), colX[3] + 2, y + 5.5)
@@ -149,6 +202,8 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       colX[4] + 2, y + 5.5,
       { maxWidth: colX[5] - colX[4] - 4 }
     )
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...slate900)
     doc.text(
       it.costo_total ? `${simbolo} ${Number(it.costo_total).toFixed(2)}` : '-',
       colX[5] + 2, y + 5.5,
@@ -159,68 +214,114 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     y += filaAltura
   })
 
-  y += 4
+  y += 5
 
-  // ---- Totales ----
-  const anchoTotales = 60
+  // ================= TOTALES =================
+  const anchoTotales = 62
   const xTotales = M + ANCHO - anchoTotales
   const igv = cotizacion.incluye_igv ? subtotal * 0.18 : 0
   const total = subtotal + igv
+  const yInicioTotales = y
 
+  doc.setDrawColor(...bordeGris)
+  doc.setLineWidth(0.3)
+
+  doc.setFillColor(...grisFondo)
+  doc.rect(xTotales, y, anchoTotales, 8, 'F')
+  doc.rect(xTotales, y, anchoTotales, 8)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...slate600)
-  doc.text('SUBTOTAL', xTotales + 2, y + 5)
+  doc.text('SUBTOTAL', xTotales + 3, y + 5.3)
   doc.setTextColor(...slate900)
-  doc.text(`${simbolo} ${subtotal.toFixed(2)}`, xTotales + anchoTotales - 2, y + 5, { align: 'right' })
-  y += 7
+  doc.text(`${simbolo} ${subtotal.toFixed(2)}`, xTotales + anchoTotales - 3, y + 5.3, { align: 'right' })
+  y += 8
 
   if (cotizacion.incluye_igv) {
+    doc.setFillColor(...grisFondo)
+    doc.rect(xTotales, y, anchoTotales, 8, 'F')
+    doc.rect(xTotales, y, anchoTotales, 8)
     doc.setTextColor(...slate600)
-    doc.text('IGV (18%)', xTotales + 2, y + 5)
+    doc.text('IGV (18%)', xTotales + 3, y + 5.3)
     doc.setTextColor(...slate900)
-    doc.text(`${simbolo} ${igv.toFixed(2)}`, xTotales + anchoTotales - 2, y + 5, { align: 'right' })
-    y += 7
+    doc.text(`${simbolo} ${igv.toFixed(2)}`, xTotales + anchoTotales - 3, y + 5.3, { align: 'right' })
+    y += 8
   }
 
-  doc.setFillColor(30, 64, 175)
-  doc.rect(xTotales, y, anchoTotales, 9, 'F')
+  doc.setFillColor(...azul)
+  doc.rect(xTotales, y, anchoTotales, 10, 'F')
+  doc.rect(xTotales, y, anchoTotales, 10)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
+  doc.setFontSize(10.5)
   doc.setTextColor(255, 255, 255)
-  doc.text('TOTAL', xTotales + 2, y + 6)
-  doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 2, y + 6, { align: 'right' })
-  doc.setDrawColor(...borde)
-  doc.rect(xTotales, y, anchoTotales, 9)
+  doc.text('TOTAL', xTotales + 3, y + 6.7)
+  doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 3, y + 6.7, { align: 'right' })
+  y += 10
 
-  y += 16
+  // Borde exterior completo del bloque de totales
+  doc.setDrawColor(...slate900)
+  doc.setLineWidth(0.4)
+  doc.rect(xTotales, yInicioTotales, anchoTotales, y - yInicioTotales)
 
-  // ---- Condiciones comerciales ----
-  const condicion = (label, valor) => {
-    if (!valor) return
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...slate600)
-    doc.text(label, M, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...slate900)
-    doc.text(String(valor), M + 42, y)
-    y += 5.5
+  y += 10
+
+  // ================= CONDICIONES COMERCIALES =================
+  const hayCondiciones = cotizacion.forma_pago || cotizacion.tiempo_entrega || cotizacion.validez_oferta
+
+  if (hayCondiciones) {
+    const filasCondiciones = [
+      ['FORMA DE PAGO', cotizacion.forma_pago],
+      ['TIEMPO DE ENTREGA', cotizacion.tiempo_entrega],
+      ['VALIDEZ DE LA OFERTA', cotizacion.validez_oferta]
+    ].filter(([, valor]) => valor)
+
+    const altoFila = 6.5
+    const altoBloque = filasCondiciones.length * altoFila
+    const anchoEtiqueta = 42
+
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.3)
+    doc.rect(M, y, ANCHO, altoBloque)
+    doc.line(M + anchoEtiqueta, y, M + anchoEtiqueta, y + altoBloque)
+
+    filasCondiciones.forEach(([label, valor], i) => {
+      const yFila = y + i * altoFila
+      if (i > 0) doc.line(M, yFila, M + ANCHO, yFila)
+
+      doc.setFillColor(...grisFondo)
+      doc.rect(M, yFila, anchoEtiqueta, altoFila, 'F')
+      doc.setDrawColor(...bordeGris)
+      doc.rect(M, yFila, anchoEtiqueta, altoFila)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...slate700)
+      doc.text(label, M + 2, yFila + 4.3)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...slate900)
+      doc.text(String(valor), M + anchoEtiqueta + 3, yFila + 4.3, { maxWidth: ANCHO - anchoEtiqueta - 5 })
+    })
+
+    y += altoBloque + 6
   }
-  condicion('FORMA DE PAGO', cotizacion.forma_pago)
-  condicion('TIEMPO DE ENTREGA', cotizacion.tiempo_entrega)
-  condicion('VALIDEZ DE LA OFERTA', cotizacion.validez_oferta)
 
   if (cotizacion.observaciones) {
-    y += 2
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('helvetica', 'italic')
     doc.setFontSize(8)
     doc.setTextColor(...slate600)
-    doc.text(`Obs: ${cotizacion.observaciones}`, M, y, { maxWidth: ANCHO })
-    y += 6
+    const lineasObs = doc.splitTextToSize(`Obs: ${cotizacion.observaciones}`, ANCHO)
+    doc.text(lineasObs, M, y)
+    y += lineasObs.length * 4 + 4
   }
 
-  y += 6
+  if (y > 250) {
+    doc.addPage()
+    y = 20
+  }
+
+  y += 4
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...slate900)
@@ -228,20 +329,19 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   y += 8
   doc.setFont('helvetica', 'bold')
   doc.text('Atentamente.', M, y)
-  y += 14
+  y += 16
 
-  if (cotizacion.vendedor) {
-    doc.setFont('helvetica', 'italic')
-    doc.setFontSize(9)
-    doc.text(cotizacion.vendedor, M, y)
-    y += 10
-  }
-
-  // ---- Pie institucional ----
-  if (y > 260) {
+  // ================= PIE INSTITUCIONAL =================
+  if (y > 265) {
     doc.addPage()
     y = 20
   }
+
+  doc.setDrawColor(...slate400)
+  doc.setLineWidth(0.2)
+  doc.line(M, y, M + ANCHO, y)
+  y += 5
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(...slate400)
