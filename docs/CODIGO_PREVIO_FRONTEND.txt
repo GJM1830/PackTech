@@ -4924,6 +4924,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
   const azul = [30, 64, 175]
   const azulClaro = [219, 234, 254]
+  const azulMuySuave = [239, 246, 255]
   const slate900 = [15, 23, 42]
   const slate700 = [51, 65, 85]
   const slate600 = [71, 85, 105]
@@ -4953,7 +4954,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
   y += 18
 
-  // Caja RUC / FECHA (a la derecha, debajo del encabezado, ya sin N° porque va en el título)
+  // Caja RUC / FECHA (a la derecha, debajo del encabezado; el N° ya va en el título)
   const anchoCaja = 52
   const xCaja = M + ANCHO - anchoCaja
   const altoCaja = 12
@@ -4982,7 +4983,8 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   y += altoCaja + 8
 
   // ================= BLOQUE CLIENTE =================
-  const altoBloqueCliente = 14
+  // Sr(as)/Estimada(os) + nombre, y debajo "Con RUC / DNI" + el número.
+  const altoBloqueCliente = 20
   doc.setFillColor(...grisFondo)
   doc.rect(M, y, ANCHO, altoBloqueCliente, 'F')
   doc.setDrawColor(...bordeGris)
@@ -4998,6 +5000,16 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   doc.setFontSize(11)
   doc.setTextColor(...slate900)
   doc.text(String(cotizacion.cliente || '-'), M + 3, y + 11)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...slate600)
+  doc.text('CON RUC / DNI', M + 3, y + 16.5)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...slate900)
+  doc.text(String(cotizacion.ruc || '-'), M + 28, y + 16.5)
 
   if (cotizacion.vendedor) {
     doc.setFont('helvetica', 'normal')
@@ -5048,15 +5060,13 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
 
+    // Descripción + procesos como una sola frase: "producto, con procesos: A, B, C"
     const descripcionBase = it.descripcion || '-'
-    // "->" en vez de "→": la fuente Helvetica estándar de jsPDF no tiene el glifo de flecha
-    // Unicode y lo dibuja como caracteres inválidos (el bug del PDF anterior).
-    const rutaTexto = it.procesos_plan ? it.procesos_plan.split(',').join(' -> ') : null
-    const lineasDescripcion = doc.splitTextToSize(String(descripcionBase), anchoDescripcion)
-    if (rutaTexto) {
-      const lineasRuta = doc.splitTextToSize(`Ruta: ${rutaTexto}`, anchoDescripcion)
-      lineasDescripcion.push(...lineasRuta)
-    }
+    const procesos = it.procesos_plan ? it.procesos_plan.split(',').filter(Boolean) : []
+    const descripcionCompleta = procesos.length > 0
+      ? `${descripcionBase}, con procesos: ${procesos.join(', ')}`
+      : descripcionBase
+    const lineasDescripcion = doc.splitTextToSize(descripcionCompleta, anchoDescripcion)
 
     const lineasMedidas = doc.splitTextToSize(String(it.medidas || '-'), colX[2] - colX[1] - 4)
 
@@ -5072,7 +5082,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       dibujarCabeceraTabla()
     }
 
-    // Zebra striping sutil para lectura tipo hoja de cálculo
+    // Zebra striping muy suave (gris casi blanco) para lectura tipo hoja de cálculo
     if (index % 2 === 1) {
       doc.setFillColor(...grisZebra)
       doc.rect(M, y, ANCHO, filaAltura, 'F')
@@ -5111,53 +5121,48 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   y += 5
 
   // ================= TOTALES =================
+  // Un solo trazo de borde consistente (antes se dibujaba un borde por fila + un borde
+  // exterior más grueso encima, y eso producía líneas de grosor distinto). Sin relleno
+  // oscuro: solo un tinte muy suave bajo la fila de TOTAL para que se imprima bien.
   const anchoTotales = 62
   const xTotales = M + ANCHO - anchoTotales
   const igv = cotizacion.incluye_igv ? subtotal * 0.18 : 0
   const total = subtotal + igv
+
+  const filas = [{ label: 'SUBTOTAL', valor: subtotal, esTotal: false }]
+  if (cotizacion.incluye_igv) filas.push({ label: 'IGV (18%)', valor: igv, esTotal: false })
+  filas.push({ label: 'TOTAL', valor: total, esTotal: true })
+
+  const alturaFila = 9
+  const alturaBloque = filas.length * alturaFila
   const yInicioTotales = y
+
+  filas.forEach((f, i) => {
+    if (f.esTotal) {
+      doc.setFillColor(...azulMuySuave)
+      doc.rect(xTotales, yInicioTotales + i * alturaFila, anchoTotales, alturaFila, 'F')
+    }
+  })
 
   doc.setDrawColor(...bordeGris)
   doc.setLineWidth(0.3)
-
-  doc.setFillColor(...grisFondo)
-  doc.rect(xTotales, y, anchoTotales, 8, 'F')
-  doc.rect(xTotales, y, anchoTotales, 8)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.setTextColor(...slate600)
-  doc.text('SUBTOTAL', xTotales + 3, y + 5.3)
-  doc.setTextColor(...slate900)
-  doc.text(`${simbolo} ${subtotal.toFixed(2)}`, xTotales + anchoTotales - 3, y + 5.3, { align: 'right' })
-  y += 8
-
-  if (cotizacion.incluye_igv) {
-    doc.setFillColor(...grisFondo)
-    doc.rect(xTotales, y, anchoTotales, 8, 'F')
-    doc.rect(xTotales, y, anchoTotales, 8)
-    doc.setTextColor(...slate600)
-    doc.text('IGV (18%)', xTotales + 3, y + 5.3)
-    doc.setTextColor(...slate900)
-    doc.text(`${simbolo} ${igv.toFixed(2)}`, xTotales + anchoTotales - 3, y + 5.3, { align: 'right' })
-    y += 8
+  doc.rect(xTotales, yInicioTotales, anchoTotales, alturaBloque)
+  for (let i = 1; i < filas.length; i++) {
+    const yLinea = yInicioTotales + i * alturaFila
+    doc.line(xTotales, yLinea, xTotales + anchoTotales, yLinea)
   }
 
-  doc.setFillColor(...azul)
-  doc.rect(xTotales, y, anchoTotales, 10, 'F')
-  doc.rect(xTotales, y, anchoTotales, 10)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  doc.setTextColor(255, 255, 255)
-  doc.text('TOTAL', xTotales + 3, y + 6.7)
-  doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 3, y + 6.7, { align: 'right' })
-  y += 10
+  filas.forEach((f, i) => {
+    const yFila = yInicioTotales + i * alturaFila + alturaFila / 2 + 1.5
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(f.esTotal ? 10 : 8.5)
+    doc.setTextColor(...(f.esTotal ? slate900 : slate600))
+    doc.text(f.label, xTotales + 3, yFila)
+    doc.setTextColor(...(f.esTotal ? azul : slate900))
+    doc.text(`${simbolo} ${f.valor.toFixed(2)}`, xTotales + anchoTotales - 3, yFila, { align: 'right' })
+  })
 
-  // Borde exterior completo del bloque de totales
-  doc.setDrawColor(...slate900)
-  doc.setLineWidth(0.4)
-  doc.rect(xTotales, yInicioTotales, anchoTotales, y - yInicioTotales)
-
-  y += 10
+  y = yInicioTotales + alturaBloque + 10
 
   // ================= CONDICIONES COMERCIALES =================
   const hayCondiciones = cotizacion.forma_pago || cotizacion.tiempo_entrega || cotizacion.validez_oferta
