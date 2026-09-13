@@ -4046,7 +4046,7 @@ def listar_cotizaciones(
 
 @router.get("/buscar", response_model=list[schemas.CotizacionResponse])
 def buscar_cotizaciones(
-    q: str,
+    q: str = "",
     db: Session = Depends(obtener_db)
 ):
     return crud.buscar_cotizaciones(db, q)

@@ -241,36 +241,52 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           />
         </div>
 
-        <div className="relative">
-          <label className="block text-sm font-medium text-slate-700 mb-1">Cliente (nombre o RUC)</label>
-          <input
-            type="text"
-            name="nombre_cliente"
-            value={form.nombre_cliente}
-            onChange={(e) => { setClienteSeleccionado(null); manejarCambio(e) }}
-            placeholder="Escribe el nombre del cliente, por ejemplo: FABREPLAST"
-            className={estilo}
-            required
-          />
-          {sugerenciasClientes.length > 0 && (
-            <div className="absolute z-10 bg-white border border-slate-200 rounded-lg shadow-md mt-1 w-full max-h-48 overflow-y-auto">
-              {sugerenciasClientes.map((c) => (
-                <button
-                  type="button"
-                  key={c.id}
-                  onClick={() => {
-                    setForm({ ...form, nombre_cliente: c.nombre, ruc: c.ruc || '' })
-                    setClienteSeleccionado(c)
-                    setSugerenciasClientes([])
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm"
-                >
-                  <span className="font-medium text-slate-800">{c.nombre}</span>
-                  {c.ruc && <span className="text-slate-400 ml-2">{c.ruc}</span>}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-1">RUC (opcional)</label>
+            <input
+              type="text"
+              name="ruc"
+              value={form.ruc}
+              maxLength={11}
+              onChange={(e) => { setClienteSeleccionado(null); manejarCambio(e) }}
+              autoComplete="off"
+              placeholder="20100070970"
+              className={estilo}
+            />
+          </div>
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Cliente</label>
+            <input
+              type="text"
+              name="nombre_cliente"
+              value={form.nombre_cliente}
+              onChange={(e) => { setClienteSeleccionado(null); manejarCambio(e) }}
+              autoComplete="off"
+              placeholder="Escribe el nombre, ej. FABREPLAST"
+              className={estilo}
+              required
+            />
+            {sugerenciasClientes.length > 0 && (
+              <div className="absolute z-10 bg-white border border-slate-200 rounded-lg shadow-md mt-1 w-full max-h-48 overflow-y-auto">
+                {sugerenciasClientes.map((c) => (
+                  <button
+                    type="button"
+                    key={c.id}
+                    onClick={() => {
+                      setForm({ ...form, nombre_cliente: c.nombre, ruc: c.ruc || '' })
+                      setClienteSeleccionado(c)
+                      setSugerenciasClientes([])
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm"
+                  >
+                    <span className="font-medium text-slate-800">{c.nombre}</span>
+                    {c.ruc && <span className="text-slate-400 ml-2">{c.ruc}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="relative">
