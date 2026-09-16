@@ -2257,7 +2257,12 @@ def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
             unidad=it.unidad,
             precio_unitario=it.precio_unitario,
             costo_total=costo_total_item,
-            procesos_plan=it.procesos_plan
+            procesos_plan=it.procesos_plan,
+            tiene_clisse=it.tiene_clisse or False,
+            nombre_clisse=it.nombre_clisse if it.tiene_clisse else None,
+            cantidad_colores_clisse=it.cantidad_colores if it.tiene_clisse else None,
+            precio_clisse=it.precio_clisse if it.tiene_clisse else None,
+            moneda_clisse=it.moneda_clisse if it.tiene_clisse else None
         )
         db.add(item)
         items_creados.append(item)
@@ -2453,7 +2458,12 @@ def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.Cotizacion
             unidad=it.unidad,
             precio_unitario=it.precio_unitario,
             costo_total=costo_total_item,
-            procesos_plan=it.procesos_plan
+            procesos_plan=it.procesos_plan,
+            tiene_clisse=it.tiene_clisse or False,
+            nombre_clisse=it.nombre_clisse if it.tiene_clisse else None,
+            cantidad_colores_clisse=it.cantidad_colores if it.tiene_clisse else None,
+            precio_clisse=it.precio_clisse if it.tiene_clisse else None,
+            moneda_clisse=it.moneda_clisse if it.tiene_clisse else None
         )
         db.add(item)
         items_creados.append(item)
@@ -3264,6 +3274,11 @@ class CotizacionItem(Base):
     precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
     costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
     procesos_plan: Mapped[str | None] = mapped_column(Text)
+    tiene_clisse: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    nombre_clisse: Mapped[str | None] = mapped_column(String(200))
+    cantidad_colores_clisse: Mapped[int | None] = mapped_column(Integer)
+    precio_clisse: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    moneda_clisse: Mapped[str | None] = mapped_column(String(10))
         
     
 
@@ -3800,6 +3815,11 @@ class CotizacionItemCreate(BaseModel):
     unidad: str
     precio_unitario: float | None = None
     procesos_plan: str | None = None
+    tiene_clisse: bool | None = False
+    nombre_clisse: str | None = None
+    cantidad_colores: int | None = None
+    precio_clisse: float | None = None
+    moneda_clisse: str | None = None
 
 
 class CotizacionCreate(BaseModel):
@@ -3825,6 +3845,11 @@ class CotizacionItemResponse(BaseModel):
     precio_unitario: float | None
     costo_total: float | None
     procesos_plan: str | None
+    tiene_clisse: bool | None = False
+    nombre_clisse: str | None = None
+    cantidad_colores: int | None = None
+    precio_clisse: float | None = None
+    moneda_clisse: str | None = None
 
     class Config:
         from_attributes = True

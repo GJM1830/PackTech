@@ -2240,7 +2240,12 @@ def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
             unidad=it.unidad,
             precio_unitario=it.precio_unitario,
             costo_total=costo_total_item,
-            procesos_plan=it.procesos_plan
+            procesos_plan=it.procesos_plan,
+            tiene_clisse=it.tiene_clisse or False,
+            nombre_clisse=it.nombre_clisse if it.tiene_clisse else None,
+            cantidad_colores_clisse=it.cantidad_colores if it.tiene_clisse else None,
+            precio_clisse=it.precio_clisse if it.tiene_clisse else None,
+            moneda_clisse=it.moneda_clisse if it.tiene_clisse else None
         )
         db.add(item)
         items_creados.append(item)
@@ -2436,7 +2441,12 @@ def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.Cotizacion
             unidad=it.unidad,
             precio_unitario=it.precio_unitario,
             costo_total=costo_total_item,
-            procesos_plan=it.procesos_plan
+            procesos_plan=it.procesos_plan,
+            tiene_clisse=it.tiene_clisse or False,
+            nombre_clisse=it.nombre_clisse if it.tiene_clisse else None,
+            cantidad_colores_clisse=it.cantidad_colores if it.tiene_clisse else None,
+            precio_clisse=it.precio_clisse if it.tiene_clisse else None,
+            moneda_clisse=it.moneda_clisse if it.tiene_clisse else None
         )
         db.add(item)
         items_creados.append(item)

@@ -47,6 +47,11 @@ function VistaCotizacionDoc({ cotizacion, onCerrar }) {
                 {it.procesos_plan && (
                   <p className="text-xs text-blue-700">Ruta: {it.procesos_plan.split(',').join(' → ')}</p>
                 )}
+                {it.tiene_clisse && (
+                  <p className="text-xs text-purple-700">
+                    Clisse: {it.nombre_clisse} · {it.cantidad_colores || '-'} colores · {it.moneda_clisse === 'Dólares' ? '$' : 'S/'} {Number(it.precio_clisse || 0).toFixed(2)}
+                  </p>
+                )}
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-slate-500">{it.cantidad} {it.unidad}</span>
                   <span className="font-medium text-slate-800">

@@ -527,6 +527,11 @@ class CotizacionItemCreate(BaseModel):
     unidad: str
     precio_unitario: float | None = None
     procesos_plan: str | None = None
+    tiene_clisse: bool | None = False
+    nombre_clisse: str | None = None
+    cantidad_colores: int | None = None
+    precio_clisse: float | None = None
+    moneda_clisse: str | None = None
 
 
 class CotizacionCreate(BaseModel):
@@ -552,6 +557,11 @@ class CotizacionItemResponse(BaseModel):
     precio_unitario: float | None
     costo_total: float | None
     procesos_plan: str | None
+    tiene_clisse: bool | None = False
+    nombre_clisse: str | None = None
+    cantidad_colores: int | None = None
+    precio_clisse: float | None = None
+    moneda_clisse: str | None = None
 
     class Config:
         from_attributes = True

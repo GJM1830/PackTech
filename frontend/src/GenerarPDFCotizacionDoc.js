@@ -224,6 +224,47 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
     subtotal += it.costo_total || 0
     y += filaAltura
+
+    // Fila de Clisse: va justo debajo del producto, dentro de las mismas columnas
+    if (it.tiene_clisse) {
+      const simboloClisse = it.moneda_clisse === 'Dólares' ? '$' : 'S/'
+      const descripcionClisse = `Clisse ${it.nombre_clisse || '-'}`
+      const lineasDescClisse = doc.splitTextToSize(descripcionClisse, anchoDescripcion)
+      const filaAlturaClisse = Math.max(filaAlturaMin, lineasDescClisse.length * alturaLineaTexto + 4.5)
+
+      if (y + filaAlturaClisse > 265) {
+        doc.addPage()
+        y = 16
+        dibujarCabeceraTabla()
+      }
+
+      doc.setFillColor(...azulMuySuave)
+      doc.rect(M, y, ANCHO, filaAlturaClisse, 'F')
+      doc.setDrawColor(...bordeGris)
+      doc.setLineWidth(0.2)
+      doc.rect(M, y, ANCHO, filaAlturaClisse)
+      colX.slice(1).forEach((x) => doc.line(x, y, x, y + filaAlturaClisse))
+
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...azul)
+      doc.text(lineasDescClisse, colX[0] + 2, y + 5.5)
+      doc.text(`${it.cantidad_colores ?? '-'} Colores`, colX[1] + 2, y + 5.5)
+      doc.text('1', colX[2] + 2, y + 5.5)
+      doc.text('-', colX[3] + 2, y + 5.5)
+      doc.text(
+        it.precio_clisse ? `${simboloClisse} ${Number(it.precio_clisse).toFixed(2)}` : '-',
+        colX[4] + 2, y + 5.5,
+        { maxWidth: colX[5] - colX[4] - 4 }
+      )
+      doc.text(
+        it.precio_clisse ? `${simboloClisse} ${Number(it.precio_clisse).toFixed(2)}` : '-',
+        colX[5] + 2, y + 5.5,
+        { maxWidth: (M + ANCHO) - colX[5] - 4 }
+      )
+
+      y += filaAlturaClisse
+    }
   })
 
   y += 5
@@ -335,7 +376,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   doc.text('Esperando tener la oportunidad de atender su pedido, quedamos de Ud.', M, y)
   y += 8
   doc.setFont('helvetica', 'bold')
-  doc.text('Atentamente.', M, y)
+  doc.text(cotizacion.vendedor ? `Atentamente, ${cotizacion.vendedor}` : 'Atentamente.', M, y)
   y += 16
 
   // ================= PIE INSTITUCIONAL =================

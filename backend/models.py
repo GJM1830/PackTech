@@ -420,4 +420,9 @@ class CotizacionItem(Base):
     precio_unitario: Mapped[float | None] = mapped_column(Numeric(10, 2))
     costo_total: Mapped[float | None] = mapped_column(Numeric(10, 2))
     procesos_plan: Mapped[str | None] = mapped_column(Text)
+    tiene_clisse: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    nombre_clisse: Mapped[str | None] = mapped_column(String(200))
+    cantidad_colores_clisse: Mapped[int | None] = mapped_column(Integer)
+    precio_clisse: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    moneda_clisse: Mapped[str | None] = mapped_column(String(10))
     

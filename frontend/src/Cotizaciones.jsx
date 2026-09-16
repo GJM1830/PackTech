@@ -30,7 +30,8 @@ const UNIDADES_PRECIO = [
 ]
 
 const ITEM_VACIO = {
-  descripcion: '', medidas: '', cantidad: '', unidad: 'kg', precio_unitario: ''
+  descripcion: '', medidas: '', cantidad: '', unidad: 'kg', precio_unitario: '',
+  tiene_clisse: false, nombre_clisse: '', cantidad_colores: '', precio_clisse: '', moneda_clisse: 'Soles'
 }
 
 function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdicion }) {
@@ -96,7 +97,12 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           cantidad: it.cantidad || '',
           unidad: it.unidad || 'kg',
           precio_unitario: it.precio_unitario || '',
-          procesos_plan: it.procesos_plan || null
+          procesos_plan: it.procesos_plan || null,
+          tiene_clisse: it.tiene_clisse || false,
+          nombre_clisse: it.nombre_clisse || '',
+          cantidad_colores: it.cantidad_colores || '',
+          precio_clisse: it.precio_clisse || '',
+          moneda_clisse: it.moneda_clisse || 'Soles'
         }))
       )
       setItemActual({ ...ITEM_VACIO })
@@ -128,7 +134,12 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           cantidad: it.cantidad || '',
           unidad: it.unidad || 'kg',
           precio_unitario: it.precio_unitario || '',
-          procesos_plan: it.procesos_plan || null
+          procesos_plan: it.procesos_plan || null,
+          tiene_clisse: it.tiene_clisse || false,
+          nombre_clisse: it.nombre_clisse || '',
+          cantidad_colores: it.cantidad_colores || '',
+          precio_clisse: it.precio_clisse || '',
+          moneda_clisse: it.moneda_clisse || 'Soles'
         }))
       )
       setItemActual({ ...ITEM_VACIO })
@@ -188,6 +199,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
       setError('Indica la cantidad de este ítem.')
       return
     }
+    if (itemActual.tiene_clisse && !itemActual.nombre_clisse.trim()) {
+      setError('Escribe el nombre del Clisse o marca "No" en "¿Lleva Clisse?".')
+      return
+    }
     setError(null)
     setItems((actual) => [...actual, { ...itemActual, procesos_plan: procesosItemActual.join(',') || null }])
     setItemActual({ ...ITEM_VACIO })
@@ -206,6 +221,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
     if (itemActual.descripcion || itemActual.cantidad) {
       if (!itemActual.descripcion.trim() || !itemActual.cantidad) {
         setError('Completa el último producto (descripción y cantidad) o quítalo antes de guardar.')
+        setEnviando(false)
+        return
+      }
+      if (itemActual.tiene_clisse && !itemActual.nombre_clisse.trim()) {
+        setError('Escribe el nombre del Clisse del último producto o desactiva esa opción.')
         setEnviando(false)
         return
       }
@@ -242,7 +262,12 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           cantidad: parseFloat(it.cantidad),
           unidad: it.unidad || 'kg',
           precio_unitario: it.precio_unitario ? parseFloat(it.precio_unitario) : null,
-          procesos_plan: it.procesos_plan || null
+          procesos_plan: it.procesos_plan || null,
+          tiene_clisse: !!it.tiene_clisse,
+          nombre_clisse: it.tiene_clisse ? (it.nombre_clisse || null) : null,
+          cantidad_colores: it.tiene_clisse && it.cantidad_colores ? parseInt(it.cantidad_colores) : null,
+          precio_clisse: it.tiene_clisse && it.precio_clisse ? parseFloat(it.precio_clisse) : null,
+          moneda_clisse: it.tiene_clisse ? (it.moneda_clisse || null) : null
         }))
       }
 
@@ -479,6 +504,78 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
             )}
           </div>
 
+          <div className="border-t border-slate-200 pt-3">
+            <label className="block text-sm font-medium text-slate-600 mb-2">¿Este producto lleva Clisse?</label>
+            <div className="flex gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setItemActual({ ...itemActual, tiene_clisse: true })}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  itemActual.tiene_clisse ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                Sí
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemActual({ ...itemActual, tiene_clisse: false, nombre_clisse: '', cantidad_colores: '', precio_clisse: '' })}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  !itemActual.tiene_clisse ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                No
+              </button>
+            </div>
+
+            {itemActual.tiene_clisse && (
+              <div className="grid grid-cols-2 gap-3 bg-white border border-blue-100 rounded-lg p-3">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Nombre del Clisse</label>
+                  <input
+                    type="text"
+                    value={itemActual.nombre_clisse}
+                    onChange={(e) => setItemActual({ ...itemActual, nombre_clisse: e.target.value })}
+                    placeholder="Ej. Hielo Rosell x3kg"
+                    className={estilo}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad de colores</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={itemActual.cantidad_colores}
+                    onChange={(e) => setItemActual({ ...itemActual, cantidad_colores: e.target.value })}
+                    placeholder="Ej. 1"
+                    className={estilo}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Moneda del Clisse</label>
+                  <select
+                    value={itemActual.moneda_clisse}
+                    onChange={(e) => setItemActual({ ...itemActual, moneda_clisse: e.target.value })}
+                    className={estilo}
+                  >
+                    <option value="Soles">Soles (S/)</option>
+                    <option value="Dólares">Dólares ($)</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Precio del Clisse</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={itemActual.precio_clisse}
+                    onChange={(e) => setItemActual({ ...itemActual, precio_clisse: e.target.value })}
+                    placeholder="Ej. 250.00"
+                    className={estilo}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-2">Ruta de procesos (opcional)</label>
             <p className="text-xs text-slate-400 mb-2">Toca los procesos en el orden que van a pasar.</p>
@@ -534,6 +631,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
                   </p>
                   {it.procesos_plan && (
                     <p className="text-xs text-blue-600">{it.procesos_plan.split(',').join(' → ')}</p>
+                  )}
+                  {it.tiene_clisse && (
+                    <p className="text-xs text-purple-700">
+                      Clisse: {it.nombre_clisse} · {it.cantidad_colores || '-'} colores · {it.moneda_clisse === 'Dólares' ? '$' : 'S/'} {it.precio_clisse || '0.00'}
+                    </p>
                   )}
                 </div>
                 <button
