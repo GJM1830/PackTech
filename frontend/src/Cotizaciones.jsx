@@ -506,35 +506,32 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
         <div className="grid grid-cols-1 gap-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Forma de pago (opcional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Forma de pago</label>
             <input
               type="text"
               name="forma_pago"
               value={form.forma_pago}
               onChange={manejarCambio}
-              placeholder="Ej. 50% adelantado y 50% contra entrega"
               className={estilo}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Tiempo de entrega (opcional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Tiempo de entrega</label>
             <input
               type="text"
               name="tiempo_entrega"
               value={form.tiempo_entrega}
               onChange={manejarCambio}
-              placeholder="Ej. 10 días o según mutuo acuerdo"
               className={estilo}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Validez de la oferta (opcional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Validez de la oferta</label>
             <input
               type="text"
               name="validez_oferta"
               value={form.validez_oferta}
               onChange={manejarCambio}
-              placeholder="Ej. 10 días"
               className={estilo}
             />
           </div>
