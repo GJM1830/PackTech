@@ -31,7 +31,7 @@ const UNIDADES_PRECIO = [
 
 const ITEM_VACIO = {
   descripcion: '', medidas: '', cantidad: '', unidad: 'kg', precio_unitario: '',
-  tiene_clisse: false, nombre_clisse: '', cantidad_colores: '', precio_clisse: '', moneda_clisse: 'Soles'
+  tiene_clisse: false, nombre_clisse: '', cantidad_colores: '', precio_clisse: ''
 }
 
 function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdicion }) {
@@ -101,8 +101,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           tiene_clisse: it.tiene_clisse || false,
           nombre_clisse: it.nombre_clisse || '',
           cantidad_colores: it.cantidad_colores || '',
-          precio_clisse: it.precio_clisse || '',
-          moneda_clisse: it.moneda_clisse || 'Soles'
+          precio_clisse: it.precio_clisse || ''
         }))
       )
       setItemActual({ ...ITEM_VACIO })
@@ -138,8 +137,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           tiene_clisse: it.tiene_clisse || false,
           nombre_clisse: it.nombre_clisse || '',
           cantidad_colores: it.cantidad_colores || '',
-          precio_clisse: it.precio_clisse || '',
-          moneda_clisse: it.moneda_clisse || 'Soles'
+          precio_clisse: it.precio_clisse || ''
         }))
       )
       setItemActual({ ...ITEM_VACIO })
@@ -266,8 +264,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           tiene_clisse: !!it.tiene_clisse,
           nombre_clisse: it.tiene_clisse ? (it.nombre_clisse || null) : null,
           cantidad_colores: it.tiene_clisse && it.cantidad_colores ? parseInt(it.cantidad_colores) : null,
-          precio_clisse: it.tiene_clisse && it.precio_clisse ? parseFloat(it.precio_clisse) : null,
-          moneda_clisse: it.tiene_clisse ? (it.moneda_clisse || null) : null
+          precio_clisse: it.tiene_clisse && it.precio_clisse ? parseFloat(it.precio_clisse) : null
         }))
       }
 
@@ -551,18 +548,9 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Moneda del Clisse</label>
-                  <select
-                    value={itemActual.moneda_clisse}
-                    onChange={(e) => setItemActual({ ...itemActual, moneda_clisse: e.target.value })}
-                    className={estilo}
-                  >
-                    <option value="Soles">Soles (S/)</option>
-                    <option value="Dólares">Dólares ($)</option>
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Precio del Clisse</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Precio del Clisse ({form.moneda === 'Dólares' ? '$' : 'S/'})
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -634,7 +622,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
                   )}
                   {it.tiene_clisse && (
                     <p className="text-xs text-purple-700">
-                      Clisse: {it.nombre_clisse} · {it.cantidad_colores || '-'} colores · {it.moneda_clisse === 'Dólares' ? '$' : 'S/'} {it.precio_clisse || '0.00'}
+                      Clisse: {it.nombre_clisse} · {it.cantidad_colores || '-'} colores · {form.moneda === 'Dólares' ? '$' : 'S/'} {it.precio_clisse || '0.00'}
                     </p>
                   )}
                 </div>

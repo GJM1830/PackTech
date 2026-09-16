@@ -531,7 +531,6 @@ class CotizacionItemCreate(BaseModel):
     nombre_clisse: str | None = None
     cantidad_colores: int | None = None
     precio_clisse: float | None = None
-    moneda_clisse: str | None = None
 
 
 class CotizacionCreate(BaseModel):
@@ -561,7 +560,6 @@ class CotizacionItemResponse(BaseModel):
     nombre_clisse: str | None = None
     cantidad_colores: int | None = None
     precio_clisse: float | None = None
-    moneda_clisse: str | None = None
 
     class Config:
         from_attributes = True

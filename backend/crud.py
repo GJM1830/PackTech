@@ -2156,6 +2156,7 @@ def _armar_respuesta_cotizacion(cotizacion: models.Cotizacion, items: list[model
     cotizacion.items = items
 
     subtotal = sum(float(it.costo_total or 0) for it in items)
+    subtotal += sum(float(it.precio_clisse or 0) for it in items if it.tiene_clisse)
     igv = subtotal * 0.18 if cotizacion.incluye_igv else 0
     cotizacion.subtotal = subtotal
     cotizacion.igv = igv
@@ -2243,9 +2244,8 @@ def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
             procesos_plan=it.procesos_plan,
             tiene_clisse=it.tiene_clisse or False,
             nombre_clisse=it.nombre_clisse if it.tiene_clisse else None,
-            cantidad_colores_clisse=it.cantidad_colores if it.tiene_clisse else None,
-            precio_clisse=it.precio_clisse if it.tiene_clisse else None,
-            moneda_clisse=it.moneda_clisse if it.tiene_clisse else None
+            cantidad_colores=it.cantidad_colores if it.tiene_clisse else None,
+            precio_clisse=it.precio_clisse if it.tiene_clisse else None
         )
         db.add(item)
         items_creados.append(item)
@@ -2444,9 +2444,8 @@ def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.Cotizacion
             procesos_plan=it.procesos_plan,
             tiene_clisse=it.tiene_clisse or False,
             nombre_clisse=it.nombre_clisse if it.tiene_clisse else None,
-            cantidad_colores_clisse=it.cantidad_colores if it.tiene_clisse else None,
-            precio_clisse=it.precio_clisse if it.tiene_clisse else None,
-            moneda_clisse=it.moneda_clisse if it.tiene_clisse else None
+            cantidad_colores=it.cantidad_colores if it.tiene_clisse else None,
+            precio_clisse=it.precio_clisse if it.tiene_clisse else None
         )
         db.add(item)
         items_creados.append(item)

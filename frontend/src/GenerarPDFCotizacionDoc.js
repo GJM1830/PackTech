@@ -227,7 +227,6 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
     // Fila de Clisse: va justo debajo del producto, dentro de las mismas columnas
     if (it.tiene_clisse) {
-      const simboloClisse = it.moneda_clisse === 'Dólares' ? '$' : 'S/'
       const descripcionClisse = `Clisse ${it.nombre_clisse || '-'}`
       const lineasDescClisse = doc.splitTextToSize(descripcionClisse, anchoDescripcion)
       const filaAlturaClisse = Math.max(filaAlturaMin, lineasDescClisse.length * alturaLineaTexto + 4.5)
@@ -253,16 +252,17 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       doc.text('1', colX[2] + 2, y + 5.5)
       doc.text('-', colX[3] + 2, y + 5.5)
       doc.text(
-        it.precio_clisse ? `${simboloClisse} ${Number(it.precio_clisse).toFixed(2)}` : '-',
+        it.precio_clisse ? `${simbolo} ${Number(it.precio_clisse).toFixed(2)}` : '-',
         colX[4] + 2, y + 5.5,
         { maxWidth: colX[5] - colX[4] - 4 }
       )
       doc.text(
-        it.precio_clisse ? `${simboloClisse} ${Number(it.precio_clisse).toFixed(2)}` : '-',
+        it.precio_clisse ? `${simbolo} ${Number(it.precio_clisse).toFixed(2)}` : '-',
         colX[5] + 2, y + 5.5,
         { maxWidth: (M + ANCHO) - colX[5] - 4 }
       )
 
+      subtotal += it.precio_clisse || 0
       y += filaAlturaClisse
     }
   })
