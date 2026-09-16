@@ -2412,7 +2412,7 @@ import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import VistaCotizacionDoc from './VistaCotizacionDoc'
-import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+import { cargarFiltros, guardarFiltros, PERIODOS_RAPIDOS } from './filtrosPersistentes'
 
 const CLAVE_BORRADOR_COTIZACION = 'packtech_borrador_cotizacion'
 const FORM_VACIO_COTIZACION = {
@@ -2442,7 +2442,7 @@ const ITEM_VACIO = {
   descripcion: '', medidas: '', cantidad: '', unidad: 'kg', precio_unitario: ''
 }
 
-function FormularioCotizacion({ onCreada, duplicarDesde }) {
+function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdicion }) {
   const borradorGuardado = cargarFiltros(CLAVE_BORRADOR_COTIZACION, {
     form: FORM_VACIO_COTIZACION, items: [], itemActual: ITEM_VACIO, procesosItemActual: []
   })
@@ -2451,6 +2451,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
   const [items, setItems] = useState(borradorGuardado.items)
   const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
   const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
+  const [editandoId, setEditandoId] = useState(null)
 
   // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
   useEffect(() => {
@@ -2513,6 +2514,40 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }, [duplicarDesde])
+
+  useEffect(() => {
+    if (editando) {
+      setEditandoId(editando.id)
+      setForm({
+        codigo: editando.codigo || '',
+        ruc: editando.ruc || '',
+        nombre_cliente: editando.cliente || '',
+        vendedor: editando.vendedor || '',
+        moneda: editando.moneda || 'Soles',
+        incluye_igv: editando.incluye_igv || false,
+        forma_pago: editando.forma_pago || '',
+        tiempo_entrega: editando.tiempo_entrega || '',
+        validez_oferta: editando.validez_oferta || '',
+        observaciones: editando.observaciones || ''
+      })
+      setItems(
+        (editando.items || []).map((it) => ({
+          descripcion: it.descripcion || '',
+          medidas: it.medidas || '',
+          cantidad: it.cantidad || '',
+          unidad: it.unidad || 'kg',
+          precio_unitario: it.precio_unitario || '',
+          procesos_plan: it.procesos_plan || null
+        }))
+      )
+      setItemActual({ ...ITEM_VACIO })
+      setProcesosItemActual([])
+      setClienteSeleccionado({ ruc: editando.ruc || '', nombre: editando.cliente || '' })
+      setError(null)
+      setExito(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [editando])
 
   useEffect(() => {
     if (clienteSeleccionado) {
@@ -2599,7 +2634,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
     }
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/cotizaciones', {
+      const payload = {
         codigo: form.codigo.trim(),
         ruc: form.ruc || null,
         nombre_cliente: form.nombre_cliente,
@@ -2618,7 +2653,13 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           precio_unitario: it.precio_unitario ? parseFloat(it.precio_unitario) : null,
           procesos_plan: it.procesos_plan || null
         }))
-      })
+      }
+
+      if (editandoId) {
+        await axios.put(`https://packtech-production.up.railway.app/cotizaciones/${editandoId}`, payload)
+      } else {
+        await axios.post('https://packtech-production.up.railway.app/cotizaciones', payload)
+      }
 
       setExito(true)
       setForm({ ...FORM_VACIO_COTIZACION })
@@ -2626,6 +2667,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       setItemActual({ ...ITEM_VACIO })
       setProcesosItemActual([])
       setClienteSeleccionado(null)
+      setEditandoId(null)
       if (onCreada) onCreada()
     } catch (err) {
       setError(err.response?.data?.detail || 'No se pudo guardar la cotización.')
@@ -2638,8 +2680,10 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6">
-      <h2 className="text-xl font-bold text-slate-800 mb-1">Nueva Cotización</h2>
-      <p className="text-sm text-slate-500 mb-5">Completa los datos y agrega los productos que vas a cotizar.</p>
+      <h2 className="text-xl font-bold text-slate-800 mb-1">{editandoId ? 'Editar Cotización' : 'Nueva Cotización'}</h2>
+      <p className="text-sm text-slate-500 mb-5">
+        {editandoId ? 'Modifica los datos y guarda los cambios.' : 'Completa los datos y agrega los productos que vas a cotizar.'}
+      </p>
 
       <form onSubmit={manejarEnvio} className="space-y-5">
                 <div>
@@ -2960,25 +3004,73 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         {error && <p className="text-red-600 text-sm bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
         {exito && <p className="text-green-700 text-sm bg-green-50 border border-green-100 rounded-lg px-3 py-2">Cotización guardada correctamente.</p>}
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full bg-green-600 text-white rounded-lg py-3 font-semibold text-base hover:bg-green-700 disabled:opacity-50"
-        >
-          {enviando ? 'Guardando...' : 'Guardar Cotización'}
-        </button>
+        <div className="flex gap-3">
+          {editandoId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditandoId(null)
+                setForm({ ...FORM_VACIO_COTIZACION })
+                setItems([])
+                setItemActual({ ...ITEM_VACIO })
+                setProcesosItemActual([])
+                setClienteSeleccionado(null)
+                setError(null)
+                setExito(false)
+                if (onCancelarEdicion) onCancelarEdicion()
+              }}
+              className="flex-1 border border-slate-300 rounded-lg py-3 font-semibold text-base text-slate-600 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={enviando}
+            className="flex-1 bg-green-600 text-white rounded-lg py-3 font-semibold text-base hover:bg-green-700 disabled:opacity-50"
+          >
+            {enviando ? 'Guardando...' : editandoId ? 'Guardar Cambios' : 'Guardar Cotización'}
+          </button>
+        </div>
       </form>
     </div>
   )
 }
 
-function ListaCotizaciones({ onDuplicar }) {
+const CLAVE_FILTROS_COTIZACIONES = 'packtech_filtros_cotizaciones'
+
+function ListaCotizaciones({ onDuplicar, onEditar, refrescarTrigger }) {
+  const filtrosGuardados = cargarFiltros(CLAVE_FILTROS_COTIZACIONES, {
+    codigo: '', cliente: '', periodo: 'todo', desde: '', hasta: ''
+  })
+
   const [cotizaciones, setCotizaciones] = useState([])
-  const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [vistaAbierta, setVistaAbierta] = useState(null)
+  const [filtroCodigo, setFiltroCodigo] = useState(filtrosGuardados.codigo)
+  const [filtroCliente, setFiltroCliente] = useState(filtrosGuardados.cliente)
+  const [periodo, setPeriodo] = useState(filtrosGuardados.periodo)
+  const [fechaDesde, setFechaDesde] = useState(filtrosGuardados.desde)
+  const [fechaHasta, setFechaHasta] = useState(filtrosGuardados.hasta)
+  const [hayMas, setHayMas] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
   const controladorRef = useRef(null)
+
+  const rangoPeriodo = () => {
+    if (periodo === 'custom') return { desde: fechaDesde, hasta: fechaHasta }
+    const p = PERIODOS_RAPIDOS.find((x) => x.id === periodo) || PERIODOS_RAPIDOS[0]
+    return { desde: p.desde(), hasta: p.hasta() }
+  }
+
+  const paramsFiltro = () => {
+    const { desde, hasta } = rangoPeriodo()
+    return {
+      q: filtroCodigo.trim() || filtroCliente.trim() || undefined,
+      fecha_desde: desde || undefined,
+      fecha_hasta: hasta || undefined
+    }
+  }
 
   const cargar = () => {
     if (controladorRef.current) controladorRef.current.abort()
@@ -2986,11 +3078,15 @@ function ListaCotizaciones({ onDuplicar }) {
     controladorRef.current = controlador
 
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/cotizaciones/buscar', {
-      params: { q: filtro || undefined, limit: 30 },
+    axios.get('https://packtech-production.up.railway.app/cotizaciones/filtrar', {
+      params: { ...paramsFiltro(), limit: 20 },
       signal: controlador.signal
     })
-      .then((res) => { setCotizaciones(res.data); setError(null) })
+      .then((res) => {
+        setCotizaciones(res.data)
+        setHayMas(res.data.length === 20)
+        setError(null)
+      })
       .catch((err) => {
         if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return
         console.error(err)
@@ -2999,11 +3095,33 @@ function ListaCotizaciones({ onDuplicar }) {
       .finally(() => { if (controladorRef.current === controlador) setCargando(false) })
   }
 
+  const cargarMas = () => {
+    if (cotizaciones.length === 0) return
+    setCargandoMas(true)
+    const ultimoId = cotizaciones[cotizaciones.length - 1].id
+    axios.get('https://packtech-production.up.railway.app/cotizaciones/filtrar', {
+      params: { ...paramsFiltro(), limit: 20, antes_de: ultimoId }
+    })
+      .then((res) => {
+        setCotizaciones((actual) => [...actual, ...res.data])
+        setHayMas(res.data.length === 20)
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setCargandoMas(false))
+  }
+
+  // Persiste los filtros para que sobrevivan cambios de pestaña y recargas de página
+  useEffect(() => {
+    guardarFiltros(CLAVE_FILTROS_COTIZACIONES, {
+      codigo: filtroCodigo, cliente: filtroCliente, periodo, desde: fechaDesde, hasta: fechaHasta
+    })
+  }, [filtroCodigo, filtroCliente, periodo, fechaDesde, fechaHasta])
+
   useEffect(() => {
     const t = setTimeout(cargar, 300)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro])
+  }, [filtroCodigo, filtroCliente, periodo, fechaDesde, fechaHasta, refrescarTrigger])
 
   const eliminar = async (id) => {
     if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return
@@ -3015,51 +3133,153 @@ function ListaCotizaciones({ onDuplicar }) {
     }
   }
 
-  return (
-    <div className="max-w-2xl mx-auto mt-6">
-      <input
-        type="text"
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        placeholder="Buscar por número o cliente..."
-        className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-base mb-3 bg-white"
-      />
+  const hayFiltrosActivos = filtroCodigo || filtroCliente || periodo !== 'todo'
 
-      {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-      {cargando && cotizaciones.length === 0 ? (
-        <p className="text-slate-400 text-center py-6 text-sm">Cargando...</p>
-      ) : cotizaciones.length === 0 ? (
-        <p className="text-slate-400 text-center py-6 text-sm">No hay cotizaciones registradas todavía.</p>
-      ) : (
-        <div className="space-y-2">
-          {cotizaciones.map((c) => (
-            <div
-              key={c.id}
-              className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex justify-between items-center cursor-pointer hover:border-blue-300"
-              onClick={() => setVistaAbierta(c)}
+  const limpiarFiltros = () => {
+    setFiltroCodigo('')
+    setFiltroCliente('')
+    setPeriodo('todo')
+    setFechaDesde('')
+    setFechaHasta('')
+  }
+
+  return (
+    <div>
+      <div className="space-y-3 mb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {PERIODOS_RAPIDOS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriodo(p.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                periodo === p.id
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+              }`}
             >
-              <div>
-                <p className="font-semibold text-slate-800 text-sm">N° {c.codigo}</p>
-                <p className="text-xs text-slate-500">{c.cliente}</p>
-                <p className="text-xs text-slate-400">{formatearFecha(c.fecha)}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-slate-700 text-sm">
-                  {c.moneda === 'Dólares' ? '$' : 'S/'} {Number(c.total || 0).toFixed(2)}
-                </p>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <MenuAcciones
-                    opciones={[
-                      { texto: 'Ver / Descargar PDF', accion: () => setVistaAbierta(c) },
-                      { texto: 'Duplicar', accion: () => onDuplicar(c) },
-                      { texto: 'Eliminar', accion: () => eliminar(c.id), peligro: true }
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
+              {p.label}
+            </button>
           ))}
+          <button
+            onClick={() => setPeriodo('custom')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              periodo === 'custom'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            Personalizado
+          </button>
+          {periodo === 'custom' && (
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <span>Desde</span>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+              />
+              <span>hasta</span>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"
+              />
+            </div>
+          )}
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={filtroCodigo}
+            onChange={(e) => setFiltroCodigo(e.target.value)}
+            placeholder="Buscar N° Cotización..."
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-44 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+          />
+          <input
+            type="text"
+            value={filtroCliente}
+            onChange={(e) => setFiltroCliente(e.target.value)}
+            placeholder="Buscar Cliente..."
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-44"
+          />
+          {hayFiltrosActivos && (
+            <button
+              onClick={limpiarFiltros}
+              className="text-sm text-slate-400 hover:text-slate-700 underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="text-red-600 mb-3">{error}</p>}
+
+      {cargando && cotizaciones.length === 0 ? (
+        <p className="text-slate-500">Cargando...</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3">N° Cotización</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Vendedor</th>
+                  <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Fecha</th>
+                  <th className="px-4 py-3 text-right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cotizaciones.map((c) => (
+                  <tr
+                    key={c.id}
+                    onClick={() => setVistaAbierta(c)}
+                    className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
+                  >
+                    <td className="px-4 py-3 font-medium text-slate-800">{c.codigo}</td>
+                    <td className="px-4 py-3">{c.cliente}</td>
+                    <td className="px-4 py-3">{c.vendedor || '—'}</td>
+                    <td className="px-4 py-3 font-medium text-slate-800">
+                      {c.moneda === 'Dólares' ? '$' : 'S/'} {Number(c.total || 0).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3">{formatearFecha(c.fecha)}</td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <MenuAcciones
+                        onEditar={() => onEditar(c)}
+                        onDuplicar={() => onDuplicar(c)}
+                        onEliminar={() => eliminar(c.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+                {cotizaciones.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="px-4 py-6 text-center text-slate-400">
+                      No hay cotizaciones registradas todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {hayMas && cotizaciones.length > 0 && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={cargarMas}
+                disabled={cargandoMas}
+                className="text-sm text-slate-600 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {cargandoMas ? 'Cargando...' : 'Cargar más cotizaciones'}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {vistaAbierta && (
@@ -3071,15 +3291,34 @@ function ListaCotizaciones({ onDuplicar }) {
 
 function Cotizaciones() {
   const [duplicarDesde, setDuplicarDesde] = useState(null)
+  const [editando, setEditando] = useState(null)
   const [refrescar, setRefrescar] = useState(0)
 
+  const manejarDuplicar = (cot) => {
+    setEditando(null)
+    setDuplicarDesde({ ...cot, timestamp: Date.now() })
+  }
+
+  const manejarEditar = (cot) => {
+    setDuplicarDesde(null)
+    setEditando({ ...cot, timestamp: Date.now() })
+  }
+
   return (
-    <div className="px-4 py-6">
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Cotizaciones</h1>
+        <p className="text-slate-500 text-sm mt-1">Crea, filtra y da seguimiento a cada cotización.</p>
+      </div>
+
       <FormularioCotizacion
-        onCreada={() => setRefrescar((n) => n + 1)}
+        onCreada={() => { setRefrescar((n) => n + 1); setEditando(null); setDuplicarDesde(null) }}
         duplicarDesde={duplicarDesde}
+        editando={editando}
+        onCancelarEdicion={() => setEditando(null)}
       />
-      <ListaCotizaciones key={refrescar} onDuplicar={setDuplicarDesde} />
+
+      <ListaCotizaciones onDuplicar={manejarDuplicar} onEditar={manejarEditar} refrescarTrigger={refrescar} />
     </div>
   )
 }

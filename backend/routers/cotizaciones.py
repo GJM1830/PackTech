@@ -37,6 +37,18 @@ def buscar_cotizaciones(
     return crud.buscar_cotizaciones(db, q)
 
 
+@router.get("/filtrar", response_model=list[schemas.CotizacionResponse])
+def filtrar_cotizaciones(
+    q: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None,
+    db: Session = Depends(obtener_db)
+):
+    return crud.filtrar_cotizaciones(db, q, fecha_desde, fecha_hasta, limit, antes_de)
+
+
 @router.get("/{cotizacion_id}", response_model=schemas.CotizacionResponse)
 def obtener_cotizacion(
     cotizacion_id: int,

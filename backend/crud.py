@@ -2272,6 +2272,54 @@ def obtener_cotizaciones(db: Session, limit: int = 20, antes_de: int | None = No
     return resultado
 
 
+def filtrar_cotizaciones(
+    db: Session,
+    q: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    limit: int = 20,
+    antes_de: int | None = None
+):
+    """
+    Filtrado combinado real de cotizaciones (código/cliente + rango de fecha),
+    aplicado en la base de datos, con la misma paginación por 'antes_de' que
+    usan Órdenes y Movimientos.
+    """
+    query = (
+        db.query(models.Cotizacion)
+        .join(models.Cliente, models.Cotizacion.cliente_id == models.Cliente.id)
+    )
+
+    if q:
+        query = query.filter(
+            (models.Cotizacion.codigo.ilike(f"%{q}%")) |
+            (models.Cliente.nombre.ilike(f"%{q}%"))
+        )
+
+    if fecha_desde:
+        query = query.filter(models.Cotizacion.fecha >= fecha_desde)
+
+    if fecha_hasta:
+        query = query.filter(models.Cotizacion.fecha <= fecha_hasta)
+
+    if antes_de:
+        query = query.filter(models.Cotizacion.id < antes_de)
+
+    cotizaciones = query.order_by(models.Cotizacion.id.desc()).limit(limit).all()
+
+    resultado = []
+    for cot in cotizaciones:
+        items = (
+            db.query(models.CotizacionItem)
+            .filter(models.CotizacionItem.cotizacion_id == cot.id)
+            .order_by(models.CotizacionItem.id.asc())
+            .all()
+        )
+        resultado.append(_armar_respuesta_cotizacion(cot, items))
+
+    return resultado
+
+
 def buscar_cotizaciones(db: Session, q: str):
     cotizaciones = (
         db.query(models.Cotizacion)
