@@ -10,7 +10,7 @@ const FORM_VACIO_COTIZACION = {
   codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
   incluye_igv: false,
   forma_pago: '50% adelantado y 50% contra entrega',
-  tiempo_entrega: '10 días o según mutuo acuerdo',
+  tiempo_entrega: '10 días de aprobado el diseño o según mutuo acuerdo',
   validez_oferta: '10 días',
   observaciones: ''
 }
