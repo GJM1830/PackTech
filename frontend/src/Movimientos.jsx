@@ -36,6 +36,25 @@ function Movimientos() {
     codigo: '', cliente: '', proceso: '', operario: '', maquina: '', periodo: 'todo', desde: '', hasta: ''
   })
 
+  const CLAVE_BORRADOR_MOVIMIENTO = 'packtech_borrador_movimiento'
+
+  const horaActualLima = () => {
+    return new Date().toLocaleTimeString('es-PE', {
+      timeZone: 'America/Lima',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+  }
+
+  const borradorMovGuardado = cargarFiltros(CLAVE_BORRADOR_MOVIMIENTO, {
+    form: {
+      orden_id: '', proceso: '', nombre_operario: '', maquina: '', entrada: '', salida: '',
+      unidad: 'kg', tipo_laminado: '', hora_inicio: horaActualLima(), hora_fin: '', observacion: ''
+    },
+    busquedaOrden: '', busquedaOperario: ''
+  })
+
   const [movimientos, setMovimientos] = useState([])
   const [ordenes, setOrdenes] = useState([])
   const [operarios, setOperarios] = useState([])
@@ -47,6 +66,8 @@ function Movimientos() {
   const [busquedaOperario, setBusquedaOperario] = useState(borradorMovGuardado.busquedaOperario)
   const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
   const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
+
+  const [form, setForm] = useState(borradorMovGuardado.form)
 
   // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
   useEffect(() => {
@@ -65,26 +86,6 @@ function Movimientos() {
   const [filtroCliente, setFiltroCliente] = useState(filtrosGuardados.cliente)
   const [sugerenciasTipoLaminado, setSugerenciasTipoLaminado] = useState([])
   const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
-
-const horaActualLima = () => {
-  return new Date().toLocaleTimeString('es-PE', {
-    timeZone: 'America/Lima',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  })
-}
-
-  const CLAVE_BORRADOR_MOVIMIENTO = 'packtech_borrador_movimiento'
-  const borradorMovGuardado = cargarFiltros(CLAVE_BORRADOR_MOVIMIENTO, {
-    form: {
-      orden_id: '', proceso: '', nombre_operario: '', maquina: '', entrada: '', salida: '',
-      unidad: 'kg', tipo_laminado: '', hora_inicio: horaActualLima(), hora_fin: '', observacion: ''
-    },
-    busquedaOrden: '', busquedaOperario: ''
-  })
-
-  const [form, setForm] = useState(borradorMovGuardado.form)
 
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
