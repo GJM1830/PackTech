@@ -296,6 +296,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
             name="vendedor"
             value={form.vendedor}
             onChange={manejarCambio}
+            autoComplete="off"
             placeholder="Tu nombre, ej. Fernanda"
             className={estilo}
           />
@@ -304,11 +305,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
               {sugerenciasVendedores.map((v) => (
                 <button
                   type="button"
-                  key={v}
-                  onClick={() => { setForm({ ...form, vendedor: v }); setSugerenciasVendedores([]) }}
+                  key={v.id}
+                  onClick={() => { setForm({ ...form, vendedor: v.nombre }); setSugerenciasVendedores([]) }}
                   className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm text-slate-800"
                 >
-                  {v}
+                  {v.nombre}
                 </button>
               ))}
             </div>
