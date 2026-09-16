@@ -8,7 +8,11 @@ import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
 const CLAVE_BORRADOR_COTIZACION = 'packtech_borrador_cotizacion'
 const FORM_VACIO_COTIZACION = {
   codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
-  incluye_igv: false, forma_pago: '', tiempo_entrega: '', validez_oferta: '', observaciones: ''
+  incluye_igv: false,
+  forma_pago: '50% adelantado y 50% contra entrega',
+  tiempo_entrega: '10 días o según mutuo acuerdo',
+  validez_oferta: '10 días',
+  observaciones: ''
 }
 
 const formatearFecha = (fecha) => {
@@ -208,10 +212,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       })
 
       setExito(true)
-      setForm({
-        codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
-        incluye_igv: false, forma_pago: '', tiempo_entrega: '', validez_oferta: '', observaciones: ''
-      })
+      setForm({ ...FORM_VACIO_COTIZACION })
       setItems([])
       setItemActual({ ...ITEM_VACIO })
       setProcesosItemActual([])
