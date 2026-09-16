@@ -191,16 +191,15 @@ export async function generarPDFLiquidacion(data) {
     doc.setTextColor(51, 65, 85)
 
     if (esSelladoFinal) {
+      const anchoTercio = (anchoResumen - 10) / 3
+      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
+      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgNetoTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio, y + 15)
+      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 5 + anchoTercio * 2, y + 15)
+    } else {
       const anchoCuarto = (anchoResumen - 10) / 4
       doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
       doc.text(`Kg netos (${ultimoProceso.proceso}): ${kgNetoTotalFinal.toFixed(2)} kg`, M + 5 + anchoCuarto, y + 15)
       doc.text(`Kg brutos (${ultimoProceso.proceso}): ${kgBrutoTotalFinal.toFixed(2)} kg`, M + 5 + anchoCuarto * 2, y + 15)
-      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 5 + anchoCuarto * 3, y + 15)
-    } else {
-      const anchoTercio = (anchoResumen - 10) / 3
-      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
-      doc.text(`Kg netos (${ultimoProceso.proceso}): ${kgNetoTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio, y + 15)
-      doc.text(`Kg brutos (${ultimoProceso.proceso}): ${kgBrutoTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio * 2, y + 15)
     }
 
     y += alturaResumen + 5
