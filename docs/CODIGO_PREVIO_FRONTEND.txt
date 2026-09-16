@@ -5481,7 +5481,8 @@ export async function generarPDFLiquidacion(data) {
       (s, p) => s + p.mermas.reduce((s2, m) => s2 + m.peso, 0),
       0
     )
-    const kgTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + b.peso_neto, 0)
+    const kgNetoTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + b.peso_neto, 0)
+    const kgBrutoTotalFinal = ultimoProceso.bobinas_salida.reduce((s, b) => s + b.peso_bruto, 0)
     const esSelladoFinal = ultimoProceso.proceso === 'Sellado'
     const millaresTotalFinal = esSelladoFinal
       ? ultimoProceso.bobinas_salida.reduce((s, b) => s + (b.millares || 0), 0)
@@ -5508,14 +5509,16 @@ export async function generarPDFLiquidacion(data) {
     doc.setTextColor(51, 65, 85)
 
     if (esSelladoFinal) {
+      const anchoCuarto = (anchoResumen - 10) / 4
+      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
+      doc.text(`Kg netos (${ultimoProceso.proceso}): ${kgNetoTotalFinal.toFixed(2)} kg`, M + 5 + anchoCuarto, y + 15)
+      doc.text(`Kg brutos (${ultimoProceso.proceso}): ${kgBrutoTotalFinal.toFixed(2)} kg`, M + 5 + anchoCuarto * 2, y + 15)
+      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 5 + anchoCuarto * 3, y + 15)
+    } else {
       const anchoTercio = (anchoResumen - 10) / 3
       doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
-      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio, y + 15)
-      doc.text(`Millares totales: ${millaresTotalFinal.toFixed(2)}`, M + 5 + anchoTercio * 2, y + 15)
-    } else {
-      const anchoMitad = (anchoResumen - 10) / 2
-      doc.text(`Merma total: ${mermaTotalGeneral.toFixed(2)} kg`, M + 5, y + 15)
-      doc.text(`Kg totales (${ultimoProceso.proceso}): ${kgTotalFinal.toFixed(2)} kg`, M + 5 + anchoMitad, y + 15)
+      doc.text(`Kg netos (${ultimoProceso.proceso}): ${kgNetoTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio, y + 15)
+      doc.text(`Kg brutos (${ultimoProceso.proceso}): ${kgBrutoTotalFinal.toFixed(2)} kg`, M + 5 + anchoTercio * 2, y + 15)
     }
 
     y += alturaResumen + 5
