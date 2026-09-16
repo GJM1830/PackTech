@@ -3,6 +3,13 @@ import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import VistaCotizacionDoc from './VistaCotizacionDoc'
+import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+
+const CLAVE_BORRADOR_COTIZACION = 'packtech_borrador_cotizacion'
+const FORM_VACIO_COTIZACION = {
+  codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
+  incluye_igv: false, forma_pago: '', tiempo_entrega: '', validez_oferta: '', observaciones: ''
+}
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -23,22 +30,19 @@ const ITEM_VACIO = {
 }
 
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
-  const [form, setForm] = useState({
-    codigo: '',
-    ruc: '',
-    nombre_cliente: '',
-    vendedor: '',
-    moneda: 'Soles',
-    incluye_igv: false,
-    forma_pago: '',
-    tiempo_entrega: '',
-    validez_oferta: '',
-    observaciones: ''
+  const borradorGuardado = cargarFiltros(CLAVE_BORRADOR_COTIZACION, {
+    form: FORM_VACIO_COTIZACION, items: [], itemActual: ITEM_VACIO, procesosItemActual: []
   })
 
-  const [items, setItems] = useState([])
-  const [itemActual, setItemActual] = useState({ ...ITEM_VACIO })
-  const [procesosItemActual, setProcesosItemActual] = useState([])
+  const [form, setForm] = useState(borradorGuardado.form)
+  const [items, setItems] = useState(borradorGuardado.items)
+  const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
+  const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
+
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_COTIZACION, { form, items, itemActual, procesosItemActual })
+  }, [form, items, itemActual, procesosItemActual])
 
   const [sugerenciasClientes, setSugerenciasClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)

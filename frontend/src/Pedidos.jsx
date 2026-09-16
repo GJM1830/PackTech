@@ -5,6 +5,14 @@ import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import VistaPedido from './VistaPedido'
 import FiltroDesplegable from './FiltroDesplegable'
+import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+
+const CLAVE_BORRADOR_PEDIDO = 'packtech_borrador_pedido'
+const FORM_VACIO_PEDIDO = {
+  codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: '',
+  direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
+  incluye_igv: false, observaciones_pedido: '', imagen_url: ''
+}
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -22,24 +30,22 @@ const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', r
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
   const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
 
-  const [form, setForm] = useState({
-    codigo_base: '',
-    ruc: '',
-    nombre_cliente: '',
-    vendedor: '',
-    fecha_entrega: '',
-    direccion_entrega: '',
-    numero_contacto: '',
-    email_cliente: '',
-    telefono_cliente: '',
-    incluye_igv: false,
-    observaciones_pedido: '',
-    imagen_url: ''
+  const borradorGuardado = cargarFiltros(CLAVE_BORRADOR_PEDIDO, {
+    form: FORM_VACIO_PEDIDO, items: [], itemActual: ITEM_VACIO, procesosItemActual: []
   })
 
-  const [items, setItems] = useState([])
-  const [itemActual, setItemActual] = useState({ ...ITEM_VACIO })
-  const [procesosItemActual, setProcesosItemActual] = useState([])
+  const [form, setForm] = useState(borradorGuardado.form)
+  const [items, setItems] = useState(borradorGuardado.items)
+  const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
+  const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
+
+  // Guarda automáticamente lo que llevas escrito (sin la imagen, para no llenar el
+  // almacenamiento local), para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_PEDIDO, {
+      form: { ...form, imagen_url: '' }, items, itemActual, procesosItemActual
+    })
+  }, [form, items, itemActual, procesosItemActual])
 
   const agregarProceso = (proceso) => setProcesosItemActual((actual) => [...actual, proceso])
   const quitarProceso = (index) => setProcesosItemActual((actual) => actual.filter((_, i) => i !== index))

@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
 import axios from './api'
+import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+
+const CLAVE_BORRADOR_ORDEN = 'packtech_borrador_orden'
+const ORDEN_VACIA = {
+  codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '',
+  cantidad: '', observaciones: '', estado: 'Pendiente'
+}
 
 function CrearOrden({ onCreada, duplicarDesde }) {
-  const [form, setForm] = useState({
-    codigo: '',
-    ruc: '',
-    nombre_cliente: '',
-    numero_std: '',
-    descripcion: '',
-    cantidad: '',
-    observaciones: '',
-    estado: 'Pendiente'
-  })
+  const [form, setForm] = useState(() => cargarFiltros(CLAVE_BORRADOR_ORDEN, ORDEN_VACIA))
+
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_ORDEN, form)
+  }, [form])
 
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
@@ -90,18 +93,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
       })
 
       setExito(true)
-
-      setForm({
-        codigo: '',
-        ruc: '',
-        nombre_cliente: '',
-        numero_std: '',
-        descripcion: '',
-        cantidad: '',
-        observaciones: '',
-        estado: 'Pendiente'
-      })
-
+      setForm({ ...ORDEN_VACIA })
       setClienteSeleccionado(null)
 
       if (onCreada) onCreada()
@@ -111,18 +103,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         setError(err.response.data?.detail || 'Error al crear la orden.')
       } else {
         setExito(true)
-
-        setForm({
-          codigo: '',
-          ruc: '',
-          nombre_cliente: '',
-          numero_std: '',
-          descripcion: '',
-          cantidad: '',
-          observaciones: '',
-          estado: 'Pendiente'
-        })
-
+        setForm({ ...ORDEN_VACIA })
         setClienteSeleccionado(null)
 
         if (onCreada) onCreada()

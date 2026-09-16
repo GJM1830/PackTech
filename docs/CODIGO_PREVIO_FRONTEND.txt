@@ -1461,6 +1461,14 @@ import MenuAcciones from './MenuAcciones'
 import ModalEditar from './ModalEditar'
 import VistaPedido from './VistaPedido'
 import FiltroDesplegable from './FiltroDesplegable'
+import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+
+const CLAVE_BORRADOR_PEDIDO = 'packtech_borrador_pedido'
+const FORM_VACIO_PEDIDO = {
+  codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: '',
+  direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
+  incluye_igv: false, observaciones_pedido: '', imagen_url: ''
+}
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -1478,24 +1486,22 @@ const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', r
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
   const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
 
-  const [form, setForm] = useState({
-    codigo_base: '',
-    ruc: '',
-    nombre_cliente: '',
-    vendedor: '',
-    fecha_entrega: '',
-    direccion_entrega: '',
-    numero_contacto: '',
-    email_cliente: '',
-    telefono_cliente: '',
-    incluye_igv: false,
-    observaciones_pedido: '',
-    imagen_url: ''
+  const borradorGuardado = cargarFiltros(CLAVE_BORRADOR_PEDIDO, {
+    form: FORM_VACIO_PEDIDO, items: [], itemActual: ITEM_VACIO, procesosItemActual: []
   })
 
-  const [items, setItems] = useState([])
-  const [itemActual, setItemActual] = useState({ ...ITEM_VACIO })
-  const [procesosItemActual, setProcesosItemActual] = useState([])
+  const [form, setForm] = useState(borradorGuardado.form)
+  const [items, setItems] = useState(borradorGuardado.items)
+  const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
+  const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
+
+  // Guarda automáticamente lo que llevas escrito (sin la imagen, para no llenar el
+  // almacenamiento local), para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_PEDIDO, {
+      form: { ...form, imagen_url: '' }, items, itemActual, procesosItemActual
+    })
+  }, [form, items, itemActual, procesosItemActual])
 
   const agregarProceso = (proceso) => setProcesosItemActual((actual) => [...actual, proceso])
   const quitarProceso = (index) => setProcesosItemActual((actual) => actual.filter((_, i) => i !== index))
@@ -2406,6 +2412,13 @@ import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
 import VistaCotizacionDoc from './VistaCotizacionDoc'
+import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+
+const CLAVE_BORRADOR_COTIZACION = 'packtech_borrador_cotizacion'
+const FORM_VACIO_COTIZACION = {
+  codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
+  incluye_igv: false, forma_pago: '', tiempo_entrega: '', validez_oferta: '', observaciones: ''
+}
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -2426,22 +2439,19 @@ const ITEM_VACIO = {
 }
 
 function FormularioCotizacion({ onCreada, duplicarDesde }) {
-  const [form, setForm] = useState({
-    codigo: '',
-    ruc: '',
-    nombre_cliente: '',
-    vendedor: '',
-    moneda: 'Soles',
-    incluye_igv: false,
-    forma_pago: '',
-    tiempo_entrega: '',
-    validez_oferta: '',
-    observaciones: ''
+  const borradorGuardado = cargarFiltros(CLAVE_BORRADOR_COTIZACION, {
+    form: FORM_VACIO_COTIZACION, items: [], itemActual: ITEM_VACIO, procesosItemActual: []
   })
 
-  const [items, setItems] = useState([])
-  const [itemActual, setItemActual] = useState({ ...ITEM_VACIO })
-  const [procesosItemActual, setProcesosItemActual] = useState([])
+  const [form, setForm] = useState(borradorGuardado.form)
+  const [items, setItems] = useState(borradorGuardado.items)
+  const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
+  const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
+
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_COTIZACION, { form, items, itemActual, procesosItemActual })
+  }, [form, items, itemActual, procesosItemActual])
 
   const [sugerenciasClientes, setSugerenciasClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -3083,18 +3093,21 @@ CrearOrden.jsx:
 
 import { useState, useEffect } from 'react'
 import axios from './api'
+import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
+
+const CLAVE_BORRADOR_ORDEN = 'packtech_borrador_orden'
+const ORDEN_VACIA = {
+  codigo: '', ruc: '', nombre_cliente: '', numero_std: '', descripcion: '',
+  cantidad: '', observaciones: '', estado: 'Pendiente'
+}
 
 function CrearOrden({ onCreada, duplicarDesde }) {
-  const [form, setForm] = useState({
-    codigo: '',
-    ruc: '',
-    nombre_cliente: '',
-    numero_std: '',
-    descripcion: '',
-    cantidad: '',
-    observaciones: '',
-    estado: 'Pendiente'
-  })
+  const [form, setForm] = useState(() => cargarFiltros(CLAVE_BORRADOR_ORDEN, ORDEN_VACIA))
+
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_ORDEN, form)
+  }, [form])
 
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
@@ -3173,18 +3186,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
       })
 
       setExito(true)
-
-      setForm({
-        codigo: '',
-        ruc: '',
-        nombre_cliente: '',
-        numero_std: '',
-        descripcion: '',
-        cantidad: '',
-        observaciones: '',
-        estado: 'Pendiente'
-      })
-
+      setForm({ ...ORDEN_VACIA })
       setClienteSeleccionado(null)
 
       if (onCreada) onCreada()
@@ -3194,18 +3196,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
         setError(err.response.data?.detail || 'Error al crear la orden.')
       } else {
         setExito(true)
-
-        setForm({
-          codigo: '',
-          ruc: '',
-          nombre_cliente: '',
-          numero_std: '',
-          descripcion: '',
-          cantidad: '',
-          observaciones: '',
-          estado: 'Pendiente'
-        })
-
+        setForm({ ...ORDEN_VACIA })
         setClienteSeleccionado(null)
 
         if (onCreada) onCreada()
@@ -6515,12 +6506,17 @@ function Movimientos() {
   const [operarios, setOperarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [busquedaOrden, setBusquedaOrden] = useState('')
+  const [busquedaOrden, setBusquedaOrden] = useState(borradorMovGuardado.busquedaOrden)
   const [sugerenciasOrdenes, setSugerenciasOrdenes] = useState([])
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
-  const [busquedaOperario, setBusquedaOperario] = useState('')
+  const [busquedaOperario, setBusquedaOperario] = useState(borradorMovGuardado.busquedaOperario)
   const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
   const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
+
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_MOVIMIENTO, { form, busquedaOrden, busquedaOperario })
+  }, [form, busquedaOrden, busquedaOperario])
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [filtroCodigo, setFiltroCodigo] = useState(filtrosGuardados.codigo)
@@ -6544,19 +6540,16 @@ const horaActualLima = () => {
   })
 }
 
-  const [form, setForm] = useState({
-    orden_id: '',
-    proceso: '',
-    nombre_operario: '',
-    maquina: '',
-    entrada: '',
-    salida: '',
-    unidad: 'kg',
-    tipo_laminado: '',
-    hora_inicio: horaActualLima(),
-    hora_fin: '',
-    observacion: ''
+  const CLAVE_BORRADOR_MOVIMIENTO = 'packtech_borrador_movimiento'
+  const borradorMovGuardado = cargarFiltros(CLAVE_BORRADOR_MOVIMIENTO, {
+    form: {
+      orden_id: '', proceso: '', nombre_operario: '', maquina: '', entrada: '', salida: '',
+      unidad: 'kg', tipo_laminado: '', hora_inicio: horaActualLima(), hora_fin: '', observacion: ''
+    },
+    busquedaOrden: '', busquedaOperario: ''
   })
+
+  const [form, setForm] = useState(borradorMovGuardado.form)
 
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)

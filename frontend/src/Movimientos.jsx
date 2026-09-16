@@ -41,12 +41,17 @@ function Movimientos() {
   const [operarios, setOperarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [busquedaOrden, setBusquedaOrden] = useState('')
+  const [busquedaOrden, setBusquedaOrden] = useState(borradorMovGuardado.busquedaOrden)
   const [sugerenciasOrdenes, setSugerenciasOrdenes] = useState([])
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
-  const [busquedaOperario, setBusquedaOperario] = useState('')
+  const [busquedaOperario, setBusquedaOperario] = useState(borradorMovGuardado.busquedaOperario)
   const [sugerenciasOperarios, setSugerenciasOperarios] = useState([])
   const [operarioSeleccionado, setOperarioSeleccionado] = useState(null)
+
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  useEffect(() => {
+    guardarFiltros(CLAVE_BORRADOR_MOVIMIENTO, { form, busquedaOrden, busquedaOperario })
+  }, [form, busquedaOrden, busquedaOperario])
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [filtroCodigo, setFiltroCodigo] = useState(filtrosGuardados.codigo)
@@ -70,19 +75,16 @@ const horaActualLima = () => {
   })
 }
 
-  const [form, setForm] = useState({
-    orden_id: '',
-    proceso: '',
-    nombre_operario: '',
-    maquina: '',
-    entrada: '',
-    salida: '',
-    unidad: 'kg',
-    tipo_laminado: '',
-    hora_inicio: horaActualLima(),
-    hora_fin: '',
-    observacion: ''
+  const CLAVE_BORRADOR_MOVIMIENTO = 'packtech_borrador_movimiento'
+  const borradorMovGuardado = cargarFiltros(CLAVE_BORRADOR_MOVIMIENTO, {
+    form: {
+      orden_id: '', proceso: '', nombre_operario: '', maquina: '', entrada: '', salida: '',
+      unidad: 'kg', tipo_laminado: '', hora_inicio: horaActualLima(), hora_fin: '', observacion: ''
+    },
+    busquedaOrden: '', busquedaOperario: ''
   })
+
+  const [form, setForm] = useState(borradorMovGuardado.form)
 
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
