@@ -4975,6 +4975,7 @@ export function guardarFiltros(clave, valores) {
 GenerarPDFPedido.js:
 
 import jsPDF from 'jspdf'
+import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return '-'
@@ -5008,234 +5009,296 @@ export async function generarPDFPedido(pedido) {
     cantidad_precio: pedido.cantidad_precio, costo_total: pedido.costo_total
   }]
   const simbolo = items[0]?.moneda === 'Dólares' ? '$' : 'S/'
-  const subtotal = items.reduce((s, it) => s + (it.costo_total || 0), 0)
+  const subtotal = items.reduce((s, it) => s + (Number(it.costo_total) || 0), 0)
   const igv = pedido.incluye_igv ? subtotal * 0.18 : 0
   const total = subtotal + igv
+
   const M = 12
   const ANCHO = 210 - M * 2
 
+  // Paleta: gris (no celeste) en las casillas rellenas, porque esta hoja se imprime.
   const azul = [30, 64, 175]
   const slate900 = [15, 23, 42]
+  const slate700 = [51, 65, 85]
   const slate600 = [71, 85, 105]
   const slate400 = [148, 163, 184]
-  const borde = [0, 0, 0]
+  const grisFondo = [248, 250, 252]
+  const grisZebra = [246, 248, 251]
+  const grisCabecera = [226, 232, 240]
+  const grisDestacado = [241, 245, 249]
+  const bordeGris = [100, 116, 139]
 
   let y = 14
 
-  // ---- Encabezado: logo a la izquierda, Pedido/Fecha alineados a la derecha ----
-  doc.setDrawColor(...slate900)
-  doc.setLineWidth(0.3)
-  doc.line(M, y + 16, M + ANCHO, y + 16)
-
+  // ================= ENCABEZADO =================
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', M, y - 2, 66, 16)
+    doc.addImage(logoBase64, 'PNG', M, y, 42, 11)
   } else {
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(16)
+    doc.setFontSize(12)
     doc.setTextColor(...azul)
-    doc.text('PACKTECH', M, y + 6)
+    doc.text('PACKTECH', M, y + 7)
   }
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
-  doc.setTextColor(...slate400)
-  doc.text(`RUC: ${RUC_EMPRESA}`, M, y + 15)
-
-  doc.setFontSize(8)
-  doc.setTextColor(...slate600)
-  doc.text('PEDIDO', M + 130, y + 4)
-  doc.text('FECHA', M + 130, y + 11)
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
+  doc.setFontSize(17)
   doc.setTextColor(...slate900)
-  doc.text(String(pedido.codigo_base || pedido.codigo), M + ANCHO, y + 4, { align: 'right' })
-  doc.text(formatearFecha(pedido.fecha), M + ANCHO, y + 11, { align: 'right' })
+  doc.text(`Pedido - ${textoSeguro(pedido.codigo_base || pedido.codigo)}`, M + ANCHO / 2, y + 8, { align: 'center' })
 
-  y += 20
+  y += 18
 
-  // ---- Bloque cliente / condición comercial ----
-  const alturaBloque = 30
-  doc.setDrawColor(...slate900)
-  doc.setLineWidth(0.4)
-  doc.rect(M, y, ANCHO, alturaBloque)
-  doc.line(M + 130, y, M + 130, y + alturaBloque)
+  // Caja RUC / FECHA (gris, igual estructura que en Cotización)
+  const anchoCaja = 52
+  const xCaja = M + ANCHO - anchoCaja
+  const altoCaja = 12
 
-  const filaIzq = (label, valor, offsetY) => {
+  doc.setFillColor(...grisFondo)
+  doc.rect(xCaja, y, anchoCaja, altoCaja, 'F')
+  doc.setDrawColor(...bordeGris)
+  doc.setLineWidth(0.3)
+  doc.rect(xCaja, y, anchoCaja, altoCaja)
+  doc.line(xCaja + 16, y, xCaja + 16, y + altoCaja)
+  doc.line(xCaja, y + altoCaja / 2, xCaja + anchoCaja, y + altoCaja / 2)
+
+  const filaCaja = (label, valor, offsetY) => {
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.5)
+    doc.setFontSize(7)
     doc.setTextColor(...slate600)
-    doc.text(label, M + 3, y + offsetY)
-    doc.setFont('helvetica', 'normal')
+    doc.text(label, xCaja + 1.5, offsetY)
+    doc.setFont('helvetica', 'bold')
     doc.setFontSize(8.5)
     doc.setTextColor(...slate900)
-    doc.text(String(valor || '-'), M + 32, y + offsetY)
+    doc.text(textoSeguro(valor), xCaja + 18, offsetY, { maxWidth: anchoCaja - 20 })
   }
+  filaCaja('RUC', RUC_EMPRESA, y + 4.5)
+  filaCaja('FECHA', formatearFecha(pedido.fecha), y + 10.5)
 
-  filaIzq('CLIENTE', pedido.cliente, 6)
-  filaIzq('RUC / DNI', pedido.ruc, 12)
-  filaIzq('DIRECCIÓN ENTREGA', pedido.direccion_entrega, 18)
-  filaIzq('CONTACTO', pedido.numero_contacto, 24)
+  y += altoCaja + 8
 
-  const filaDer = (label, valor, offsetY) => {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...slate600)
-    doc.text(label, M + 133, y + offsetY)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...slate900)
-    doc.text(String(valor || '-'), M + 160, y + offsetY)
-  }
+  // ================= BLOQUE CLIENTE =================
+  const altoBloqueCliente = 20
+  doc.setFillColor(...grisFondo)
+  doc.rect(M, y, ANCHO, altoBloqueCliente, 'F')
+  doc.setDrawColor(...bordeGris)
+  doc.setLineWidth(0.3)
+  doc.rect(M, y, ANCHO, altoBloqueCliente)
 
-  filaDer('VENDEDOR', pedido.vendedor, 6)
-  filaDer('F. ENTREGA', formatearFecha(pedido.fecha_entrega), 12)
-  filaDer('EMAIL', pedido.email_cliente, 18)
-
-  y += alturaBloque
-
-  // ---- Tabla de productos (azul claro, texto oscuro) ----
-  const colX = [M, M + 18, M + 38, M + 118, M + 148, M + 190]
-  const anchoDescripcion = colX[3] - colX[2] - 6
-  const anchoPUnitario = colX[4] - colX[3] - 4
-  const anchoTotalCelda = (M + ANCHO) - colX[4] - 4
-  const alturaLineaTexto = 3.6
-  const filaAlturaMin = 8
-  const filasMinimas = 4
-
-  doc.setFillColor(241, 245, 249)
-  doc.rect(M, y, ANCHO, filaAlturaMin, 'F')
-  doc.setDrawColor(...borde)
-  doc.rect(M, y, ANCHO, filaAlturaMin)
-  colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
-  doc.setTextColor(...slate900)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
-  doc.text('CANT.', colX[0] + 2, y + 5.5)
-  doc.text('UNIDAD', colX[1] + 2, y + 5.5)
-  doc.text('DESCRIPCIÓN', colX[2] + 2, y + 5.5)
-  doc.text('P. UNITARIO', colX[3] + 2, y + 5.5)
-  doc.text('TOTAL', colX[4] + 2, y + 5.5)
+  doc.setTextColor(...slate600)
+  doc.text('SR(AS) / ESTIMADA(OS)', M + 3, y + 5)
 
-  y += filaAlturaMin
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...slate900)
+  doc.text(textoSeguro(pedido.cliente), M + 3, y + 11, { maxWidth: ANCHO - 6 })
 
-  items.forEach((it) => {
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...slate600)
+  doc.text('CON RUC / DNI', M + 3, y + 16.5)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...slate900)
+  doc.text(textoSeguro(pedido.ruc), M + 28, y + 16.5)
+
+  if (pedido.vendedor) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate600)
+    doc.text(`Vendedor: ${textoSeguro(pedido.vendedor)}`, M + ANCHO - 3, y + 8, { align: 'right' })
+  }
+
+  y += altoBloqueCliente + 6
+
+  // ================= DATOS DE ENTREGA (tabla flotante, propia del pedido) =================
+  const filasEntrega = [
+    ['F. ENTREGA', pedido.fecha_entrega ? formatearFecha(pedido.fecha_entrega) : null],
+    ['DIRECCIÓN DE ENTREGA', pedido.direccion_entrega],
+    ['N° DE CONTACTO', pedido.numero_contacto],
+    ['EMAIL DEL CLIENTE', pedido.email_cliente],
+    ['TELÉFONO DEL CLIENTE', pedido.telefono_cliente]
+  ].filter(([, valor]) => valor)
+
+  if (filasEntrega.length > 0) {
+    const anchoEtiqueta = 48
+    const altoFilaMin = 6.5
+    const alturaLineaDato = 3.6
+
+    const filasDatos = filasEntrega.map(([label, valor]) => {
+      const lineasValor = medirLineas(doc, valor, ANCHO - anchoEtiqueta - 5)
+      const alto = alturaFilaMultilinea([lineasValor], alturaLineaDato, altoFilaMin, 2.8)
+      return { label, lineasValor, alto }
+    })
+    const altoBloque = filasDatos.reduce((s, f) => s + f.alto, 0)
+
+    y = asegurarEspacio(doc, y, altoBloque, 270, 16)
+
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.3)
+    doc.rect(M, y, ANCHO, altoBloque)
+    doc.line(M + anchoEtiqueta, y, M + anchoEtiqueta, y + altoBloque)
+
+    let yFila = y
+    filasDatos.forEach(({ label, lineasValor, alto }, i) => {
+      if (i > 0) doc.line(M, yFila, M + ANCHO, yFila)
+
+      doc.setFillColor(...grisFondo)
+      doc.rect(M, yFila, anchoEtiqueta, alto, 'F')
+      doc.setDrawColor(...bordeGris)
+      doc.rect(M, yFila, anchoEtiqueta, alto)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...slate700)
+      doc.text(label, M + 2, yFila + 4.3)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...slate900)
+      doc.text(lineasValor, M + anchoEtiqueta + 3, yFila + 4.3)
+
+      yFila += alto
+    })
+
+    y += altoBloque + 6
+  } else {
+    y += 2
+  }
+
+  // ================= TABLA DE PRODUCTOS =================
+  const colX = [M, M + 68, M + 94, M + 110, M + 130, M + 156]
+  const anchoDescripcion = colX[1] - colX[0] - 4
+  const filaAlturaMin = 8
+  const alturaLineaTexto = 3.6
+
+  const dibujarCabeceraTabla = () => {
+    doc.setFillColor(...grisCabecera)
+    doc.rect(M, y, ANCHO, filaAlturaMin, 'F')
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.3)
+    doc.rect(M, y, ANCHO, filaAlturaMin)
+    colX.slice(1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(...slate900)
+    doc.text('DESCRIPCIÓN', colX[0] + 2, y + 5.5)
+    doc.text('MEDIDAS', colX[1] + 2, y + 5.5)
+    doc.text('CANT.', colX[2] + 2, y + 5.5)
+    doc.text('UNIDAD', colX[3] + 2, y + 5.5)
+    doc.text('P. UNIT.', colX[4] + 2, y + 5.5)
+    doc.text('TOTAL', colX[5] + 2, y + 5.5)
+    y += filaAlturaMin
+  }
+
+  y = asegurarEspacio(doc, y, filaAlturaMin, 265, 16)
+  dibujarCabeceraTabla()
+
+  const anchoPUnitario = colX[5] - colX[4] - 4
+  const anchoTotalCelda = (M + ANCHO) - colX[5] - 4
+
+  items.forEach((it, index) => {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+
     const cantidadTabla = it.unidad_precio && it.unidad_precio !== 'kg' ? it.cantidad_precio : it.cantidad
     const unidadTabla = it.unidad_precio ? (ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg') : 'kg'
     const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
 
-    // La fuente se fija ANTES de calcular el ajuste de línea: splitTextToSize debe medir
-    // con la misma fuente/tamaño con la que luego se dibuja el texto, o el cálculo de
-    // cuántos caracteres caben por línea queda mal y el texto se desborda de su columna.
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
+    // Cada columna con texto potencialmente largo se mide por separado; la fila
+    // toma el alto de la que necesite más líneas, así ninguna se sale de su celda.
+    const lineasDescripcion = medirLineas(doc, it.descripcion, anchoDescripcion)
+    const lineasMedidas = medirLineas(doc, it.medidas, colX[2] - colX[1] - 4)
+    const lineasPUnit = medirLineas(doc, it.precio_unitario ? montoSeguro(it.precio_unitario, simboloItem) : '-', anchoPUnitario)
+    const lineasTotal = medirLineas(doc, it.costo_total ? montoSeguro(it.costo_total, simboloItem) : '-', anchoTotalCelda)
 
-    const descripcionPDF = it.medidas
-      ? `${it.descripcion || '-'} (${it.medidas})`
-      : (it.descripcion || '-')
-    const lineasDescripcion = doc.splitTextToSize(String(descripcionPDF), anchoDescripcion)
-    const filaAltura = Math.max(filaAlturaMin, lineasDescripcion.length * alturaLineaTexto + 4.5)
+    const filaAltura = alturaFilaMultilinea(
+      [lineasDescripcion, lineasMedidas, lineasPUnit, lineasTotal],
+      alturaLineaTexto,
+      filaAlturaMin
+    )
 
-    // Salvaguarda: si la fila (por descripciones largas) no cabe en la página, se abre una nueva
-    if (y + filaAltura > 280) {
+    // Salvaguarda de salto de página: si no cabe, se repite la cabecera en la página nueva
+    if (y + filaAltura > 265) {
       doc.addPage()
       y = 16
+      dibujarCabeceraTabla()
     }
 
-    doc.setDrawColor(...borde)
+    // Zebra striping muy suave para lectura tipo hoja de cálculo
+    if (index % 2 === 1) {
+      doc.setFillColor(...grisZebra)
+      doc.rect(M, y, ANCHO, filaAltura, 'F')
+    }
+
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.2)
     doc.rect(M, y, ANCHO, filaAltura)
-    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAltura))
+    colX.slice(1).forEach((x) => doc.line(x, y, x, y + filaAltura))
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
+    doc.setFontSize(8)
     doc.setTextColor(...slate900)
-    doc.text(String(cantidadTabla || '-'), colX[0] + 2, y + 5.5)
-    doc.text(unidadTabla, colX[1] + 2, y + 5.5)
-    doc.text(lineasDescripcion, colX[2] + 2, y + 5.5)
-    doc.text(
-      it.precio_unitario ? `${simboloItem} ${Number(it.precio_unitario).toFixed(2)}` : '-',
-      colX[3] + 2, y + 5.5,
-      { maxWidth: anchoPUnitario }
-    )
-    doc.text(
-      it.costo_total ? `${simboloItem} ${Number(it.costo_total).toFixed(2)}` : '-',
-      colX[4] + 2, y + 5.5,
-      { maxWidth: anchoTotalCelda }
-    )
+    doc.text(lineasDescripcion, colX[0] + 2, y + 5.5)
+    doc.setTextColor(...slate700)
+    doc.text(lineasMedidas, colX[1] + 2, y + 5.5)
+    doc.text(textoSeguro(cantidadTabla), colX[2] + 2, y + 5.5)
+    doc.text(unidadTabla, colX[3] + 2, y + 5.5)
+    doc.text(lineasPUnit, colX[4] + 2, y + 5.5)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...slate900)
+    doc.text(lineasTotal, colX[5] + 2, y + 5.5)
 
     y += filaAltura
   })
 
-  const filasVacias = Math.max(0, filasMinimas - items.length)
-  for (let i = 0; i < filasVacias; i++) {
-    doc.setDrawColor(...borde)
-    doc.rect(M, y, ANCHO, filaAlturaMin)
-    colX.slice(1, -1).forEach((x) => doc.line(x, y, x, y + filaAlturaMin))
-    y += filaAlturaMin
-  }
-
-  y += 4
-
-  // Si no queda espacio para el bloque de totales, se pasa a una página nueva
-  if (y + 30 > 280) {
-    doc.addPage()
-    y = 16
-  }
-
-  // ---- Totales ----
-  const anchoTotales = 55
-  const xTotales = M + ANCHO - anchoTotales
-  const yInicioTotales = y
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(...slate600)
-  doc.text('SUBTOTAL', xTotales + 2, y + 4.8)
-  doc.setTextColor(...slate900)
-  doc.text(`${simbolo} ${subtotal.toFixed(2)}`, xTotales + anchoTotales - 2, y + 4.8, { align: 'right' })
-  y += 7
-
-  if (pedido.incluye_igv) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(...slate600)
-    doc.text('IGV (18%)', xTotales + 2, y + 4.8)
-    doc.setTextColor(...slate900)
-    doc.text(`${simbolo} ${igv.toFixed(2)}`, xTotales + anchoTotales - 2, y + 4.8, { align: 'right' })
-    y += 7
-  }
-
-  doc.setFillColor(241, 245, 249)
-  doc.rect(xTotales, y, anchoTotales, 9, 'F')
-  doc.setDrawColor(...slate900)
-  doc.setLineWidth(0.4)
-  doc.rect(xTotales, y, anchoTotales, 9)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
-  doc.setTextColor(...slate900)
-  doc.text('TOTAL', xTotales + 2, y + 6)
-  doc.setTextColor(...azul)
-  doc.text(`${simbolo} ${total.toFixed(2)}`, xTotales + anchoTotales - 2, y + 6, { align: 'right' })
-  y += 9
-
-  doc.setDrawColor(...borde)
-  doc.rect(xTotales, yInicioTotales, anchoTotales, y - yInicioTotales)
-  if (pedido.incluye_igv) {
-    doc.line(xTotales, yInicioTotales + 7, xTotales + anchoTotales, yInicioTotales + 7)
-    doc.line(xTotales, yInicioTotales + 14, xTotales + anchoTotales, yInicioTotales + 14)
-  } else {
-    doc.line(xTotales, yInicioTotales + 7, xTotales + anchoTotales, yInicioTotales + 7)
-  }
-
   y += 5
 
-  // El bloque de condiciones (5 líneas fijas) no cabe si ya estamos muy abajo
-  if (y + 22 > 280) {
-    doc.addPage()
-    y = 16
+  // ================= TOTALES =================
+  y = asegurarEspacio(doc, y, 30, 270, 16)
+
+  const anchoTotales = 62
+  const xTotales = M + ANCHO - anchoTotales
+
+  const filas = [{ label: 'SUBTOTAL', valor: subtotal, esTotal: false }]
+  if (pedido.incluye_igv) filas.push({ label: 'IGV (18%)', valor: igv, esTotal: false })
+  filas.push({ label: 'TOTAL', valor: total, esTotal: true })
+
+  const alturaFila = 9
+  const alturaBloque = filas.length * alturaFila
+  const yInicioTotales = y
+
+  filas.forEach((f, i) => {
+    if (f.esTotal) {
+      doc.setFillColor(...grisDestacado)
+      doc.rect(xTotales, yInicioTotales + i * alturaFila, anchoTotales, alturaFila, 'F')
+    }
+  })
+
+  doc.setDrawColor(...bordeGris)
+  doc.setLineWidth(0.3)
+  doc.rect(xTotales, yInicioTotales, anchoTotales, alturaBloque)
+  for (let i = 1; i < filas.length; i++) {
+    const yLinea = yInicioTotales + i * alturaFila
+    doc.line(xTotales, yLinea, xTotales + anchoTotales, yLinea)
   }
 
-  // ---- Condiciones ----
+  filas.forEach((f, i) => {
+    const yFila = yInicioTotales + i * alturaFila + alturaFila / 2 + 1.5
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(f.esTotal ? 10 : 8.5)
+    doc.setTextColor(...(f.esTotal ? slate900 : slate600))
+    doc.text(f.label, xTotales + 3, yFila)
+    doc.setTextColor(...slate900)
+    doc.text(montoSeguro(f.valor, simbolo), xTotales + anchoTotales - 3, yFila, { align: 'right' })
+  })
+
+  y = yInicioTotales + alturaBloque + 10
+
+  // ================= CONDICIONES FIJAS =================
+  y = asegurarEspacio(doc, y, 22, 280, 16)
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(...slate400)
@@ -5252,10 +5315,7 @@ export async function generarPDFPedido(pedido) {
   })
 
   if (pedido.incluye_igv != null || pedido.observaciones_pedido) {
-    if (y + 16 > 280) {
-      doc.addPage()
-      y = 16
-    }
+    y = asegurarEspacio(doc, y, 16, 280, 16)
     y += 4
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.5)
@@ -5264,16 +5324,13 @@ export async function generarPDFPedido(pedido) {
     if (pedido.observaciones_pedido) {
       y += 4
       doc.setFont('helvetica', 'normal')
-      doc.text(`Obs: ${pedido.observaciones_pedido}`, M, y, { maxWidth: ANCHO })
+      doc.text(`Obs: ${textoSeguro(pedido.observaciones_pedido)}`, M, y, { maxWidth: ANCHO })
     }
   }
 
   if (pedido.imagen_url) {
     // La imagen mide 60mm de alto; si no cabe, se dibuja en una página nueva
-    if (y + 74 > 280) {
-      doc.addPage()
-      y = 16
-    }
+    y = asegurarEspacio(doc, y, 74, 280, 16)
     y += 10
     const formato = pedido.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
     try {
@@ -5284,10 +5341,7 @@ export async function generarPDFPedido(pedido) {
     }
   }
 
-  if (y + 20 > 280) {
-    doc.addPage()
-    y = 16
-  }
+  y = asegurarEspacio(doc, y, 20, 280, 16)
   y += 14
   doc.setDrawColor(...slate400)
   doc.line(M, y, M + 60, y)
