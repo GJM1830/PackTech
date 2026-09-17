@@ -200,6 +200,12 @@ export async function generarPDFPedido(pedido) {
 
   y += 4
 
+  // Si no queda espacio para el bloque de totales, se pasa a una página nueva
+  if (y + 30 > 280) {
+    doc.addPage()
+    y = 16
+  }
+
   // ---- Totales ----
   const anchoTotales = 55
   const xTotales = M + ANCHO - anchoTotales
@@ -247,6 +253,12 @@ export async function generarPDFPedido(pedido) {
 
   y += 5
 
+  // El bloque de condiciones (5 líneas fijas) no cabe si ya estamos muy abajo
+  if (y + 22 > 280) {
+    doc.addPage()
+    y = 16
+  }
+
   // ---- Condiciones ----
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
@@ -264,6 +276,10 @@ export async function generarPDFPedido(pedido) {
   })
 
   if (pedido.incluye_igv != null || pedido.observaciones_pedido) {
+    if (y + 16 > 280) {
+      doc.addPage()
+      y = 16
+    }
     y += 4
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.5)
@@ -277,6 +293,11 @@ export async function generarPDFPedido(pedido) {
   }
 
   if (pedido.imagen_url) {
+    // La imagen mide 60mm de alto; si no cabe, se dibuja en una página nueva
+    if (y + 74 > 280) {
+      doc.addPage()
+      y = 16
+    }
     y += 10
     const formato = pedido.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
     try {
@@ -287,6 +308,10 @@ export async function generarPDFPedido(pedido) {
     }
   }
 
+  if (y + 20 > 280) {
+    doc.addPage()
+    y = 16
+  }
   y += 14
   doc.setDrawColor(...slate400)
   doc.line(M, y, M + 60, y)

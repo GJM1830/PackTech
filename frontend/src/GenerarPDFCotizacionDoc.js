@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf'
+import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return '-'
@@ -107,7 +108,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(...slate900)
-  doc.text(String(cotizacion.cliente || '-'), M + 3, y + 11)
+  doc.text(textoSeguro(cotizacion.cliente), M + 3, y + 11, { maxWidth: ANCHO - 6 })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
@@ -169,18 +170,27 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setFontSize(8)
 
     // Descripción + procesos como una sola frase: "producto, con procesos: A, B, C"
-    const descripcionBase = it.descripcion || '-'
+    const descripcionBase = textoSeguro(it.descripcion)
     const procesos = it.procesos_plan ? it.procesos_plan.split(',').filter(Boolean) : []
     const descripcionCompleta = procesos.length > 0
       ? `${descripcionBase}, con procesos: ${procesos.join(', ')}`
       : descripcionBase
-    const lineasDescripcion = doc.splitTextToSize(descripcionCompleta, anchoDescripcion)
 
-    const lineasMedidas = doc.splitTextToSize(String(it.medidas || '-'), colX[2] - colX[1] - 4)
+    const anchoPrecio = colX[5] - colX[4] - 4
+    const anchoSubtotal = (M + ANCHO) - colX[5] - 4
 
-    const filaAltura = Math.max(
-      filaAlturaMin,
-      Math.max(lineasDescripcion.length, lineasMedidas.length) * alturaLineaTexto + 4.5
+    // Se mide CADA columna que puede tener texto largo (descripción, medidas,
+    // precio, subtotal) y la fila toma el alto de la que necesite más líneas,
+    // así ninguna columna se sale de su celda.
+    const lineasDescripcion = medirLineas(doc, descripcionCompleta, anchoDescripcion)
+    const lineasMedidas = medirLineas(doc, it.medidas, colX[2] - colX[1] - 4)
+    const lineasPUnit = medirLineas(doc, it.precio_unitario ? montoSeguro(it.precio_unitario, simbolo) : '-', anchoPrecio)
+    const lineasSubtotal = medirLineas(doc, it.costo_total ? montoSeguro(it.costo_total, simbolo) : '-', anchoSubtotal)
+
+    const filaAltura = alturaFilaMultilinea(
+      [lineasDescripcion, lineasMedidas, lineasPUnit, lineasSubtotal],
+      alturaLineaTexto,
+      filaAlturaMin
     )
 
     // Salvaguarda de salto de página: si no cabe, se repite la cabecera en la página nueva
@@ -207,29 +217,22 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.text(lineasDescripcion, colX[0] + 2, y + 5.5)
     doc.setTextColor(...slate700)
     doc.text(lineasMedidas, colX[1] + 2, y + 5.5)
-    doc.text(String(it.cantidad ?? '-'), colX[2] + 2, y + 5.5)
-    doc.text(String(it.unidad || '-'), colX[3] + 2, y + 5.5)
-    doc.text(
-      it.precio_unitario ? `${simbolo} ${Number(it.precio_unitario).toFixed(2)}` : '-',
-      colX[4] + 2, y + 5.5,
-      { maxWidth: colX[5] - colX[4] - 4 }
-    )
+    doc.text(textoSeguro(it.cantidad), colX[2] + 2, y + 5.5)
+    doc.text(textoSeguro(it.unidad), colX[3] + 2, y + 5.5)
+    doc.text(lineasPUnit, colX[4] + 2, y + 5.5)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...slate900)
-    doc.text(
-      it.costo_total ? `${simbolo} ${Number(it.costo_total).toFixed(2)}` : '-',
-      colX[5] + 2, y + 5.5,
-      { maxWidth: (M + ANCHO) - colX[5] - 4 }
-    )
+    doc.text(lineasSubtotal, colX[5] + 2, y + 5.5)
 
-    subtotal += it.costo_total || 0
+    subtotal += Number(it.costo_total) || 0
     y += filaAltura
 
     // Fila de Clisse: va justo debajo del producto, dentro de las mismas columnas
     if (it.tiene_clisse) {
-      const descripcionClisse = `Clisse ${it.nombre_clisse || '-'}`
-      const lineasDescClisse = doc.splitTextToSize(descripcionClisse, anchoDescripcion)
-      const filaAlturaClisse = Math.max(filaAlturaMin, lineasDescClisse.length * alturaLineaTexto + 4.5)
+      const descripcionClisse = `Clisse ${textoSeguro(it.nombre_clisse)}`
+      const lineasDescClisse = medirLineas(doc, descripcionClisse, anchoDescripcion)
+      const lineasPrecioClisse = medirLineas(doc, it.precio_clisse ? montoSeguro(it.precio_clisse, simbolo) : '-', anchoSubtotal)
+      const filaAlturaClisse = alturaFilaMultilinea([lineasDescClisse, lineasPrecioClisse], alturaLineaTexto, filaAlturaMin)
 
       if (y + filaAlturaClisse > 265) {
         doc.addPage()
@@ -251,18 +254,10 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       doc.text(`${it.cantidad_colores ?? '-'} Colores`, colX[1] + 2, y + 5.5)
       doc.text('1', colX[2] + 2, y + 5.5)
       doc.text('-', colX[3] + 2, y + 5.5)
-      doc.text(
-        it.precio_clisse ? `${simbolo} ${Number(it.precio_clisse).toFixed(2)}` : '-',
-        colX[4] + 2, y + 5.5,
-        { maxWidth: colX[5] - colX[4] - 4 }
-      )
-      doc.text(
-        it.precio_clisse ? `${simbolo} ${Number(it.precio_clisse).toFixed(2)}` : '-',
-        colX[5] + 2, y + 5.5,
-        { maxWidth: (M + ANCHO) - colX[5] - 4 }
-      )
+      doc.text(lineasPrecioClisse, colX[4] + 2, y + 5.5)
+      doc.text(lineasPrecioClisse, colX[5] + 2, y + 5.5)
 
-      subtotal += it.precio_clisse || 0
+      subtotal += Number(it.precio_clisse) || 0
       y += filaAlturaClisse
     }
   })
@@ -317,29 +312,42 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   const hayCondiciones = cotizacion.forma_pago || cotizacion.tiempo_entrega || cotizacion.validez_oferta
 
   if (hayCondiciones) {
+    const anchoEtiqueta = 42
+    const altoFilaMin = 6.5
+    const alturaLineaCondicion = 3.6
+
+    // Cada fila mide su propio valor: si "Forma de pago" u otro campo es muy
+    // largo y necesita 2 líneas, esa fila crece en vez de desbordar su caja.
     const filasCondiciones = [
       ['FORMA DE PAGO', cotizacion.forma_pago],
       ['TIEMPO DE ENTREGA', cotizacion.tiempo_entrega],
       ['VALIDEZ DE LA OFERTA', cotizacion.validez_oferta]
-    ].filter(([, valor]) => valor)
+    ]
+      .filter(([, valor]) => valor)
+      .map(([label, valor]) => {
+        const lineasValor = medirLineas(doc, valor, ANCHO - anchoEtiqueta - 5)
+        const alto = alturaFilaMultilinea([lineasValor], alturaLineaCondicion, altoFilaMin, 2.8)
+        return { label, lineasValor, alto }
+      })
 
-    const altoFila = 6.5
-    const altoBloque = filasCondiciones.length * altoFila
-    const anchoEtiqueta = 42
+    const altoBloque = filasCondiciones.reduce((s, f) => s + f.alto, 0)
+
+    // Si el bloque no cabe en lo que queda de página, se mueve entero a una nueva
+    y = asegurarEspacio(doc, y, altoBloque, 270, 16)
 
     doc.setDrawColor(...bordeGris)
     doc.setLineWidth(0.3)
     doc.rect(M, y, ANCHO, altoBloque)
     doc.line(M + anchoEtiqueta, y, M + anchoEtiqueta, y + altoBloque)
 
-    filasCondiciones.forEach(([label, valor], i) => {
-      const yFila = y + i * altoFila
+    let yFila = y
+    filasCondiciones.forEach(({ label, lineasValor, alto }, i) => {
       if (i > 0) doc.line(M, yFila, M + ANCHO, yFila)
 
       doc.setFillColor(...grisFondo)
-      doc.rect(M, yFila, anchoEtiqueta, altoFila, 'F')
+      doc.rect(M, yFila, anchoEtiqueta, alto, 'F')
       doc.setDrawColor(...bordeGris)
-      doc.rect(M, yFila, anchoEtiqueta, altoFila)
+      doc.rect(M, yFila, anchoEtiqueta, alto)
 
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(7.5)
@@ -349,7 +357,9 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8.5)
       doc.setTextColor(...slate900)
-      doc.text(String(valor), M + anchoEtiqueta + 3, yFila + 4.3, { maxWidth: ANCHO - anchoEtiqueta - 5 })
+      doc.text(lineasValor, M + anchoEtiqueta + 3, yFila + 4.3)
+
+      yFila += alto
     })
 
     y += altoBloque + 6

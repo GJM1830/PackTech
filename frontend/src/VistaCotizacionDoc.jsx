@@ -99,7 +99,14 @@ function VistaCotizacionDoc({ cotizacion, onCerrar }) {
               Cerrar
             </button>
             <button
-              onClick={() => generarPDFCotizacionDoc(cotizacion)}
+              onClick={async () => {
+                try {
+                  await generarPDFCotizacionDoc(cotizacion)
+                } catch (err) {
+                  console.error(err)
+                  alert('No se pudo generar el PDF de la cotización.')
+                }
+              }}
               className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
             >
               ⬇ Descargar PDF

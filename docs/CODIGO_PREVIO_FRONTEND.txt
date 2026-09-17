@@ -1452,6 +1452,56 @@ function Clientes()   {
 
 export default Clientes
 
+pdfUtils.js:
+
+// Utilidades comunes para blindar los generadores de PDF: evitan que un texto
+// largo se salga de su celda o de la hoja, y protegen contra datos faltantes
+// o inválidos (null, undefined, NaN) sin romper la generación del PDF.
+
+// Nunca deja que un valor nulo/vacío rompa un texto: siempre un string seguro.
+export function textoSeguro(valor, porDefecto = '-') {
+  if (valor === null || valor === undefined) return porDefecto
+  const texto = String(valor).trim()
+  return texto.length > 0 ? texto : porDefecto
+}
+
+// Envuelve doc.splitTextToSize en un try/catch: si algo falla, devuelve una
+// sola línea en vez de tumbar el PDF completo.
+export function medirLineas(doc, texto, anchoMax) {
+  try {
+    const lineas = doc.splitTextToSize(textoSeguro(texto), Math.max(anchoMax, 5))
+    return lineas.length > 0 ? lineas : ['-']
+  } catch {
+    return [textoSeguro(texto)]
+  }
+}
+
+// Alto necesario para una fila donde varias columnas pueden tener distinto
+// número de líneas (ej. descripción larga vs. precio corto) — evita que una
+// columna se salga del recuadro de la fila mientras otra se queda corta.
+export function alturaFilaMultilinea(listasDeLineas, altoLinea, alturaMinima, paddingExtra = 4.5) {
+  const maxLineas = Math.max(1, ...listasDeLineas.map((l) => l.length))
+  return Math.max(alturaMinima, maxLineas * altoLinea + paddingExtra)
+}
+
+// Si lo que se va a dibujar no cabe antes de limiteInferior, agrega una
+// página nueva y devuelve el nuevo Y. Para bloques SIN cabecera repetida
+// (tablas con autoTable o encabezados propios, usar el patrón manual).
+export function asegurarEspacio(doc, y, alturaNecesaria, limiteInferior = 270, yInicioPagina = 16) {
+  if (y + alturaNecesaria > limiteInferior) {
+    doc.addPage()
+    return yInicioPagina
+  }
+  return y
+}
+
+// Formatea un monto de forma segura: nunca lanza error por null/NaN/texto raro.
+export function montoSeguro(valor, simbolo = '') {
+  const n = Number(valor)
+  if (!isFinite(n)) return '-'
+  return `${simbolo ? simbolo + ' ' : ''}${n.toFixed(2)}`
+}
+
 Pedidos.jsx:
 
 import { useEffect, useState } from 'react'
@@ -5126,6 +5176,12 @@ export async function generarPDFPedido(pedido) {
 
   y += 4
 
+  // Si no queda espacio para el bloque de totales, se pasa a una página nueva
+  if (y + 30 > 280) {
+    doc.addPage()
+    y = 16
+  }
+
   // ---- Totales ----
   const anchoTotales = 55
   const xTotales = M + ANCHO - anchoTotales
@@ -5173,6 +5229,12 @@ export async function generarPDFPedido(pedido) {
 
   y += 5
 
+  // El bloque de condiciones (5 líneas fijas) no cabe si ya estamos muy abajo
+  if (y + 22 > 280) {
+    doc.addPage()
+    y = 16
+  }
+
   // ---- Condiciones ----
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
@@ -5190,6 +5252,10 @@ export async function generarPDFPedido(pedido) {
   })
 
   if (pedido.incluye_igv != null || pedido.observaciones_pedido) {
+    if (y + 16 > 280) {
+      doc.addPage()
+      y = 16
+    }
     y += 4
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.5)
@@ -5203,6 +5269,11 @@ export async function generarPDFPedido(pedido) {
   }
 
   if (pedido.imagen_url) {
+    // La imagen mide 60mm de alto; si no cabe, se dibuja en una página nueva
+    if (y + 74 > 280) {
+      doc.addPage()
+      y = 16
+    }
     y += 10
     const formato = pedido.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
     try {
@@ -5213,6 +5284,10 @@ export async function generarPDFPedido(pedido) {
     }
   }
 
+  if (y + 20 > 280) {
+    doc.addPage()
+    y = 16
+  }
   y += 14
   doc.setDrawColor(...slate400)
   doc.line(M, y, M + 60, y)
@@ -5224,7 +5299,9 @@ export async function generarPDFPedido(pedido) {
 }
 
 GenerarPDFCotizacionDoc.js:
+
 import jsPDF from 'jspdf'
+import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return '-'
@@ -5333,7 +5410,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(...slate900)
-  doc.text(String(cotizacion.cliente || '-'), M + 3, y + 11)
+  doc.text(textoSeguro(cotizacion.cliente), M + 3, y + 11, { maxWidth: ANCHO - 6 })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
@@ -5395,18 +5472,27 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.setFontSize(8)
 
     // Descripción + procesos como una sola frase: "producto, con procesos: A, B, C"
-    const descripcionBase = it.descripcion || '-'
+    const descripcionBase = textoSeguro(it.descripcion)
     const procesos = it.procesos_plan ? it.procesos_plan.split(',').filter(Boolean) : []
     const descripcionCompleta = procesos.length > 0
       ? `${descripcionBase}, con procesos: ${procesos.join(', ')}`
       : descripcionBase
-    const lineasDescripcion = doc.splitTextToSize(descripcionCompleta, anchoDescripcion)
 
-    const lineasMedidas = doc.splitTextToSize(String(it.medidas || '-'), colX[2] - colX[1] - 4)
+    const anchoPrecio = colX[5] - colX[4] - 4
+    const anchoSubtotal = (M + ANCHO) - colX[5] - 4
 
-    const filaAltura = Math.max(
-      filaAlturaMin,
-      Math.max(lineasDescripcion.length, lineasMedidas.length) * alturaLineaTexto + 4.5
+    // Se mide CADA columna que puede tener texto largo (descripción, medidas,
+    // precio, subtotal) y la fila toma el alto de la que necesite más líneas,
+    // así ninguna columna se sale de su celda.
+    const lineasDescripcion = medirLineas(doc, descripcionCompleta, anchoDescripcion)
+    const lineasMedidas = medirLineas(doc, it.medidas, colX[2] - colX[1] - 4)
+    const lineasPUnit = medirLineas(doc, it.precio_unitario ? montoSeguro(it.precio_unitario, simbolo) : '-', anchoPrecio)
+    const lineasSubtotal = medirLineas(doc, it.costo_total ? montoSeguro(it.costo_total, simbolo) : '-', anchoSubtotal)
+
+    const filaAltura = alturaFilaMultilinea(
+      [lineasDescripcion, lineasMedidas, lineasPUnit, lineasSubtotal],
+      alturaLineaTexto,
+      filaAlturaMin
     )
 
     // Salvaguarda de salto de página: si no cabe, se repite la cabecera en la página nueva
@@ -5433,29 +5519,22 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     doc.text(lineasDescripcion, colX[0] + 2, y + 5.5)
     doc.setTextColor(...slate700)
     doc.text(lineasMedidas, colX[1] + 2, y + 5.5)
-    doc.text(String(it.cantidad ?? '-'), colX[2] + 2, y + 5.5)
-    doc.text(String(it.unidad || '-'), colX[3] + 2, y + 5.5)
-    doc.text(
-      it.precio_unitario ? `${simbolo} ${Number(it.precio_unitario).toFixed(2)}` : '-',
-      colX[4] + 2, y + 5.5,
-      { maxWidth: colX[5] - colX[4] - 4 }
-    )
+    doc.text(textoSeguro(it.cantidad), colX[2] + 2, y + 5.5)
+    doc.text(textoSeguro(it.unidad), colX[3] + 2, y + 5.5)
+    doc.text(lineasPUnit, colX[4] + 2, y + 5.5)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...slate900)
-    doc.text(
-      it.costo_total ? `${simbolo} ${Number(it.costo_total).toFixed(2)}` : '-',
-      colX[5] + 2, y + 5.5,
-      { maxWidth: (M + ANCHO) - colX[5] - 4 }
-    )
+    doc.text(lineasSubtotal, colX[5] + 2, y + 5.5)
 
-    subtotal += it.costo_total || 0
+    subtotal += Number(it.costo_total) || 0
     y += filaAltura
 
     // Fila de Clisse: va justo debajo del producto, dentro de las mismas columnas
     if (it.tiene_clisse) {
-      const descripcionClisse = `Clisse ${it.nombre_clisse || '-'}`
-      const lineasDescClisse = doc.splitTextToSize(descripcionClisse, anchoDescripcion)
-      const filaAlturaClisse = Math.max(filaAlturaMin, lineasDescClisse.length * alturaLineaTexto + 4.5)
+      const descripcionClisse = `Clisse ${textoSeguro(it.nombre_clisse)}`
+      const lineasDescClisse = medirLineas(doc, descripcionClisse, anchoDescripcion)
+      const lineasPrecioClisse = medirLineas(doc, it.precio_clisse ? montoSeguro(it.precio_clisse, simbolo) : '-', anchoSubtotal)
+      const filaAlturaClisse = alturaFilaMultilinea([lineasDescClisse, lineasPrecioClisse], alturaLineaTexto, filaAlturaMin)
 
       if (y + filaAlturaClisse > 265) {
         doc.addPage()
@@ -5477,18 +5556,10 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       doc.text(`${it.cantidad_colores ?? '-'} Colores`, colX[1] + 2, y + 5.5)
       doc.text('1', colX[2] + 2, y + 5.5)
       doc.text('-', colX[3] + 2, y + 5.5)
-      doc.text(
-        it.precio_clisse ? `${simbolo} ${Number(it.precio_clisse).toFixed(2)}` : '-',
-        colX[4] + 2, y + 5.5,
-        { maxWidth: colX[5] - colX[4] - 4 }
-      )
-      doc.text(
-        it.precio_clisse ? `${simbolo} ${Number(it.precio_clisse).toFixed(2)}` : '-',
-        colX[5] + 2, y + 5.5,
-        { maxWidth: (M + ANCHO) - colX[5] - 4 }
-      )
+      doc.text(lineasPrecioClisse, colX[4] + 2, y + 5.5)
+      doc.text(lineasPrecioClisse, colX[5] + 2, y + 5.5)
 
-      subtotal += it.precio_clisse || 0
+      subtotal += Number(it.precio_clisse) || 0
       y += filaAlturaClisse
     }
   })
@@ -5543,29 +5614,42 @@ export async function generarPDFCotizacionDoc(cotizacion) {
   const hayCondiciones = cotizacion.forma_pago || cotizacion.tiempo_entrega || cotizacion.validez_oferta
 
   if (hayCondiciones) {
+    const anchoEtiqueta = 42
+    const altoFilaMin = 6.5
+    const alturaLineaCondicion = 3.6
+
+    // Cada fila mide su propio valor: si "Forma de pago" u otro campo es muy
+    // largo y necesita 2 líneas, esa fila crece en vez de desbordar su caja.
     const filasCondiciones = [
       ['FORMA DE PAGO', cotizacion.forma_pago],
       ['TIEMPO DE ENTREGA', cotizacion.tiempo_entrega],
       ['VALIDEZ DE LA OFERTA', cotizacion.validez_oferta]
-    ].filter(([, valor]) => valor)
+    ]
+      .filter(([, valor]) => valor)
+      .map(([label, valor]) => {
+        const lineasValor = medirLineas(doc, valor, ANCHO - anchoEtiqueta - 5)
+        const alto = alturaFilaMultilinea([lineasValor], alturaLineaCondicion, altoFilaMin, 2.8)
+        return { label, lineasValor, alto }
+      })
 
-    const altoFila = 6.5
-    const altoBloque = filasCondiciones.length * altoFila
-    const anchoEtiqueta = 42
+    const altoBloque = filasCondiciones.reduce((s, f) => s + f.alto, 0)
+
+    // Si el bloque no cabe en lo que queda de página, se mueve entero a una nueva
+    y = asegurarEspacio(doc, y, altoBloque, 270, 16)
 
     doc.setDrawColor(...bordeGris)
     doc.setLineWidth(0.3)
     doc.rect(M, y, ANCHO, altoBloque)
     doc.line(M + anchoEtiqueta, y, M + anchoEtiqueta, y + altoBloque)
 
-    filasCondiciones.forEach(([label, valor], i) => {
-      const yFila = y + i * altoFila
+    let yFila = y
+    filasCondiciones.forEach(({ label, lineasValor, alto }, i) => {
       if (i > 0) doc.line(M, yFila, M + ANCHO, yFila)
 
       doc.setFillColor(...grisFondo)
-      doc.rect(M, yFila, anchoEtiqueta, altoFila, 'F')
+      doc.rect(M, yFila, anchoEtiqueta, alto, 'F')
       doc.setDrawColor(...bordeGris)
-      doc.rect(M, yFila, anchoEtiqueta, altoFila)
+      doc.rect(M, yFila, anchoEtiqueta, alto)
 
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(7.5)
@@ -5575,7 +5659,9 @@ export async function generarPDFCotizacionDoc(cotizacion) {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8.5)
       doc.setTextColor(...slate900)
-      doc.text(String(valor), M + anchoEtiqueta + 3, yFila + 4.3, { maxWidth: ANCHO - anchoEtiqueta - 5 })
+      doc.text(lineasValor, M + anchoEtiqueta + 3, yFila + 4.3)
+
+      yFila += alto
     })
 
     y += altoBloque + 6
@@ -9717,7 +9803,14 @@ function VistaCotizacionDoc({ cotizacion, onCerrar }) {
               Cerrar
             </button>
             <button
-              onClick={() => generarPDFCotizacionDoc(cotizacion)}
+              onClick={async () => {
+                try {
+                  await generarPDFCotizacionDoc(cotizacion)
+                } catch (err) {
+                  console.error(err)
+                  alert('No se pudo generar el PDF de la cotización.')
+                }
+              }}
               className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
             >
               ⬇ Descargar PDF
@@ -9900,7 +9993,14 @@ function VistaPedido({ orden: pedido, onCerrar }) {
               Cerrar
             </button>
             <button
-              onClick={() => generarPDFPedido(pedido)}
+              onClick={async () => {
+                try {
+                  await generarPDFPedido(pedido)
+                } catch (err) {
+                  console.error(err)
+                  alert('No se pudo generar el PDF del pedido.')
+                }
+              }}
               className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
             >
               ⬇ Descargar PDF

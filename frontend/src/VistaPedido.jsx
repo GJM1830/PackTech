@@ -154,7 +154,14 @@ function VistaPedido({ orden: pedido, onCerrar }) {
               Cerrar
             </button>
             <button
-              onClick={() => generarPDFPedido(pedido)}
+              onClick={async () => {
+                try {
+                  await generarPDFPedido(pedido)
+                } catch (err) {
+                  console.error(err)
+                  alert('No se pudo generar el PDF del pedido.')
+                }
+              }}
               className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
             >
               ⬇ Descargar PDF
