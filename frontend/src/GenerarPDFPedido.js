@@ -230,9 +230,19 @@ export async function generarPDFPedido(pedido) {
     const unidadTabla = it.unidad_precio ? (ETIQUETA_UNIDAD_PRECIO[it.unidad_precio] || 'kg') : 'kg'
     const simboloItem = it.moneda === 'Dólares' ? '$' : 'S/'
 
+    // El backend guarda la descripción combinada con las medidas ("Producto / 2.2.2")
+    // para pantallas que no tienen columna de medidas propia. Aquí SÍ hay columna
+    // de medidas, así que solo para esta tabla se recorta el sufijo duplicado.
+    // El dato real (it.descripcion) no se toca: sigue intacto para el resto del sistema.
+    let descripcionMostrada = textoSeguro(it.descripcion)
+    const medidasTexto = it.medidas ? String(it.medidas).trim() : ''
+    if (medidasTexto && descripcionMostrada.endsWith(` / ${medidasTexto}`)) {
+      descripcionMostrada = descripcionMostrada.slice(0, -(` / ${medidasTexto}`.length))
+    }
+
     // Cada columna con texto potencialmente largo se mide por separado; la fila
     // toma el alto de la que necesite más líneas, así ninguna se sale de su celda.
-    const lineasDescripcion = medirLineas(doc, it.descripcion, anchoDescripcion)
+    const lineasDescripcion = medirLineas(doc, descripcionMostrada, anchoDescripcion)
     const lineasMedidas = medirLineas(doc, it.medidas, colX[2] - colX[1] - 4)
     const lineasPUnit = medirLineas(doc, it.precio_unitario ? montoSeguro(it.precio_unitario, simboloItem) : '-', anchoPUnitario)
     const lineasTotal = medirLineas(doc, it.costo_total ? montoSeguro(it.costo_total, simboloItem) : '-', anchoTotalCelda)
