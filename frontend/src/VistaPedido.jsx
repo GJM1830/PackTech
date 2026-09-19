@@ -16,7 +16,10 @@ function VistaPedido({ orden: pedido, onCerrar }) {
     cantidad_precio: pedido.cantidad_precio, costo_total: pedido.costo_total
   }]
   const simbolo = items[0]?.moneda === 'Dólares' ? '$' : 'S/'
-  const subtotal = items.reduce((s, it) => s + (it.costo_total || 0), 0)
+  const subtotal = items.reduce((s, it) => {
+    const base = s + (Number(it.costo_total) || 0)
+    return it.tiene_clisse ? base + (Number(it.precio_clisse) || 0) : base
+  }, 0)
   const igv = pedido.incluye_igv ? subtotal * 0.18 : 0
   const total = subtotal + igv
 
@@ -94,6 +97,11 @@ function VistaPedido({ orden: pedido, onCerrar }) {
                         {it.descripcion || '-'}
                         {it.medidas && (
                           <div className="text-xs text-slate-500">Medidas: {it.medidas}</div>
+                        )}
+                        {it.tiene_clisse && (
+                          <div className="text-xs text-purple-700">
+                            Clisse · {it.cantidad_colores || '-'} colores · {(it.moneda === 'Dólares' ? '$' : 'S/')} {Number(it.precio_clisse || 0).toFixed(2)}
+                          </div>
                         )}
                       </td>
                       <td className="px-2 py-2">

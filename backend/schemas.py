@@ -101,6 +101,9 @@ class PedidoItemCreate(BaseModel):
     precio_unitario: float | None = None
     unidad_precio: str | None = None
     cantidad_precio: float | None = None
+    tiene_clisse: bool | None = False
+    cantidad_colores: int | None = None
+    precio_clisse: float | None = None
 
 
 class PedidoCreate(BaseModel):
@@ -114,6 +117,8 @@ class PedidoCreate(BaseModel):
     email_cliente: str | None = None
     telefono_cliente: str | None = None
     incluye_igv: bool | None = None
+    forma_pago: str | None = None
+    validez_oferta: str | None = None
     observaciones_pedido: str | None = None
     imagen_url: str | None = None
     items: list[PedidoItemCreate]
@@ -129,8 +134,11 @@ class PedidoEditar(BaseModel):
     email_cliente: str | None = None
     telefono_cliente: str | None = None
     incluye_igv: bool | None = None
+    forma_pago: str | None = None
+    validez_oferta: str | None = None
     observaciones_pedido: str | None = None
     imagen_url: str | None = None
+    items: list[PedidoItemCreate] | None = None
 
 
 class PedidoItemResponse(BaseModel):
@@ -147,6 +155,9 @@ class PedidoItemResponse(BaseModel):
     cantidad_precio: float | None
     costo_total: float | None
     estado: str | None
+    tiene_clisse: bool | None = False
+    cantidad_colores: int | None = None
+    precio_clisse: float | None = None
 
     class Config:
         from_attributes = True
@@ -164,6 +175,8 @@ class PedidoResponse(BaseModel):
     email_cliente: str | None
     telefono_cliente: str | None
     incluye_igv: bool | None
+    forma_pago: str | None = None
+    validez_oferta: str | None = None
     observaciones_pedido: str | None
     imagen_url: str | None
     estado: str | None

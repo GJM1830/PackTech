@@ -2,17 +2,12 @@ import { useEffect, useState } from 'react'
 import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
-import ModalEditar from './ModalEditar'
 import VistaPedido from './VistaPedido'
 import FiltroDesplegable from './FiltroDesplegable'
 import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
 
 const CLAVE_BORRADOR_PEDIDO = 'packtech_borrador_pedido'
-const FORM_VACIO_PEDIDO = {
-  codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: '',
-  direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
-  incluye_igv: false, observaciones_pedido: '', imagen_url: ''
-}
+const CLAVE_BORRADOR_EDICION_PEDIDO = 'packtech_borrador_pedido_editando'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -20,32 +15,60 @@ const formatearFecha = (fecha) => {
   return `${dia}/${mes}/${anio.slice(2)}`
 }
 
+// "Tiempo de entrega" del pedido se sigue guardando como fecha (fecha_entrega), pero
+// por defecto arranca en hoy + 10 días. Al editar un pedido ya existente, este default
+// NO se vuelve a aplicar: se usa la fecha ya guardada, para no correr la entrega sin querer.
+const fechaEntregaPorDefecto = () => {
+  const d = new Date()
+  d.setDate(d.getDate() + 10)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+const crearFormVacio = () => ({
+  codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: fechaEntregaPorDefecto(),
+  direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
+  incluye_igv: false, forma_pago: '50% adelantado y 50% contra entrega', validez_oferta: '10 días',
+  observaciones_pedido: '', imagen_url: ''
+})
+
 const ITEM_VACIO = {
   descripcion: '', medidas: '', cantidad: '', moneda: 'Soles', tipo_trabajo: '',
-  precio_unitario: '', unidad_precio: 'kg', cantidad_precio: ''
+  precio_unitario: '', unidad_precio: 'kg', cantidad_precio: '',
+  tiene_clisse: false, cantidad_colores: '', precio_clisse: ''
 }
 
 const ETIQUETA_CANTIDAD_PRECIO = { millares: 'Millares', unidades: 'Unidades', rollos: 'Rollos' }
 
-function FormularioCotizacion({ onCreada, duplicarDesde }) {
+function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion }) {
   const TODOS_LOS_PROCESOS = ['Extrusión', 'Laminado', 'Pegado', 'Impresión', 'Sellado', 'Corte']
 
   const borradorGuardado = cargarFiltros(CLAVE_BORRADOR_PEDIDO, {
-    form: FORM_VACIO_PEDIDO, items: [], itemActual: ITEM_VACIO, procesosItemActual: []
+    form: crearFormVacio(), items: [], itemActual: ITEM_VACIO, procesosItemActual: []
   })
 
   const [form, setForm] = useState(borradorGuardado.form)
   const [items, setItems] = useState(borradorGuardado.items)
   const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
   const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
+  const [editandoId, setEditandoId] = useState(null)
+  const [editandoItemIndex, setEditandoItemIndex] = useState(null)
 
-  // Guarda automáticamente lo que llevas escrito (sin la imagen, para no llenar el
-  // almacenamiento local), para que no se pierda si cambias de pestaña
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña,
+  // cierras el navegador o recargas por accidente. El borrador de una edición vive en una llave
+  // aparte, identificada por el ID de ese pedido, así nunca se mezcla con el borrador de
+  // "Nuevo Pedido" (el mismo problema que se corrigió antes en Cotizaciones).
   useEffect(() => {
-    guardarFiltros(CLAVE_BORRADOR_PEDIDO, {
-      form: { ...form, imagen_url: '' }, items, itemActual, procesosItemActual
-    })
-  }, [form, items, itemActual, procesosItemActual])
+    if (editandoId) {
+      guardarFiltros(CLAVE_BORRADOR_EDICION_PEDIDO, {
+        id: editandoId, form: { ...form, imagen_url: '' }, items, itemActual, procesosItemActual
+      })
+    } else {
+      guardarFiltros(CLAVE_BORRADOR_PEDIDO, {
+        form: { ...form, imagen_url: '' }, items, itemActual, procesosItemActual
+      })
+    }
+  }, [form, items, itemActual, procesosItemActual, editandoId])
 
   const agregarProceso = (proceso) => setProcesosItemActual((actual) => [...actual, proceso])
   const quitarProceso = (index) => setProcesosItemActual((actual) => actual.filter((_, i) => i !== index))
@@ -91,6 +114,8 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         email_cliente: duplicarDesde.email_cliente || '',
         telefono_cliente: duplicarDesde.telefono_cliente || '',
         incluye_igv: duplicarDesde.incluye_igv || false,
+        forma_pago: duplicarDesde.forma_pago || '50% adelantado y 50% contra entrega',
+        validez_oferta: duplicarDesde.validez_oferta || '10 días',
         observaciones_pedido: duplicarDesde.observaciones_pedido || '',
         imagen_url: ''
       })
@@ -104,14 +129,87 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           precio_unitario: it.precio_unitario || '',
           unidad_precio: it.unidad_precio || 'kg',
           cantidad_precio: it.cantidad_precio || '',
-          procesos_plan: it.procesos_plan || null
+          procesos_plan: it.procesos_plan || null,
+          tiene_clisse: it.tiene_clisse || false,
+          cantidad_colores: it.cantidad_colores || '',
+          precio_clisse: it.precio_clisse || ''
         }))
       )
       setItemActual({ ...ITEM_VACIO })
       setProcesosItemActual([])
+      setEditandoItemIndex(null)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }, [duplicarDesde])
+
+  useEffect(() => {
+    if (editando) {
+      setEditandoId(editando.id)
+
+      // Si hay un borrador guardado de una sesión anterior de edición sobre ESTE MISMO
+      // pedido (por ID), se recupera tal cual quedó, en vez de partir de los datos ya
+      // guardados en el servidor — así no se pierde nada si el operador se salió a mitad
+      // de editar (cambio de pestaña, recarga, cierre accidental del navegador).
+      let borradorEdicion = null
+      try {
+        const guardado = localStorage.getItem(CLAVE_BORRADOR_EDICION_PEDIDO)
+        if (guardado) {
+          const parseado = JSON.parse(guardado)
+          if (parseado?.id === editando.id) borradorEdicion = parseado
+        }
+      } catch {
+        // borrador corrupto o localStorage no disponible: se ignora y se usa el servidor
+      }
+
+      if (borradorEdicion) {
+        setForm(borradorEdicion.form)
+        setItems(borradorEdicion.items)
+        setItemActual(borradorEdicion.itemActual)
+        setProcesosItemActual(borradorEdicion.procesosItemActual)
+      } else {
+        setForm({
+          codigo_base: editando.codigo_base || '',
+          ruc: editando.ruc || '',
+          nombre_cliente: editando.cliente || '',
+          vendedor: editando.vendedor || '',
+          fecha_entrega: editando.fecha_entrega || '',
+          direccion_entrega: editando.direccion_entrega || '',
+          numero_contacto: editando.numero_contacto || '',
+          email_cliente: editando.email_cliente || '',
+          telefono_cliente: editando.telefono_cliente || '',
+          incluye_igv: editando.incluye_igv || false,
+          forma_pago: editando.forma_pago || '',
+          validez_oferta: editando.validez_oferta || '',
+          observaciones_pedido: editando.observaciones_pedido || '',
+          imagen_url: editando.imagen_url || ''
+        })
+        setItems(
+          (editando.items || []).map((it) => ({
+            descripcion: it.descripcion || '',
+            medidas: it.medidas || '',
+            cantidad: it.cantidad || '',
+            moneda: it.moneda || 'Soles',
+            tipo_trabajo: it.tipo_trabajo || '',
+            precio_unitario: it.precio_unitario || '',
+            unidad_precio: it.unidad_precio || 'kg',
+            cantidad_precio: it.cantidad_precio || '',
+            procesos_plan: it.procesos_plan || null,
+            tiene_clisse: it.tiene_clisse || false,
+            cantidad_colores: it.cantidad_colores || '',
+            precio_clisse: it.precio_clisse || ''
+          }))
+        )
+        setItemActual({ ...ITEM_VACIO })
+        setProcesosItemActual([])
+      }
+
+      setEditandoItemIndex(null)
+      setClienteSeleccionado({ ruc: editando.ruc || '', nombre: editando.cliente || '' })
+      setError(null)
+      setExito(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [editando])
 
   useEffect(() => {
     if (clienteSeleccionado) {
@@ -164,12 +262,54 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       return
     }
     setError(null)
-    setItems((actual) => [...actual, { ...itemActual, procesos_plan: procesosItemActual.join(',') || null }])
+    const itemFinal = { ...itemActual, procesos_plan: procesosItemActual.join(',') || null }
+    if (editandoItemIndex !== null) {
+      setItems((actual) => actual.map((it, i) => (i === editandoItemIndex ? itemFinal : it)))
+      setEditandoItemIndex(null)
+    } else {
+      setItems((actual) => [...actual, itemFinal])
+    }
     setItemActual({ ...ITEM_VACIO })
     setProcesosItemActual([])
   }
 
-  const quitarItem = (index) => setItems((actual) => actual.filter((_, i) => i !== index))
+  const editarItem = (index) => {
+    const it = items[index]
+    setItemActual({ ...ITEM_VACIO, ...it })
+    setProcesosItemActual(it.procesos_plan ? it.procesos_plan.split(',').filter(Boolean) : [])
+    setEditandoItemIndex(index)
+    setError(null)
+  }
+
+  const cancelarEdicionItem = () => {
+    setItemActual({ ...ITEM_VACIO })
+    setProcesosItemActual([])
+    setEditandoItemIndex(null)
+    setError(null)
+  }
+
+  const quitarItem = (index) => {
+    setItems((actual) => actual.filter((_, i) => i !== index))
+    if (editandoItemIndex === index) cancelarEdicionItem()
+    else if (editandoItemIndex !== null && index < editandoItemIndex) setEditandoItemIndex((i) => i - 1)
+  }
+
+  const limpiarTodo = () => {
+    if (!confirm('¿Limpiar todos los campos de este formulario? Se perderá lo que no hayas guardado (se mantienen Forma de pago, Tiempo de entrega y Validez de la oferta).')) return
+    try { localStorage.removeItem(CLAVE_BORRADOR_EDICION_PEDIDO) } catch { /* no crítico */ }
+    setForm(crearFormVacio())
+    setItems([])
+    setItemActual({ ...ITEM_VACIO })
+    setProcesosItemActual([])
+    setClienteSeleccionado(null)
+    setEditandoItemIndex(null)
+    setError(null)
+    setExito(false)
+    if (editandoId) {
+      setEditandoId(null)
+      if (onCancelarEdicion) onCancelarEdicion()
+    }
+  }
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
@@ -193,46 +333,65 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
       return
     }
 
+    const itemsPayload = itemsFinal.map((it) => ({
+      descripcion: it.descripcion || null,
+      medidas: it.medidas || null,
+      cantidad: parseFloat(it.cantidad),
+      tipo_trabajo: it.tipo_trabajo || null,
+      procesos_plan: it.procesos_plan || null,
+      moneda: it.moneda || null,
+      precio_unitario: it.precio_unitario ? parseFloat(it.precio_unitario) : null,
+      unidad_precio: it.unidad_precio || null,
+      cantidad_precio: it.cantidad_precio ? parseFloat(it.cantidad_precio) : null,
+      tiene_clisse: !!it.tiene_clisse,
+      cantidad_colores: it.tiene_clisse && it.cantidad_colores ? parseInt(it.cantidad_colores) : null,
+      precio_clisse: it.tiene_clisse && it.precio_clisse ? parseFloat(it.precio_clisse) : null
+    }))
+
+    const payloadComun = {
+      ruc: form.ruc || null,
+      nombre_cliente: form.nombre_cliente,
+      vendedor: form.vendedor || null,
+      fecha_entrega: form.fecha_entrega || null,
+      direccion_entrega: form.direccion_entrega || null,
+      numero_contacto: form.numero_contacto || null,
+      email_cliente: form.email_cliente || null,
+      telefono_cliente: form.telefono_cliente || null,
+      incluye_igv: form.incluye_igv,
+      forma_pago: form.forma_pago || null,
+      validez_oferta: form.validez_oferta || null,
+      observaciones_pedido: form.observaciones_pedido || null,
+      imagen_url: form.imagen_url || null
+    }
+
     try {
-      await axios.post('https://packtech-production.up.railway.app/pedidos', {
-        codigo_base: form.codigo_base,
-        ruc: form.ruc || null,
-        nombre_cliente: form.nombre_cliente,
-        vendedor: form.vendedor || null,
-        fecha_entrega: form.fecha_entrega || null,
-        direccion_entrega: form.direccion_entrega || null,
-        numero_contacto: form.numero_contacto || null,
-        email_cliente: form.email_cliente || null,
-        telefono_cliente: form.telefono_cliente || null,
-        incluye_igv: form.incluye_igv,
-        observaciones_pedido: form.observaciones_pedido || null,
-        imagen_url: form.imagen_url || null,
-        items: itemsFinal.map((it) => ({
-          descripcion: it.descripcion || null,
-          medidas: it.medidas || null,
-          cantidad: parseFloat(it.cantidad),
-          tipo_trabajo: it.tipo_trabajo || null,
-          procesos_plan: it.procesos_plan || null,
-          moneda: it.moneda || null,
-          precio_unitario: it.precio_unitario ? parseFloat(it.precio_unitario) : null,
-          unidad_precio: it.unidad_precio || null,
-          cantidad_precio: it.cantidad_precio ? parseFloat(it.cantidad_precio) : null
-        }))
-      })
+      if (editandoId) {
+        await axios.put(`https://packtech-production.up.railway.app/pedidos/${editandoId}`, {
+          ...payloadComun,
+          items: itemsPayload
+        })
+      } else {
+        await axios.post('https://packtech-production.up.railway.app/pedidos', {
+          codigo_base: form.codigo_base,
+          ...payloadComun,
+          items: itemsPayload
+        })
+      }
+
+      // Se guardó con éxito: el borrador de esta edición ya no hace falta.
+      try { localStorage.removeItem(CLAVE_BORRADOR_EDICION_PEDIDO) } catch { /* no crítico */ }
 
       setExito(true)
-      setForm({
-        codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: '',
-        direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
-        incluye_igv: false, observaciones_pedido: '', imagen_url: ''
-      })
+      setForm(crearFormVacio())
       setItems([])
       setItemActual({ ...ITEM_VACIO })
       setProcesosItemActual([])
       setClienteSeleccionado(null)
+      setEditandoItemIndex(null)
+      setEditandoId(null)
       if (onCreada) onCreada()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al crear el Pedido.')
+      setError(err.response?.data?.detail || 'Error al guardar el Pedido.')
     } finally {
       setEnviando(false)
     }
@@ -242,14 +401,32 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
   return (
     <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <h2 className="text-xl font-bold text-slate-800 mb-4">Nuevo Pedido</h2>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h2 className="text-xl font-bold text-slate-800">{editandoId ? 'Editar Pedido' : 'Nuevo Pedido'}</h2>
+        <button
+          type="button"
+          onClick={limpiarTodo}
+          className="shrink-0 text-xs font-semibold text-red-600 border border-red-200 bg-red-50 rounded-lg px-3 py-1.5 hover:bg-red-100"
+        >
+          🗑 Limpiar todo
+        </button>
+      </div>
+      <p className="text-sm text-slate-500 mb-4">
+        {editandoId ? 'Modifica los datos y guarda los cambios.' : 'Completa los datos y agrega los productos del pedido.'}
+      </p>
 
       <form onSubmit={manejarEnvio} className="space-y-4">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Datos del pedido</p>
 
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">N° de Pedido</label>
-          <input type="text" name="codigo_base" value={form.codigo_base} onChange={manejarCambio} required className={estilo} placeholder="OP-118" />
+          <input
+            type="text" name="codigo_base" value={form.codigo_base} onChange={manejarCambio}
+            required disabled={!!editandoId}
+            className={`${estilo} ${editandoId ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''}`}
+            placeholder="OP-118"
+          />
+          {editandoId && <p className="text-xs text-slate-400 mt-1">El número de pedido no se puede cambiar al editar.</p>}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
@@ -288,30 +465,24 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
-          <div className="relative">
-            <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
-            <input
-              type="text" name="vendedor" value={form.vendedor} onChange={manejarCambio}
-              autoComplete="off" required className={estilo}
-            />
-            {sugerenciasVendedores.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                {sugerenciasVendedores.map((v) => (
-                  <button key={v.id} type="button"
-                    onClick={() => { setForm({ ...form, vendedor: v.nombre }); setSugerenciasVendedores([]) }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
-                  >
-                    {v.nombre}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Fecha de entrega</label>
-            <input type="date" name="fecha_entrega" value={form.fecha_entrega} onChange={manejarCambio} required className={estilo} />
-          </div>
+        <div className="relative">
+          <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
+          <input
+            type="text" name="vendedor" value={form.vendedor} onChange={manejarCambio}
+            autoComplete="off" required className={estilo}
+          />
+          {sugerenciasVendedores.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+              {sugerenciasVendedores.map((v) => (
+                <button key={v.id} type="button"
+                  onClick={() => { setForm({ ...form, vendedor: v.nombre }); setSugerenciasVendedores([]) }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                >
+                  {v.nombre}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <details className="text-sm">
@@ -339,7 +510,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
         </details>
 
         <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">IGV, observaciones e imagen</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">IGV e imagen</p>
 
           <div className="flex gap-2">
             <button
@@ -363,18 +534,6 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Observaciones</label>
-            <textarea
-              name="observaciones_pedido"
-              value={form.observaciones_pedido}
-              onChange={manejarCambio}
-              rows={2}
-              className={estilo}
-              placeholder="Cualquier detalle adicional del pedido"
-            />
-          </div>
-
-          <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Imagen del pedido</label>
             <input type="file" accept="image/*" onChange={manejarImagenSubida} className="text-sm" />
             {form.imagen_url && (
@@ -385,24 +544,42 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
 
         <div className="border-t border-slate-200 pt-4">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-            Ítems / trabajos del pedido ({items.length + 1})
+            Ítems / trabajos del pedido ({items.length + (editandoItemIndex !== null ? 0 : 1)})
           </p>
 
           {items.length > 0 && (
             <div className="space-y-1.5 mb-4">
               {items.map((it, index) => (
-                <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm">
-                  <span className="text-blue-900">
-                    <span className="font-medium">{it.descripcion || 'Sin descripción'}</span>
-                    {' · '}{it.cantidad} Kg{it.procesos_plan ? ` · ${it.procesos_plan.split(',').join(' → ')}` : ''}
-                  </span>
-                  <button type="button" onClick={() => quitarItem(index)} className="text-red-500 hover:text-red-700 px-1">×</button>
+                <div key={index} className="flex items-start justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm">
+                  <div className="text-blue-900">
+                    <p>
+                      <span className="font-medium">{it.descripcion || 'Sin descripción'}</span>
+                      {' · '}{it.cantidad} Kg{it.procesos_plan ? ` · ${it.procesos_plan.split(',').join(' → ')}` : ''}
+                    </p>
+                    {it.tiene_clisse && (
+                      <p className="text-xs text-purple-700">
+                        Clisse · {it.cantidad_colores || '-'} colores · {it.moneda === 'Dólares' ? '$' : 'S/'} {it.precio_clisse || '0.00'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <button type="button" onClick={() => editarItem(index)} className="text-blue-600 text-xs font-medium hover:text-blue-800">
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => quitarItem(index)} className="text-red-500 text-xs font-medium hover:text-red-700">
+                      Quitar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-slate-700 text-sm">
+              {editandoItemIndex !== null ? 'Editando producto de la lista' : 'Agregar producto al pedido'}
+            </h3>
+
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Producto / Descripción</label>
               <input type="text" name="descripcion" value={itemActual.descripcion} onChange={manejarCambioItem} className={estilo} placeholder="Manga PEBD (bobinas de 50 kg)" />
@@ -487,6 +664,59 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
               </div>
             </div>
 
+            <div className="border-t border-slate-200 pt-3">
+              <label className="block text-sm font-medium text-slate-600 mb-2">¿Este producto lleva Clisse?</label>
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setItemActual({ ...itemActual, tiene_clisse: true })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    itemActual.tiene_clisse ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  Sí
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemActual({ ...itemActual, tiene_clisse: false, cantidad_colores: '', precio_clisse: '' })}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    !itemActual.tiene_clisse ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  No
+                </button>
+              </div>
+
+              {itemActual.tiene_clisse && (
+                <div className="grid grid-cols-2 gap-3 bg-white border border-blue-100 rounded-lg p-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad de colores</label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={itemActual.cantidad_colores}
+                      onChange={(e) => setItemActual({ ...itemActual, cantidad_colores: e.target.value })}
+                      placeholder="Ej. 1"
+                      className={estilo}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">
+                      Precio del Clisse ({itemActual.moneda === 'Dólares' ? '$' : 'S/'})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={itemActual.precio_clisse}
+                      onChange={(e) => setItemActual({ ...itemActual, precio_clisse: e.target.value })}
+                      placeholder="Ej. 250.00"
+                      className={estilo}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-2">Ruta de procesos</label>
               <div className="flex flex-wrap gap-2 mb-3">
@@ -518,22 +748,87 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={agregarItem}
-              className="w-full border-2 border-dashed border-blue-300 text-blue-700 rounded-lg py-2 text-sm font-medium hover:bg-blue-50"
-            >
-              + Añadir otro trabajo al pedido
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={agregarItem}
+                className="flex-1 border-2 border-dashed border-blue-300 text-blue-700 rounded-lg py-2 text-sm font-medium hover:bg-blue-50"
+              >
+                {editandoItemIndex !== null ? 'Guardar cambios en este producto' : '+ Añadir otro trabajo al pedido'}
+              </button>
+              {editandoItemIndex !== null && (
+                <button
+                  type="button"
+                  onClick={cancelarEdicionItem}
+                  className="px-4 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Condiciones y observaciones</p>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Forma de pago</label>
+            <input type="text" name="forma_pago" value={form.forma_pago} onChange={manejarCambio} className={estilo} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Tiempo de entrega</label>
+            <input type="date" name="fecha_entrega" value={form.fecha_entrega} onChange={manejarCambio} required className={estilo} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Validez de la oferta</label>
+            <input type="text" name="validez_oferta" value={form.validez_oferta} onChange={manejarCambio} className={estilo} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Observaciones</label>
+            <textarea
+              name="observaciones_pedido"
+              value={form.observaciones_pedido}
+              onChange={manejarCambio}
+              rows={2}
+              className={estilo}
+              placeholder="Cualquier detalle adicional del pedido"
+            />
           </div>
         </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
-        {exito && <p className="text-green-700 text-sm font-medium">Pedido creado correctamente.</p>}
+        {exito && <p className="text-green-700 text-sm font-medium">Pedido guardado correctamente.</p>}
 
-        <button type="submit" disabled={enviando} className="w-full bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 disabled:opacity-50">
-          {enviando ? 'Creando...' : 'Registrar Pedido'}
-        </button>
+        <div className="flex gap-3">
+          {editandoId && (
+            <button
+              type="button"
+              onClick={() => {
+                try { localStorage.removeItem(CLAVE_BORRADOR_EDICION_PEDIDO) } catch { /* no crítico */ }
+                setEditandoId(null)
+                setForm(crearFormVacio())
+                setItems([])
+                setItemActual({ ...ITEM_VACIO })
+                setProcesosItemActual([])
+                setClienteSeleccionado(null)
+                setEditandoItemIndex(null)
+                setError(null)
+                setExito(false)
+                if (onCancelarEdicion) onCancelarEdicion()
+              }}
+              className="flex-1 border border-slate-300 rounded-lg py-2.5 font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+          )}
+          <button type="submit" disabled={enviando} className="flex-1 bg-green-700 text-white rounded-lg py-2.5 font-medium hover:bg-green-800 disabled:opacity-50">
+            {enviando ? 'Guardando...' : editandoId ? 'Guardar Cambios' : 'Registrar Pedido'}
+          </button>
+        </div>
       </form>
     </div>
   )
@@ -720,7 +1015,6 @@ function Pedidos() {
   const [aprobando, setAprobando] = useState(null)
   const [duplicarDesde, setDuplicarDesde] = useState(null)
   const [editando, setEditando] = useState(null)
-  const [guardando, setGuardando] = useState(false)
   const [vistaAbierta, setVistaAbierta] = useState(null)
   const vendedorOAdmin = esVendedorOMas()
 
@@ -756,49 +1050,13 @@ function Pedidos() {
   }
 
   const duplicar = (pedido) => {
+    setEditando(null)
     setDuplicarDesde({ ...pedido, timestamp: Date.now() })
   }
 
-  const abrirEdicion = (pedido) => {
-    setEditando({
-      id: pedido.id,
-      ruc: pedido.ruc || '',
-      nombre_cliente: pedido.cliente,
-      vendedor: pedido.vendedor || '',
-      fecha_entrega: pedido.fecha_entrega || '',
-      direccion_entrega: pedido.direccion_entrega || '',
-      numero_contacto: pedido.numero_contacto || '',
-      email_cliente: pedido.email_cliente || '',
-      telefono_cliente: pedido.telefono_cliente || '',
-      incluye_igv: pedido.incluye_igv || false,
-      observaciones_pedido: pedido.observaciones_pedido || '',
-      imagen_url: pedido.imagen_url || ''
-    })
-  }
-
-  const guardarEdicion = async () => {
-    setGuardando(true)
-    try {
-      await axios.put(`https://packtech-production.up.railway.app/pedidos/${editando.id}`, {
-        ruc: editando.ruc || null,
-        nombre_cliente: editando.nombre_cliente,
-        vendedor: editando.vendedor || null,
-        fecha_entrega: editando.fecha_entrega || null,
-        direccion_entrega: editando.direccion_entrega || null,
-        numero_contacto: editando.numero_contacto || null,
-        email_cliente: editando.email_cliente || null,
-        telefono_cliente: editando.telefono_cliente || null,
-        incluye_igv: editando.incluye_igv,
-        observaciones_pedido: editando.observaciones_pedido || null,
-        imagen_url: editando.imagen_url || null
-      })
-      setEditando(null)
-      cargar()
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Error al editar el pedido.')
-    } finally {
-      setGuardando(false)
-    }
+  const manejarEditar = (pedido) => {
+    setDuplicarDesde(null)
+    setEditando({ ...pedido, timestamp: Date.now() })
   }
 
   const eliminar = async (id) => {
@@ -845,7 +1103,14 @@ function Pedidos() {
 
       {vista === 'preaprobadas' && (
         <>
-      {vendedorOAdmin && <FormularioCotizacion onCreada={cargar} duplicarDesde={duplicarDesde} />}
+      {vendedorOAdmin && (
+        <FormularioPedido
+          onCreada={() => { cargar(); setEditando(null); setDuplicarDesde(null) }}
+          duplicarDesde={duplicarDesde}
+          editando={editando}
+          onCancelarEdicion={() => setEditando(null)}
+        />
+      )}
 
       <div>
         {cargando && <p className="text-slate-500">Cargando...</p>}
@@ -897,7 +1162,7 @@ function Pedidos() {
                     {vendedorOAdmin && (
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <MenuAcciones
-                          onEditar={() => abrirEdicion(p)}
+                          onEditar={() => manejarEditar(p)}
                           onDuplicar={() => duplicar(p)}
                           onEliminar={() => eliminar(p.id)}
                         />
@@ -922,27 +1187,6 @@ function Pedidos() {
 
       {vistaAbierta && (
         <VistaPedido orden={vistaAbierta} onCerrar={() => setVistaAbierta(null)} />
-      )}
-
-      {editando && (
-        <ModalEditar
-          titulo="Editar Pedido (datos compartidos)"
-          campos={[
-            { name: 'ruc', label: 'RUC' },
-            { name: 'nombre_cliente', label: 'Cliente' },
-            { name: 'vendedor', label: 'Vendedor' },
-            { name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date' },
-            { name: 'direccion_entrega', label: 'Dirección de entrega' },
-            { name: 'numero_contacto', label: 'N° de contacto' },
-            { name: 'email_cliente', label: 'Email del cliente' },
-            { name: 'telefono_cliente', label: 'Teléfono del cliente' }
-          ]}
-          valores={editando}
-          onCambio={(campo, valor) => setEditando({ ...editando, [campo]: valor })}
-          onGuardar={guardarEdicion}
-          onCerrar={() => setEditando(null)}
-          guardando={guardando}
-        />
       )}
     </div>
   )

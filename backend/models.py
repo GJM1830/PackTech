@@ -95,6 +95,8 @@ class Pedido(Base):
     email_cliente: Mapped[str | None] = mapped_column(String(150))
     telefono_cliente: Mapped[str | None] = mapped_column(String(50))
     incluye_igv: Mapped[bool | None] = mapped_column(Boolean)
+    forma_pago: Mapped[str | None] = mapped_column(String(200))
+    validez_oferta: Mapped[str | None] = mapped_column(String(200))
     observaciones_pedido: Mapped[str | None] = mapped_column(Text)
     imagen_url: Mapped[str | None] = mapped_column(Text)
     estado: Mapped[str | None] = mapped_column(String(50))
@@ -130,6 +132,9 @@ class OrdenProduccion(Base):
     observaciones_pedido: Mapped[str | None] = mapped_column(Text)
     imagen_url: Mapped[str | None] = mapped_column(Text)
     observaciones: Mapped[str | None] = mapped_column(Text)
+    tiene_clisse: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    cantidad_colores: Mapped[int | None] = mapped_column("cantidad_colores_clisse", Integer)
+    precio_clisse: Mapped[float | None] = mapped_column(Numeric(10, 2))
 
     id: Mapped[int] = mapped_column(
         Integer,

@@ -460,6 +460,8 @@ def crear_pedido(db: Session, pedido: schemas.PedidoCreate):
         email_cliente=pedido.email_cliente,
         telefono_cliente=pedido.telefono_cliente,
         incluye_igv=pedido.incluye_igv,
+        forma_pago=pedido.forma_pago,
+        validez_oferta=pedido.validez_oferta,
         observaciones_pedido=pedido.observaciones_pedido,
         imagen_url=pedido.imagen_url,
         estado="Preaprobada",
@@ -512,6 +514,9 @@ def crear_pedido(db: Session, pedido: schemas.PedidoCreate):
             incluye_igv=pedido.incluye_igv,
             observaciones_pedido=pedido.observaciones_pedido,
             imagen_url=pedido.imagen_url,
+            tiene_clisse=item.tiene_clisse or False,
+            cantidad_colores=item.cantidad_colores if item.tiene_clisse else None,
+            precio_clisse=item.precio_clisse if item.tiene_clisse else None,
             pedido_id=nuevo_pedido.id
         )
         db.add(orden_item)
@@ -534,6 +539,9 @@ def _armar_respuesta_pedido(db: Session, pedido: models.Pedido):
         if item.costo_total is not None:
             item.costo_total = float(item.costo_total)
             costo_total_pedido += item.costo_total
+        if item.tiene_clisse and item.precio_clisse is not None:
+            item.precio_clisse = float(item.precio_clisse)
+            costo_total_pedido += item.precio_clisse
 
     pedido.ruc = pedido.cliente_obj.ruc
     pedido.cliente = pedido.cliente_obj.nombre
@@ -613,6 +621,8 @@ def editar_pedido(db: Session, pedido_id: int, datos: schemas.PedidoEditar):
     pedido.email_cliente = datos.email_cliente
     pedido.telefono_cliente = datos.telefono_cliente
     pedido.incluye_igv = datos.incluye_igv
+    pedido.forma_pago = datos.forma_pago
+    pedido.validez_oferta = datos.validez_oferta
     pedido.observaciones_pedido = datos.observaciones_pedido
     pedido.imagen_url = datos.imagen_url
 
@@ -630,6 +640,63 @@ def editar_pedido(db: Session, pedido_id: int, datos: schemas.PedidoEditar):
         "observaciones_pedido": datos.observaciones_pedido,
         "imagen_url": datos.imagen_url
     }, synchronize_session=False)
+
+    # Los ítems (productos) del pedido solo se reemplazan mientras el pedido está
+    # "Preaprobada" (aún no pasó a producción). Una vez aprobado, sus OP ya pueden
+    # tener movimientos reales registrados, así que por seguridad no se tocan aquí.
+    if datos.items and pedido.estado == "Preaprobada":
+        db.query(models.OrdenProduccion).filter(
+            models.OrdenProduccion.pedido_id == pedido_id
+        ).delete(synchronize_session=False)
+
+        for i, item in enumerate(datos.items, start=1):
+            if item.unidad_precio and item.unidad_precio != "kg" and not item.cantidad_precio:
+                raise HTTPException(status_code=400, detail=f"Ítem {i}: indica la cantidad para el precio por {item.unidad_precio}.")
+
+            costo_total_item = None
+            if item.precio_unitario is not None and item.unidad_precio:
+                base = item.cantidad_precio if item.unidad_precio != "kg" else item.cantidad
+                costo_total_item = float(item.precio_unitario) * float(base or 0)
+
+            descripcion_limpia = item.descripcion.strip() if item.descripcion and item.descripcion.strip() else None
+            medidas_limpia = item.medidas.strip() if item.medidas and item.medidas.strip() else None
+            if descripcion_limpia and medidas_limpia:
+                descripcion_combinada = f"{descripcion_limpia} / {medidas_limpia}"
+            else:
+                descripcion_combinada = descripcion_limpia or medidas_limpia
+
+            orden_item = models.OrdenProduccion(
+                codigo=f"{pedido.codigo_base}-{i}",
+                cliente_id=cliente.id,
+                descripcion=descripcion_combinada,
+                medidas=item.medidas,
+                cantidad=item.cantidad,
+                unidad="kg",
+                estado="Preaprobada",
+                fecha=pedido.fecha,
+                hora=pedido.hora,
+                procesos_plan=item.procesos_plan,
+                tipo_trabajo=item.tipo_trabajo,
+                moneda=item.moneda,
+                vendedor=vendedor_limpio,
+                fecha_entrega=datos.fecha_entrega,
+                precio_unitario=item.precio_unitario,
+                unidad_precio=item.unidad_precio,
+                cantidad_precio=item.cantidad_precio,
+                costo_total=costo_total_item,
+                direccion_entrega=datos.direccion_entrega,
+                numero_contacto=datos.numero_contacto,
+                email_cliente=datos.email_cliente,
+                telefono_cliente=datos.telefono_cliente,
+                incluye_igv=datos.incluye_igv,
+                observaciones_pedido=datos.observaciones_pedido,
+                imagen_url=datos.imagen_url,
+                tiene_clisse=item.tiene_clisse or False,
+                cantidad_colores=item.cantidad_colores if item.tiene_clisse else None,
+                precio_clisse=item.precio_clisse if item.tiene_clisse else None,
+                pedido_id=pedido.id
+            )
+            db.add(orden_item)
 
     db.commit()
     db.refresh(pedido)

@@ -33,15 +33,13 @@ export async function generarPDFPedido(pedido) {
     cantidad_precio: pedido.cantidad_precio, costo_total: pedido.costo_total
   }]
   const simbolo = items[0]?.moneda === 'Dólares' ? '$' : 'S/'
-  const subtotal = items.reduce((s, it) => s + (Number(it.costo_total) || 0), 0)
-  const igv = pedido.incluye_igv ? subtotal * 0.18 : 0
-  const total = subtotal + igv
 
   const M = 12
   const ANCHO = 210 - M * 2
 
   // Paleta: gris (no celeste) en las casillas rellenas, porque esta hoja se imprime.
   const azul = [30, 64, 175]
+  const azulMuySuave = [239, 246, 255]
   const slate900 = [15, 23, 42]
   const slate700 = [51, 65, 85]
   const slate600 = [71, 85, 105]
@@ -71,7 +69,7 @@ export async function generarPDFPedido(pedido) {
 
   y += 18
 
-  // Caja RUC / FECHA (gris, igual estructura que en Cotización)
+  // Caja RUC / FECHA
   const anchoCaja = 52
   const xCaja = M + ANCHO - anchoCaja
   const altoCaja = 12
@@ -137,8 +135,9 @@ export async function generarPDFPedido(pedido) {
   y += altoBloqueCliente + 6
 
   // ================= DATOS DE ENTREGA (tabla flotante, propia del pedido) =================
+  // La fecha de entrega ya no va aquí: se muestra como "Tiempo de entrega" en el
+  // bloque de condiciones comerciales, junto con Forma de pago y Validez de la oferta.
   const filasEntrega = [
-    ['F. ENTREGA', pedido.fecha_entrega ? formatearFecha(pedido.fecha_entrega) : null],
     ['DIRECCIÓN DE ENTREGA', pedido.direccion_entrega],
     ['N° DE CONTACTO', pedido.numero_contacto],
     ['EMAIL DEL CLIENTE', pedido.email_cliente],
@@ -222,6 +221,8 @@ export async function generarPDFPedido(pedido) {
   const anchoPUnitario = colX[5] - colX[4] - 4
   const anchoTotalCelda = (M + ANCHO) - colX[5] - 4
 
+  let subtotal = 0
+
   items.forEach((it, index) => {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
@@ -284,10 +285,49 @@ export async function generarPDFPedido(pedido) {
     doc.setTextColor(...slate900)
     doc.text(lineasTotal, colX[5] + 2, y + 5.5)
 
+    subtotal += Number(it.costo_total) || 0
     y += filaAltura
+
+    // Fila de Clisse: va justo debajo del producto, dentro de las mismas columnas.
+    // No es un producto de producción, es solo un recordatorio de cobro para el cliente.
+    if (it.tiene_clisse) {
+      const descripcionClisse = 'Clisse'
+      const lineasDescClisse = medirLineas(doc, descripcionClisse, anchoDescripcion)
+      const lineasPrecioClisse = medirLineas(doc, it.precio_clisse ? montoSeguro(it.precio_clisse, simboloItem) : '-', anchoTotalCelda)
+      const filaAlturaClisse = alturaFilaMultilinea([lineasDescClisse, lineasPrecioClisse], alturaLineaTexto, filaAlturaMin)
+
+      if (y + filaAlturaClisse > 265) {
+        doc.addPage()
+        y = 16
+        dibujarCabeceraTabla()
+      }
+
+      doc.setFillColor(...azulMuySuave)
+      doc.rect(M, y, ANCHO, filaAlturaClisse, 'F')
+      doc.setDrawColor(...bordeGris)
+      doc.setLineWidth(0.2)
+      doc.rect(M, y, ANCHO, filaAlturaClisse)
+      colX.slice(1).forEach((x) => doc.line(x, y, x, y + filaAlturaClisse))
+
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...azul)
+      doc.text(lineasDescClisse, colX[0] + 2, y + 5.5)
+      doc.text(`${it.cantidad_colores ?? '-'} Colores`, colX[1] + 2, y + 5.5)
+      doc.text('1', colX[2] + 2, y + 5.5)
+      doc.text('-', colX[3] + 2, y + 5.5)
+      doc.text(lineasPrecioClisse, colX[4] + 2, y + 5.5)
+      doc.text(lineasPrecioClisse, colX[5] + 2, y + 5.5)
+
+      subtotal += Number(it.precio_clisse) || 0
+      y += filaAlturaClisse
+    }
   })
 
   y += 5
+
+  const igv = pedido.incluye_igv ? subtotal * 0.18 : 0
+  const total = subtotal + igv
 
   // ================= TOTALES =================
   y = asegurarEspacio(doc, y, 30, 270, 16)
@@ -330,6 +370,70 @@ export async function generarPDFPedido(pedido) {
 
   y = yInicioTotales + alturaBloque + 10
 
+  // ================= CONDICIONES (Forma de pago / Tiempo de entrega / Validez de oferta) =================
+  const hayCondiciones = pedido.forma_pago || pedido.fecha_entrega || pedido.validez_oferta
+
+  if (hayCondiciones) {
+    const anchoEtiqueta = 42
+    const altoFilaMin = 6.5
+    const alturaLineaCondicion = 3.6
+
+    const filasCondiciones = [
+      ['FORMA DE PAGO', pedido.forma_pago],
+      ['TIEMPO DE ENTREGA', pedido.fecha_entrega ? formatearFecha(pedido.fecha_entrega) : null],
+      ['VALIDEZ DE LA OFERTA', pedido.validez_oferta]
+    ]
+      .filter(([, valor]) => valor)
+      .map(([label, valor]) => {
+        const lineasValor = medirLineas(doc, valor, ANCHO - anchoEtiqueta - 5)
+        const alto = alturaFilaMultilinea([lineasValor], alturaLineaCondicion, altoFilaMin, 2.8)
+        return { label, lineasValor, alto }
+      })
+
+    const altoBloque = filasCondiciones.reduce((s, f) => s + f.alto, 0)
+
+    y = asegurarEspacio(doc, y, altoBloque, 270, 16)
+
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.3)
+    doc.rect(M, y, ANCHO, altoBloque)
+    doc.line(M + anchoEtiqueta, y, M + anchoEtiqueta, y + altoBloque)
+
+    let yFila = y
+    filasCondiciones.forEach(({ label, lineasValor, alto }, i) => {
+      if (i > 0) doc.line(M, yFila, M + ANCHO, yFila)
+
+      doc.setFillColor(...grisFondo)
+      doc.rect(M, yFila, anchoEtiqueta, alto, 'F')
+      doc.setDrawColor(...bordeGris)
+      doc.rect(M, yFila, anchoEtiqueta, alto)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...slate700)
+      doc.text(label, M + 2, yFila + 4.3)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...slate900)
+      doc.text(lineasValor, M + anchoEtiqueta + 3, yFila + 4.3)
+
+      yFila += alto
+    })
+
+    y += altoBloque + 6
+  }
+
+  if (pedido.observaciones_pedido) {
+    y = asegurarEspacio(doc, y, 12, 270, 16)
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8)
+    doc.setTextColor(...slate600)
+    const lineasObs = medirLineas(doc, `Obs: ${pedido.observaciones_pedido}`, ANCHO)
+    doc.text(lineasObs, M, y)
+    y += lineasObs.length * 4 + 4
+  }
+
   // ================= CONDICIONES FIJAS =================
   y = asegurarEspacio(doc, y, 22, 280, 16)
 
@@ -348,18 +452,13 @@ export async function generarPDFPedido(pedido) {
     y += 3.8
   })
 
-  if (pedido.incluye_igv != null || pedido.observaciones_pedido) {
-    y = asegurarEspacio(doc, y, 16, 280, 16)
+  if (pedido.incluye_igv != null) {
+    y = asegurarEspacio(doc, y, 10, 280, 16)
     y += 4
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.5)
     doc.setTextColor(...slate600)
     doc.text(pedido.incluye_igv ? 'Precio incluye IGV' : 'Precio no incluye IGV', M, y)
-    if (pedido.observaciones_pedido) {
-      y += 4
-      doc.setFont('helvetica', 'normal')
-      doc.text(`Obs: ${textoSeguro(pedido.observaciones_pedido)}`, M, y, { maxWidth: ANCHO })
-    }
   }
 
   if (pedido.imagen_url) {
