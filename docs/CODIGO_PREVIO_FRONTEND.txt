@@ -2465,6 +2465,7 @@ import VistaCotizacionDoc from './VistaCotizacionDoc'
 import { cargarFiltros, guardarFiltros, PERIODOS_RAPIDOS } from './filtrosPersistentes'
 
 const CLAVE_BORRADOR_COTIZACION = 'packtech_borrador_cotizacion'
+const CLAVE_BORRADOR_EDICION_COTIZACION = 'packtech_borrador_cotizacion_editando'
 const FORM_VACIO_COTIZACION = {
   codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
   incluye_igv: false,
@@ -2505,14 +2506,17 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
   const [editandoId, setEditandoId] = useState(null)
   const [editandoItemIndex, setEditandoItemIndex] = useState(null)
 
-  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña.
-  // Mientras se edita una cotización existente NO se persiste como borrador de "nueva cotización":
-  // si no, al abandonar una edición a medias (cambiar de pestaña o recargar antes de guardar), el
-  // borrador de la próxima cotización nueva heredaría el código de la que ya existe, y el backend
-  // la rechazaría con "Ya existe una cotización con ese número".
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña,
+  // cierras el navegador o recargas por accidente. El borrador de una edición vive en una llave
+  // aparte, identificada por el ID de esa cotización, así nunca se mezcla con el borrador de
+  // "Nueva Cotización" (eso era lo que causaba el error de "código duplicado"). Al reabrir esa
+  // misma cotización para editarla, si hay un borrador pendiente se recupera automáticamente.
   useEffect(() => {
-    if (editandoId) return
-    guardarFiltros(CLAVE_BORRADOR_COTIZACION, { form, items, itemActual, procesosItemActual })
+    if (editandoId) {
+      guardarFiltros(CLAVE_BORRADOR_EDICION_COTIZACION, { id: editandoId, form, items, itemActual, procesosItemActual })
+    } else {
+      guardarFiltros(CLAVE_BORRADOR_COTIZACION, { form, items, itemActual, procesosItemActual })
+    }
   }, [form, items, itemActual, procesosItemActual, editandoId])
 
   const [sugerenciasClientes, setSugerenciasClientes] = useState([])
@@ -2579,34 +2583,58 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
   useEffect(() => {
     if (editando) {
       setEditandoId(editando.id)
-      setForm({
-        codigo: editando.codigo || '',
-        ruc: editando.ruc || '',
-        nombre_cliente: editando.cliente || '',
-        vendedor: editando.vendedor || '',
-        moneda: editando.moneda || 'Soles',
-        incluye_igv: editando.incluye_igv || false,
-        forma_pago: editando.forma_pago || '',
-        tiempo_entrega: editando.tiempo_entrega || '',
-        validez_oferta: editando.validez_oferta || '',
-        observaciones: editando.observaciones || ''
-      })
-      setItems(
-        (editando.items || []).map((it) => ({
-          descripcion: it.descripcion || '',
-          medidas: it.medidas || '',
-          cantidad: it.cantidad || '',
-          unidad: it.unidad || 'kg',
-          precio_unitario: it.precio_unitario || '',
-          procesos_plan: it.procesos_plan || null,
-          tiene_clisse: it.tiene_clisse || false,
-          nombre_clisse: it.nombre_clisse || '',
-          cantidad_colores: it.cantidad_colores || '',
-          precio_clisse: it.precio_clisse || ''
-        }))
-      )
-      setItemActual({ ...ITEM_VACIO })
-      setProcesosItemActual([])
+
+      // Si hay un borrador guardado de una sesión anterior de edición sobre ESTA MISMA
+      // cotización (por ID), se recupera tal cual quedó, en vez de partir de los datos
+      // ya guardados en el servidor — así no se pierde nada si el operador se salió
+      // a mitad de editar.
+      let borradorEdicion = null
+      try {
+        const guardado = localStorage.getItem(CLAVE_BORRADOR_EDICION_COTIZACION)
+        if (guardado) {
+          const parseado = JSON.parse(guardado)
+          if (parseado?.id === editando.id) borradorEdicion = parseado
+        }
+      } catch {
+        // borrador corrupto o localStorage no disponible: se ignora y se usa el servidor
+      }
+
+      if (borradorEdicion) {
+        setForm(borradorEdicion.form)
+        setItems(borradorEdicion.items)
+        setItemActual(borradorEdicion.itemActual)
+        setProcesosItemActual(borradorEdicion.procesosItemActual)
+      } else {
+        setForm({
+          codigo: editando.codigo || '',
+          ruc: editando.ruc || '',
+          nombre_cliente: editando.cliente || '',
+          vendedor: editando.vendedor || '',
+          moneda: editando.moneda || 'Soles',
+          incluye_igv: editando.incluye_igv || false,
+          forma_pago: editando.forma_pago || '',
+          tiempo_entrega: editando.tiempo_entrega || '',
+          validez_oferta: editando.validez_oferta || '',
+          observaciones: editando.observaciones || ''
+        })
+        setItems(
+          (editando.items || []).map((it) => ({
+            descripcion: it.descripcion || '',
+            medidas: it.medidas || '',
+            cantidad: it.cantidad || '',
+            unidad: it.unidad || 'kg',
+            precio_unitario: it.precio_unitario || '',
+            procesos_plan: it.procesos_plan || null,
+            tiene_clisse: it.tiene_clisse || false,
+            cantidad_colores: it.cantidad_colores || '',
+            precio_clisse: it.precio_clisse || ''
+          }))
+        )
+        setItemActual({ ...ITEM_VACIO })
+        setProcesosItemActual([])
+      }
+
+      setEditandoItemIndex(null)
       setClienteSeleccionado({ ruc: editando.ruc || '', nombre: editando.cliente || '' })
       setError(null)
       setExito(false)
@@ -2755,12 +2783,16 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
         await axios.post('https://packtech-production.up.railway.app/cotizaciones', payload)
       }
 
+      // Se guardó con éxito: el borrador de esta edición ya no hace falta.
+      try { localStorage.removeItem(CLAVE_BORRADOR_EDICION_COTIZACION) } catch { /* no crítico */ }
+
       setExito(true)
       setForm({ ...FORM_VACIO_COTIZACION })
       setItems([])
       setItemActual({ ...ITEM_VACIO })
       setProcesosItemActual([])
       setClienteSeleccionado(null)
+      setEditandoItemIndex(null)
       setEditandoId(null)
       if (onCreada) onCreada()
     } catch (err) {
@@ -2774,6 +2806,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
 
   const limpiarTodo = () => {
     if (!confirm('¿Limpiar todos los campos de este formulario? Se perderá lo que no hayas guardado (se mantienen Forma de pago, Tiempo de entrega y Validez de la oferta).')) return
+    try { localStorage.removeItem(CLAVE_BORRADOR_EDICION_COTIZACION) } catch { /* no crítico */ }
     setForm({ ...FORM_VACIO_COTIZACION })
     setItems([])
     setItemActual({ ...ITEM_VACIO })
@@ -3208,12 +3241,14 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
             <button
               type="button"
               onClick={() => {
+                try { localStorage.removeItem(CLAVE_BORRADOR_EDICION_COTIZACION) } catch { /* no crítico */ }
                 setEditandoId(null)
                 setForm({ ...FORM_VACIO_COTIZACION })
                 setItems([])
                 setItemActual({ ...ITEM_VACIO })
                 setProcesosItemActual([])
                 setClienteSeleccionado(null)
+                setEditandoItemIndex(null)
                 setError(null)
                 setExito(false)
                 if (onCancelarEdicion) onCancelarEdicion()
