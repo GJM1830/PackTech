@@ -1534,7 +1534,8 @@ const fechaEntregaPorDefecto = () => {
 const crearFormVacio = () => ({
   codigo_base: '', ruc: '', nombre_cliente: '', vendedor: '', fecha_entrega: fechaEntregaPorDefecto(),
   direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '',
-  incluye_igv: false, forma_pago: '50% adelantado y 50% contra entrega', validez_oferta: '10 días',
+  incluye_igv: false, forma_pago: '50% adelantado y 50% contra entrega',
+  validez_oferta: '10 días de aprobado el diseño o según mutuo acuerdo',
   observaciones_pedido: '', imagen_url: ''
 })
 
@@ -1975,7 +1976,7 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
           <label className="block text-sm font-medium text-slate-600 mb-1">Vendedor</label>
           <input
             type="text" name="vendedor" value={form.vendedor} onChange={manejarCambio}
-            autoComplete="off" required className={estilo}
+            autoComplete="off" required className={estilo} placeholder="Tu nombre, ej. Fernanda"
           />
           {sugerenciasVendedores.length > 0 && (
             <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
@@ -1998,19 +1999,19 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
           <div className="grid grid-cols-2 gap-4 mt-3">
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Dirección de entrega</label>
-              <input type="text" name="direccion_entrega" value={form.direccion_entrega} onChange={manejarCambio} className={estilo} />
+              <input type="text" name="direccion_entrega" value={form.direccion_entrega} onChange={manejarCambio} className={estilo} placeholder="Av. Ejemplo 123, Lima" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">N° de contacto</label>
-              <input type="text" name="numero_contacto" value={form.numero_contacto} onChange={manejarCambio} className={estilo} />
+              <input type="text" name="numero_contacto" value={form.numero_contacto} onChange={manejarCambio} className={estilo} placeholder="987654321" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Email del cliente</label>
-              <input type="email" name="email_cliente" value={form.email_cliente} onChange={manejarCambio} className={estilo} />
+              <input type="email" name="email_cliente" value={form.email_cliente} onChange={manejarCambio} className={estilo} placeholder="cliente@empresa.com" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Teléfono del cliente</label>
-              <input type="text" name="telefono_cliente" value={form.telefono_cliente} onChange={manejarCambio} className={estilo} />
+              <input type="text" name="telefono_cliente" value={form.telefono_cliente} onChange={manejarCambio} className={estilo} placeholder="01-2345678" />
             </div>
           </div>
         </details>
@@ -2099,7 +2100,7 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad (Kg)</label>
-                <input type="number" step="0.01" name="cantidad" value={itemActual.cantidad} onChange={manejarCambioItem} className={estilo} />
+                <input type="number" step="0.01" name="cantidad" value={itemActual.cantidad} onChange={manejarCambioItem} className={estilo} placeholder="Ej. 50" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Moneda</label>
@@ -2113,7 +2114,7 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
             <div className={`grid grid-cols-1 ${itemActual.unidad_precio !== 'kg' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Precio unitario</label>
-                <input type="number" step="0.01" name="precio_unitario" value={itemActual.precio_unitario} onChange={manejarCambioItem} className={estilo} />
+                <input type="number" step="0.01" name="precio_unitario" value={itemActual.precio_unitario} onChange={manejarCambioItem} className={estilo} placeholder="Ej. 8.50" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Precio por</label>
@@ -2127,7 +2128,7 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
               {itemActual.unidad_precio !== 'kg' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">{ETIQUETA_CANTIDAD_PRECIO[itemActual.unidad_precio]}</label>
-                  <input type="number" step="0.01" name="cantidad_precio" value={itemActual.cantidad_precio} onChange={manejarCambioItem} className={estilo} />
+                  <input type="number" step="0.01" name="cantidad_precio" value={itemActual.cantidad_precio} onChange={manejarCambioItem} className={estilo} placeholder="Ej. 10" />
                 </div>
               )}
             </div>
@@ -2280,17 +2281,17 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Forma de pago</label>
-            <input type="text" name="forma_pago" value={form.forma_pago} onChange={manejarCambio} className={estilo} />
+            <input type="text" name="forma_pago" value={form.forma_pago} onChange={manejarCambio} className={estilo} placeholder="Ej. 50% adelantado y 50% contra entrega" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Tiempo de entrega</label>
-            <input type="date" name="fecha_entrega" value={form.fecha_entrega} onChange={manejarCambio} required className={estilo} />
+            <input type="text" name="validez_oferta" value={form.validez_oferta} onChange={manejarCambio} className={estilo} placeholder="Ej. 10 días de aprobado el diseño o según mutuo acuerdo" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Validez de la oferta</label>
-            <input type="text" name="validez_oferta" value={form.validez_oferta} onChange={manejarCambio} className={estilo} />
+            <label className="block text-sm font-medium text-slate-600 mb-1">Fecha de Entrega Estimada</label>
+            <input type="date" name="fecha_entrega" value={form.fecha_entrega} onChange={manejarCambio} required className={estilo} />
           </div>
 
           <div>
