@@ -380,7 +380,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
 
       <form onSubmit={manejarEnvio} className="space-y-5">
                 <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Número de esta cotización</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">N° de Cotización</label>
           <input
             type="text"
             name="codigo"
@@ -414,7 +414,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
               value={form.nombre_cliente}
               onChange={(e) => { setClienteSeleccionado(null); manejarCambio(e) }}
               autoComplete="off"
-              placeholder="Escribe el nombre, ej. FABREPLAST"
+              placeholder="Drocsa"
               className={estilo}
               required
             />

@@ -266,7 +266,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde }) {
             <input
               type="text" name="nombre_cliente" value={form.nombre_cliente}
               onChange={(e) => { manejarCambio(e); setClienteSeleccionado(null) }}
-              autoComplete="off" required className={estilo} placeholder="Namder"
+              autoComplete="off" required className={estilo} placeholder="Drocsa"
             />
             {sugerenciasClientes.length > 0 && (
               <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
