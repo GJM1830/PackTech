@@ -49,7 +49,7 @@ function VistaCotizacionDoc({ cotizacion, onCerrar }) {
                 )}
                 {it.tiene_clisse && (
                   <p className="text-xs text-purple-700">
-                    Clisse: {it.nombre_clisse} · {it.cantidad_colores || '-'} colores · {simbolo} {Number(it.precio_clisse || 0).toFixed(2)}
+                    Clisse · {it.cantidad_colores || '-'} colores · {simbolo} {Number(it.precio_clisse || 0).toFixed(2)}
                   </p>
                 )}
                 <div className="flex justify-between text-sm mt-1">

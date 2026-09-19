@@ -44,11 +44,17 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
   const [itemActual, setItemActual] = useState(borradorGuardado.itemActual)
   const [procesosItemActual, setProcesosItemActual] = useState(borradorGuardado.procesosItemActual)
   const [editandoId, setEditandoId] = useState(null)
+  const [editandoItemIndex, setEditandoItemIndex] = useState(null)
 
-  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña
+  // Guarda automáticamente lo que llevas escrito, para que no se pierda si cambias de pestaña.
+  // Mientras se edita una cotización existente NO se persiste como borrador de "nueva cotización":
+  // si no, al abandonar una edición a medias (cambiar de pestaña o recargar antes de guardar), el
+  // borrador de la próxima cotización nueva heredaría el código de la que ya existe, y el backend
+  // la rechazaría con "Ya existe una cotización con ese número".
   useEffect(() => {
+    if (editandoId) return
     guardarFiltros(CLAVE_BORRADOR_COTIZACION, { form, items, itemActual, procesosItemActual })
-  }, [form, items, itemActual, procesosItemActual])
+  }, [form, items, itemActual, procesosItemActual, editandoId])
 
   const [sugerenciasClientes, setSugerenciasClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -197,17 +203,38 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
       setError('Indica la cantidad de este ítem.')
       return
     }
-    if (itemActual.tiene_clisse && !itemActual.nombre_clisse.trim()) {
-      setError('Escribe el nombre del Clisse o marca "No" en "¿Lleva Clisse?".')
-      return
-    }
     setError(null)
-    setItems((actual) => [...actual, { ...itemActual, procesos_plan: procesosItemActual.join(',') || null }])
+    const itemFinal = { ...itemActual, procesos_plan: procesosItemActual.join(',') || null }
+    if (editandoItemIndex !== null) {
+      setItems((actual) => actual.map((it, i) => (i === editandoItemIndex ? itemFinal : it)))
+      setEditandoItemIndex(null)
+    } else {
+      setItems((actual) => [...actual, itemFinal])
+    }
     setItemActual({ ...ITEM_VACIO })
     setProcesosItemActual([])
   }
 
-  const quitarItem = (index) => setItems((actual) => actual.filter((_, i) => i !== index))
+  const editarItem = (index) => {
+    const it = items[index]
+    setItemActual({ ...ITEM_VACIO, ...it })
+    setProcesosItemActual(it.procesos_plan ? it.procesos_plan.split(',').filter(Boolean) : [])
+    setEditandoItemIndex(index)
+    setError(null)
+  }
+
+  const cancelarEdicionItem = () => {
+    setItemActual({ ...ITEM_VACIO })
+    setProcesosItemActual([])
+    setEditandoItemIndex(null)
+    setError(null)
+  }
+
+  const quitarItem = (index) => {
+    setItems((actual) => actual.filter((_, i) => i !== index))
+    if (editandoItemIndex === index) cancelarEdicionItem()
+    else if (editandoItemIndex !== null && index < editandoItemIndex) setEditandoItemIndex((i) => i - 1)
+  }
 
   const manejarEnvio = async (e) => {
     e.preventDefault()
@@ -219,11 +246,6 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
     if (itemActual.descripcion || itemActual.cantidad) {
       if (!itemActual.descripcion.trim() || !itemActual.cantidad) {
         setError('Completa el último producto (descripción y cantidad) o quítalo antes de guardar.')
-        setEnviando(false)
-        return
-      }
-      if (itemActual.tiene_clisse && !itemActual.nombre_clisse.trim()) {
-        setError('Escribe el nombre del Clisse del último producto o desactiva esa opción.')
         setEnviando(false)
         return
       }
@@ -291,9 +313,34 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
 
   const estilo = "w-full border border-slate-300 rounded-lg px-3 py-2.5 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
 
+  const limpiarTodo = () => {
+    if (!confirm('¿Limpiar todos los campos de este formulario? Se perderá lo que no hayas guardado (se mantienen Forma de pago, Tiempo de entrega y Validez de la oferta).')) return
+    setForm({ ...FORM_VACIO_COTIZACION })
+    setItems([])
+    setItemActual({ ...ITEM_VACIO })
+    setProcesosItemActual([])
+    setClienteSeleccionado(null)
+    setEditandoItemIndex(null)
+    setError(null)
+    setExito(false)
+    if (editandoId) {
+      setEditandoId(null)
+      if (onCancelarEdicion) onCancelarEdicion()
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6">
-      <h2 className="text-xl font-bold text-slate-800 mb-1">{editandoId ? 'Editar Cotización' : 'Nueva Cotización'}</h2>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h2 className="text-xl font-bold text-slate-800">{editandoId ? 'Editar Cotización' : 'Nueva Cotización'}</h2>
+        <button
+          type="button"
+          onClick={limpiarTodo}
+          className="shrink-0 text-xs font-semibold text-red-600 border border-red-200 bg-red-50 rounded-lg px-3 py-1.5 hover:bg-red-100"
+        >
+          🗑 Limpiar todo
+        </button>
+      </div>
       <p className="text-sm text-slate-500 mb-5">
         {editandoId ? 'Modifica los datos y guarda los cambios.' : 'Completa los datos y agrega los productos que vas a cotizar.'}
       </p>
@@ -427,7 +474,9 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
 
         {/* ---- Agregar producto ---- */}
         <div className="border-2 border-dashed border-blue-200 rounded-xl p-4 bg-blue-50/40 space-y-3">
-          <h3 className="font-semibold text-slate-700 text-sm">Agregar producto a la cotización</h3>
+          <h3 className="font-semibold text-slate-700 text-sm">
+            {editandoItemIndex !== null ? 'Editando producto de la lista' : 'Agregar producto a la cotización'}
+          </h3>
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">¿Qué es? (descripción)</label>
@@ -526,16 +575,6 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
 
             {itemActual.tiene_clisse && (
               <div className="grid grid-cols-2 gap-3 bg-white border border-blue-100 rounded-lg p-3">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Nombre del Clisse</label>
-                  <input
-                    type="text"
-                    value={itemActual.nombre_clisse}
-                    onChange={(e) => setItemActual({ ...itemActual, nombre_clisse: e.target.value })}
-                    placeholder="Ej. Hielo Rosell x3kg"
-                    className={estilo}
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad de colores</label>
                   <input
@@ -596,13 +635,24 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={agregarItem}
-            className="w-full bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
-          >
-            + Agregar este producto a la lista
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={agregarItem}
+              className="flex-1 bg-blue-700 text-white rounded-lg py-2.5 font-medium hover:bg-blue-800"
+            >
+              {editandoItemIndex !== null ? 'Guardar cambios en este producto' : '+ Agregar este producto a la lista'}
+            </button>
+            {editandoItemIndex !== null && (
+              <button
+                type="button"
+                onClick={cancelarEdicionItem}
+                className="px-4 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ---- Lista de productos agregados ---- */}
@@ -622,17 +672,26 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
                   )}
                   {it.tiene_clisse && (
                     <p className="text-xs text-purple-700">
-                      Clisse: {it.nombre_clisse} · {it.cantidad_colores || '-'} colores · {form.moneda === 'Dólares' ? '$' : 'S/'} {it.precio_clisse || '0.00'}
+                      Clisse · {it.cantidad_colores || '-'} colores · {form.moneda === 'Dólares' ? '$' : 'S/'} {it.precio_clisse || '0.00'}
                     </p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => quitarItem(i)}
-                  className="text-red-500 text-xs font-medium hover:text-red-700 shrink-0 ml-2"
-                >
-                  Quitar
-                </button>
+                <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => editarItem(i)}
+                    className="text-blue-600 text-xs font-medium hover:text-blue-800"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quitarItem(i)}
+                    className="text-red-500 text-xs font-medium hover:text-red-700"
+                  >
+                    Quitar
+                  </button>
+                </div>
               </div>
             ))}
           </div>

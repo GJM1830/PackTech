@@ -229,7 +229,7 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
     // Fila de Clisse: va justo debajo del producto, dentro de las mismas columnas
     if (it.tiene_clisse) {
-      const descripcionClisse = `Clisse ${textoSeguro(it.nombre_clisse)}`
+      const descripcionClisse = 'Clisse'
       const lineasDescClisse = medirLineas(doc, descripcionClisse, anchoDescripcion)
       const lineasPrecioClisse = medirLineas(doc, it.precio_clisse ? montoSeguro(it.precio_clisse, simbolo) : '-', anchoSubtotal)
       const filaAlturaClisse = alturaFilaMultilinea([lineasDescClisse, lineasPrecioClisse], alturaLineaTexto, filaAlturaMin)
