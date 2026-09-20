@@ -407,6 +407,11 @@ class Cotizacion(Base):
     tiempo_entrega: Mapped[str | None] = mapped_column(String(200))
     validez_oferta: Mapped[str | None] = mapped_column(String(200))
     observaciones: Mapped[str | None] = mapped_column(Text)
+    direccion_entrega: Mapped[str | None] = mapped_column(String(200))
+    numero_contacto: Mapped[str | None] = mapped_column(String(50))
+    email_cliente: Mapped[str | None] = mapped_column(String(150))
+    telefono_cliente: Mapped[str | None] = mapped_column(String(50))
+    imagen_url: Mapped[str | None] = mapped_column(Text)
     fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
     hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
 

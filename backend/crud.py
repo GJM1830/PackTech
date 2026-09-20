@@ -2287,6 +2287,11 @@ def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
         tiempo_entrega=datos.tiempo_entrega,
         validez_oferta=datos.validez_oferta,
         observaciones=datos.observaciones,
+        direccion_entrega=datos.direccion_entrega,
+        numero_contacto=datos.numero_contacto,
+        email_cliente=datos.email_cliente,
+        telefono_cliente=datos.telefono_cliente,
+        imagen_url=datos.imagen_url,
         fecha=ahora.date(),
         hora=ahora.time()
     )
@@ -2489,6 +2494,11 @@ def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.Cotizacion
     cotizacion.tiempo_entrega = datos.tiempo_entrega
     cotizacion.validez_oferta = datos.validez_oferta
     cotizacion.observaciones = datos.observaciones
+    cotizacion.direccion_entrega = datos.direccion_entrega
+    cotizacion.numero_contacto = datos.numero_contacto
+    cotizacion.email_cliente = datos.email_cliente
+    cotizacion.telefono_cliente = datos.telefono_cliente
+    cotizacion.imagen_url = datos.imagen_url
 
     db.query(models.CotizacionItem).filter(
         models.CotizacionItem.cotizacion_id == cotizacion_id

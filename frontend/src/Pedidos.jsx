@@ -8,6 +8,7 @@ import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
 
 const CLAVE_BORRADOR_PEDIDO = 'packtech_borrador_pedido'
 const CLAVE_BORRADOR_EDICION_PEDIDO = 'packtech_borrador_pedido_editando'
+const CLAVE_COTIZACION_A_PEDIDO = 'packtech_cotizacion_a_pedido'
 
 const formatearFecha = (fecha) => {
   if (!fecha) return ''
@@ -334,6 +335,13 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
       return
     }
 
+    const indiceSinPeso = itemsFinal.findIndex((it) => !it.cantidad || isNaN(parseFloat(it.cantidad)))
+    if (indiceSinPeso !== -1) {
+      setError(`Indica el peso (Kg) del ítem ${indiceSinPeso + 1} antes de guardar.`)
+      setEnviando(false)
+      return
+    }
+
     const itemsPayload = itemsFinal.map((it) => ({
       descripcion: it.descripcion || null,
       medidas: it.medidas || null,
@@ -555,7 +563,11 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
                   <div className="text-blue-900">
                     <p>
                       <span className="font-medium">{it.descripcion || 'Sin descripción'}</span>
-                      {' · '}{it.cantidad} Kg{it.procesos_plan ? ` · ${it.procesos_plan.split(',').join(' → ')}` : ''}
+                      {it.cantidad ? (
+                        <>{' · '}{it.cantidad} Kg{it.procesos_plan ? ` · ${it.procesos_plan.split(',').join(' → ')}` : ''}</>
+                      ) : (
+                        <span className="text-red-600 font-semibold"> · ⚠ Falta indicar el peso (Kg)</span>
+                      )}
                     </p>
                     {it.tiene_clisse && (
                       <p className="text-xs text-purple-700">
@@ -1018,6 +1030,20 @@ function Pedidos() {
   const [editando, setEditando] = useState(null)
   const [vistaAbierta, setVistaAbierta] = useState(null)
   const vendedorOAdmin = esVendedorOMas()
+
+  // Si venimos del botón "Pasar a Pedido" de Cotizaciones, precargamos ese borrador
+  // reutilizando el mismo mecanismo de "duplicar" (misma forma de datos).
+  useEffect(() => {
+    try {
+      const guardado = localStorage.getItem(CLAVE_COTIZACION_A_PEDIDO)
+      if (guardado) {
+        localStorage.removeItem(CLAVE_COTIZACION_A_PEDIDO)
+        setEditando(null)
+        setDuplicarDesde({ ...JSON.parse(guardado), timestamp: Date.now() })
+        setVista('preaprobadas')
+      }
+    } catch { /* no crítico */ }
+  }, [])
 
   const cargar = () => {
     setCargando(true)

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from './api'
 import { esVendedorOMas } from './roles'
 import MenuAcciones from './MenuAcciones'
@@ -7,13 +8,15 @@ import { cargarFiltros, guardarFiltros, PERIODOS_RAPIDOS } from './filtrosPersis
 
 const CLAVE_BORRADOR_COTIZACION = 'packtech_borrador_cotizacion'
 const CLAVE_BORRADOR_EDICION_COTIZACION = 'packtech_borrador_cotizacion_editando'
+const CLAVE_COTIZACION_A_PEDIDO = 'packtech_cotizacion_a_pedido'
 const FORM_VACIO_COTIZACION = {
   codigo: '', ruc: '', nombre_cliente: '', vendedor: '', moneda: 'Soles',
   incluye_igv: false,
   forma_pago: '50% adelantado y 50% contra entrega',
   tiempo_entrega: '10 días de aprobado el diseño o según mutuo acuerdo',
   validez_oferta: '10 días',
-  observaciones: ''
+  observaciones: '',
+  direccion_entrega: '', numero_contacto: '', email_cliente: '', telefono_cliente: '', imagen_url: ''
 }
 
 const formatearFecha = (fecha) => {
@@ -74,6 +77,14 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
   }
   const manejarCambioItem = (e) => setItemActual({ ...itemActual, [e.target.name]: e.target.value })
 
+  const manejarImagenSubida = (e) => {
+    const archivo = e.target.files[0]
+    if (!archivo) return
+    const lector = new FileReader()
+    lector.onload = () => setForm((actual) => ({ ...actual, imagen_url: lector.result }))
+    lector.readAsDataURL(archivo)
+  }
+
   const agregarProceso = (proceso) => setProcesosItemActual((actual) => [...actual, proceso])
   const quitarProceso = (index) => setProcesosItemActual((actual) => actual.filter((_, i) => i !== index))
   const moverProceso = (index, direccion) => {
@@ -98,7 +109,12 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
         forma_pago: duplicarDesde.forma_pago || '',
         tiempo_entrega: duplicarDesde.tiempo_entrega || '',
         validez_oferta: duplicarDesde.validez_oferta || '',
-        observaciones: duplicarDesde.observaciones || ''
+        observaciones: duplicarDesde.observaciones || '',
+        direccion_entrega: duplicarDesde.direccion_entrega || '',
+        numero_contacto: duplicarDesde.numero_contacto || '',
+        email_cliente: duplicarDesde.email_cliente || '',
+        telefono_cliente: duplicarDesde.telefono_cliente || '',
+        imagen_url: ''
       })
       setItems(
         (duplicarDesde.items || []).map((it) => ({
@@ -156,7 +172,12 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           forma_pago: editando.forma_pago || '',
           tiempo_entrega: editando.tiempo_entrega || '',
           validez_oferta: editando.validez_oferta || '',
-          observaciones: editando.observaciones || ''
+          observaciones: editando.observaciones || '',
+          direccion_entrega: editando.direccion_entrega || '',
+          numero_contacto: editando.numero_contacto || '',
+          email_cliente: editando.email_cliente || '',
+          telefono_cliente: editando.telefono_cliente || '',
+          imagen_url: editando.imagen_url || ''
         })
         setItems(
           (editando.items || []).map((it) => ({
@@ -304,6 +325,11 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
         tiempo_entrega: form.tiempo_entrega || null,
         validez_oferta: form.validez_oferta || null,
         observaciones: form.observaciones || null,
+        direccion_entrega: form.direccion_entrega || null,
+        numero_contacto: form.numero_contacto || null,
+        email_cliente: form.email_cliente || null,
+        telefono_cliente: form.telefono_cliente || null,
+        imagen_url: form.imagen_url || null,
         items: itemsFinal.map((it) => ({
           descripcion: it.descripcion || null,
           medidas: it.medidas || null,
@@ -467,6 +493,30 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
           )}
         </div>
 
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
+            + Datos opcionales (dirección, contacto)
+          </summary>
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Dirección de entrega</label>
+              <input type="text" name="direccion_entrega" value={form.direccion_entrega} onChange={manejarCambio} className={estilo} placeholder="Av. Ejemplo 123, Lima" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">N° de contacto</label>
+              <input type="text" name="numero_contacto" value={form.numero_contacto} onChange={manejarCambio} className={estilo} placeholder="987654321" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Email del cliente</label>
+              <input type="email" name="email_cliente" value={form.email_cliente} onChange={manejarCambio} className={estilo} placeholder="cliente@empresa.com" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Teléfono del cliente</label>
+              <input type="text" name="telefono_cliente" value={form.telefono_cliente} onChange={manejarCambio} className={estilo} placeholder="01-2345678" />
+            </div>
+          </div>
+        </details>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
@@ -503,6 +553,14 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-2">
+          <label className="block text-sm font-medium text-slate-700 mb-1">Imagen de la cotización (opcional)</label>
+          <input type="file" accept="image/*" onChange={manejarImagenSubida} className="text-sm" />
+          {form.imagen_url && (
+            <img src={form.imagen_url} alt="Vista previa" className="mt-2 h-24 rounded-lg border border-slate-200" />
+          )}
         </div>
 
         {/* ---- Agregar producto ---- */}
@@ -814,7 +872,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
 
 const CLAVE_FILTROS_COTIZACIONES = 'packtech_filtros_cotizaciones'
 
-function ListaCotizaciones({ onDuplicar, onEditar, refrescarTrigger }) {
+function ListaCotizaciones({ onDuplicar, onEditar, onTrasladar, refrescarTrigger }) {
   const filtrosGuardados = cargarFiltros(CLAVE_FILTROS_COTIZACIONES, {
     codigo: '', cliente: '', periodo: 'todo', desde: '', hasta: ''
   })
@@ -1007,6 +1065,7 @@ function ListaCotizaciones({ onDuplicar, onEditar, refrescarTrigger }) {
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Fecha</th>
                   <th className="px-4 py-3 text-right"></th>
+                  <th className="px-4 py-3 text-right"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1023,6 +1082,16 @@ function ListaCotizaciones({ onDuplicar, onEditar, refrescarTrigger }) {
                       {c.moneda === 'Dólares' ? '$' : 'S/'} {Number(c.total || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3">{formatearFecha(c.fecha)}</td>
+                    {esVendedorOMas() && (
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => onTrasladar(c)}
+                          className="bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-blue-800 whitespace-nowrap"
+                        >
+                          → Pasar a Pedido
+                        </button>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <MenuAcciones
                         onEditar={() => onEditar(c)}
@@ -1034,7 +1103,7 @@ function ListaCotizaciones({ onDuplicar, onEditar, refrescarTrigger }) {
                 ))}
                 {cotizaciones.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan="7" className="px-4 py-6 text-center text-slate-400">
                       No hay cotizaciones registradas todavía.
                     </td>
                   </tr>
@@ -1065,6 +1134,7 @@ function ListaCotizaciones({ onDuplicar, onEditar, refrescarTrigger }) {
 }
 
 function Cotizaciones() {
+  const navigate = useNavigate()
   const [duplicarDesde, setDuplicarDesde] = useState(null)
   const [editando, setEditando] = useState(null)
   const [refrescar, setRefrescar] = useState(0)
@@ -1077,6 +1147,52 @@ function Cotizaciones() {
   const manejarEditar = (cot) => {
     setDuplicarDesde(null)
     setEditando({ ...cot, timestamp: Date.now() })
+  }
+
+  // Convierte una cotización en un borrador de Pedido. Los ítems que NO estaban en
+  // Kg se pasan con cantidad (peso) vacía a propósito: Pedidos exige ese campo antes
+  // de guardar, así que el operador está obligado a indicar el peso real antes de
+  // que el ítem entre a producción.
+  const trasladarAPedido = (cot) => {
+    const datosParaPedido = {
+      ruc: cot.ruc || '',
+      cliente: cot.cliente || '',
+      vendedor: cot.vendedor || '',
+      direccion_entrega: cot.direccion_entrega || '',
+      numero_contacto: cot.numero_contacto || '',
+      email_cliente: cot.email_cliente || '',
+      telefono_cliente: cot.telefono_cliente || '',
+      incluye_igv: cot.incluye_igv || false,
+      forma_pago: cot.forma_pago || '',
+      validez_oferta: cot.tiempo_entrega || '',
+      observaciones_pedido: [
+        cot.observaciones || '',
+        cot.validez_oferta ? `Validez de oferta original: ${cot.validez_oferta}` : ''
+      ].filter(Boolean).join(' | '),
+      items: (cot.items || []).map((it) => {
+        const esKg = !it.unidad || it.unidad === 'kg'
+        return {
+          descripcion: it.descripcion || '',
+          medidas: it.medidas || '',
+          cantidad: esKg ? (it.cantidad || '') : '',
+          moneda: cot.moneda || 'Soles',
+          tipo_trabajo: '',
+          precio_unitario: it.precio_unitario || '',
+          unidad_precio: it.unidad || 'kg',
+          cantidad_precio: esKg ? '' : (it.cantidad || ''),
+          procesos_plan: it.procesos_plan || null,
+          tiene_clisse: it.tiene_clisse || false,
+          cantidad_colores: it.cantidad_colores || '',
+          precio_clisse: it.precio_clisse || ''
+        }
+      })
+    }
+
+    try {
+      localStorage.setItem(CLAVE_COTIZACION_A_PEDIDO, JSON.stringify(datosParaPedido))
+    } catch { /* no crítico */ }
+
+    navigate('/pedidos')
   }
 
   return (
@@ -1093,7 +1209,7 @@ function Cotizaciones() {
         onCancelarEdicion={() => setEditando(null)}
       />
 
-      <ListaCotizaciones onDuplicar={manejarDuplicar} onEditar={manejarEditar} refrescarTrigger={refrescar} />
+      <ListaCotizaciones onDuplicar={manejarDuplicar} onEditar={manejarEditar} onTrasladar={trasladarAPedido} refrescarTrigger={refrescar} />
     </div>
   )
 }

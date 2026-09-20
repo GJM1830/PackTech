@@ -39,6 +39,35 @@ function VistaCotizacionDoc({ cotizacion, onCerrar }) {
             </div>
           </div>
 
+          {(cotizacion.direccion_entrega || cotizacion.numero_contacto || cotizacion.email_cliente || cotizacion.telefono_cliente) && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {cotizacion.direccion_entrega && (
+                <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-slate-400 uppercase">Dirección de entrega</p>
+                  <p className="font-medium text-slate-800">{cotizacion.direccion_entrega}</p>
+                </div>
+              )}
+              {cotizacion.numero_contacto && (
+                <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-slate-400 uppercase">N° de contacto</p>
+                  <p className="font-medium text-slate-800">{cotizacion.numero_contacto}</p>
+                </div>
+              )}
+              {cotizacion.email_cliente && (
+                <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-slate-400 uppercase">Email del cliente</p>
+                  <p className="font-medium text-slate-800">{cotizacion.email_cliente}</p>
+                </div>
+              )}
+              {cotizacion.telefono_cliente && (
+                <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-slate-400 uppercase">Teléfono del cliente</p>
+                  <p className="font-medium text-slate-800">{cotizacion.telefono_cliente}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             {cotizacion.items.map((it, i) => (
               <div key={i} className="border border-slate-200 rounded-lg px-3 py-2">
@@ -89,6 +118,12 @@ function VistaCotizacionDoc({ cotizacion, onCerrar }) {
 
           {cotizacion.observaciones && (
             <p className="text-xs text-slate-500">Obs: {cotizacion.observaciones}</p>
+          )}
+
+          {cotizacion.imagen_url && (
+            <div className="flex justify-center">
+              <img src={cotizacion.imagen_url} alt="Imagen de la cotización" className="max-h-64 rounded-lg border border-slate-200" />
+            </div>
           )}
 
           <div className="flex gap-3 pt-2">

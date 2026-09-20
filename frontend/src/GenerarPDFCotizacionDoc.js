@@ -129,6 +129,59 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
   y += altoBloqueCliente + 6
 
+  const filasEntregaCot = [
+    ['DIRECCIÓN DE ENTREGA', cotizacion.direccion_entrega],
+    ['N° DE CONTACTO', cotizacion.numero_contacto],
+    ['EMAIL DEL CLIENTE', cotizacion.email_cliente],
+    ['TELÉFONO DEL CLIENTE', cotizacion.telefono_cliente]
+  ].filter(([, valor]) => valor)
+
+  if (filasEntregaCot.length > 0) {
+    const anchoEtiquetaCot = 48
+    const altoFilaMinCot = 6.5
+
+    const filasDatosCot = filasEntregaCot.map(([label, valor]) => {
+      const lineasValor = doc.splitTextToSize(String(valor), ANCHO - anchoEtiquetaCot - 5)
+      const alto = Math.max(altoFilaMinCot, lineasValor.length * 3.6 + 2.8)
+      return { label, lineasValor, alto }
+    })
+    const altoBloqueCot = filasDatosCot.reduce((s, f) => s + f.alto, 0)
+
+    if (y + altoBloqueCot > 270) {
+      doc.addPage()
+      y = 16
+    }
+
+    doc.setDrawColor(...bordeGris)
+    doc.setLineWidth(0.3)
+    doc.rect(M, y, ANCHO, altoBloqueCot)
+    doc.line(M + anchoEtiquetaCot, y, M + anchoEtiquetaCot, y + altoBloqueCot)
+
+    let yFilaCot = y
+    filasDatosCot.forEach(({ label, lineasValor, alto }, i) => {
+      if (i > 0) doc.line(M, yFilaCot, M + ANCHO, yFilaCot)
+
+      doc.setFillColor(...grisFondo)
+      doc.rect(M, yFilaCot, anchoEtiquetaCot, alto, 'F')
+      doc.setDrawColor(...bordeGris)
+      doc.rect(M, yFilaCot, anchoEtiquetaCot, alto)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...slate700)
+      doc.text(label, M + 2, yFilaCot + 4.3)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...slate900)
+      doc.text(lineasValor, M + anchoEtiquetaCot + 3, yFilaCot + 4.3)
+
+      yFilaCot += alto
+    })
+
+    y += altoBloqueCot + 6
+  }
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...slate600)
@@ -372,6 +425,21 @@ export async function generarPDFCotizacionDoc(cotizacion) {
     const lineasObs = doc.splitTextToSize(`Obs: ${cotizacion.observaciones}`, ANCHO)
     doc.text(lineasObs, M, y)
     y += lineasObs.length * 4 + 4
+  }
+
+  if (cotizacion.imagen_url) {
+    if (y + 70 > 260) {
+      doc.addPage()
+      y = 20
+    }
+    y += 6
+    const formatoImg = cotizacion.imagen_url.includes('image/png') ? 'PNG' : 'JPEG'
+    try {
+      doc.addImage(cotizacion.imagen_url, formatoImg, M, y, 60, 60)
+      y += 64
+    } catch {
+      // si la imagen no es válida para el PDF, se omite sin romper la descarga
+    }
   }
 
   if (y > 250) {

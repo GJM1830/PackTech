@@ -557,6 +557,11 @@ class CotizacionCreate(BaseModel):
     tiempo_entrega: str | None = None
     validez_oferta: str | None = None
     observaciones: str | None = None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+    imagen_url: str | None = None
     items: list[CotizacionItemCreate]
 
 
@@ -590,6 +595,11 @@ class CotizacionResponse(BaseModel):
     tiempo_entrega: str | None
     validez_oferta: str | None
     observaciones: str | None
+    direccion_entrega: str | None = None
+    numero_contacto: str | None = None
+    email_cliente: str | None = None
+    telefono_cliente: str | None = None
+    imagen_url: str | None = None
     fecha: date
     items: list[CotizacionItemResponse]
     subtotal: float | None = None
