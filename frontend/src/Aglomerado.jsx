@@ -45,9 +45,10 @@ function Aglomerado() {
   const cargarDatos = async () => {
     setCargando(true)
     try {
+      // Rutas relativas: api.js ya define baseURL con el dominio del backend.
       const [saldoRes, movRes] = await Promise.all([
-        axios.get('https://packtech-production.up.railway.app/aglomerado/saldo'),
-        axios.get('https://packtech-production.up.railway.app/aglomerado/movimientos')
+        axios.get('/aglomerado/saldo'),
+        axios.get('/aglomerado/movimientos')
       ])
       setSaldo(saldoRes.data.saldo)
       setMovimientos(movRes.data)
@@ -70,7 +71,7 @@ function Aglomerado() {
       return
     }
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/aglomerado/productos/buscar?q=${productoOrigen}`)
+      axios.get(`/aglomerado/productos/buscar?q=${productoOrigen}`)
         .then((res) => setSugerenciasProducto(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -83,7 +84,7 @@ function Aglomerado() {
       return
     }
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/aglomerado/clasificaciones/buscar?q=${clasificacion}`)
+      axios.get(`/aglomerado/clasificaciones/buscar?q=${clasificacion}`)
         .then((res) => setSugerenciasClasificacion(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -96,7 +97,7 @@ function Aglomerado() {
       return
     }
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
+      axios.get(`/ordenes-produccion/buscar?q=${busquedaOrden}`)
         .then((res) => setSugerenciasOrdenes(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -145,7 +146,7 @@ function Aglomerado() {
     }
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/aglomerado/movimientos', payload)
+      await axios.post('/aglomerado/movimientos', payload)
       limpiarFormulario()
       cargarDatos()
     } catch (err) {
@@ -158,7 +159,7 @@ function Aglomerado() {
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento de aglomerado?')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/aglomerado/movimientos/${id}`)
+      await axios.delete(`/aglomerado/movimientos/${id}`)
       cargarDatos()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
@@ -235,6 +236,7 @@ function Aglomerado() {
               onChange={(e) => setCantidad(e.target.value)}
               required
               className={estiloInput}
+              placeholder="Ej. 50"
             />
           </div>
 

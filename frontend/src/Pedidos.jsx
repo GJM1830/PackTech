@@ -223,8 +223,9 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
       setSugerenciasClientes([])
       return
     }
+    // Ruta relativa: api.js ya define baseURL con el dominio del backend.
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/clientes/buscar?q=${query}`)
+      axios.get(`/clientes/buscar?q=${query}`)
         .then((res) => setSugerenciasClientes(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -237,7 +238,7 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
       return
     }
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/vendedores/buscar?q=${form.vendedor}`)
+      axios.get(`/ordenes-produccion/vendedores/buscar?q=${form.vendedor}`)
         .then((res) => setSugerenciasVendedores(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -375,12 +376,12 @@ function FormularioPedido({ onCreada, duplicarDesde, editando, onCancelarEdicion
 
     try {
       if (editandoId) {
-        await axios.put(`https://packtech-production.up.railway.app/pedidos/${editandoId}`, {
+        await axios.put(`/pedidos/${editandoId}`, {
           ...payloadComun,
           items: itemsPayload
         })
       } else {
-        await axios.post('https://packtech-production.up.railway.app/pedidos', {
+        await axios.post('/pedidos', {
           codigo_base: form.codigo_base,
           ...payloadComun,
           items: itemsPayload
@@ -860,7 +861,7 @@ function VistaSeguimiento() {
 
   const cargar = () => {
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/ordenes-produccion/seguimiento/listar')
+    axios.get('/ordenes-produccion/seguimiento/listar')
       .then((res) => {
         setOrdenes(res.data)
         setError(null)
@@ -1047,7 +1048,7 @@ function Pedidos() {
 
   const cargar = () => {
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/pedidos/preaprobados/listar')
+    axios.get('/pedidos/preaprobados/listar')
       .then((res) => {
         setOrdenes(res.data)
         setError(null)
@@ -1067,7 +1068,7 @@ function Pedidos() {
     if (!confirm('¿Aprobar este pedido y enviar sus ítems a producción?')) return
     setAprobando(id)
     try {
-      await axios.post(`https://packtech-production.up.railway.app/pedidos/${id}/aprobar`)
+      await axios.post(`/pedidos/${id}/aprobar`)
       cargar()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al aprobar el pedido.')
@@ -1089,7 +1090,7 @@ function Pedidos() {
   const eliminar = async (id) => {
     if (!confirm('¿Eliminar este pedido y todos sus ítems? Esta acción no se puede deshacer.')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/pedidos/${id}`)
+      await axios.delete(`/pedidos/${id}`)
       cargar()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el pedido.')

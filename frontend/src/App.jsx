@@ -78,7 +78,8 @@ function Ordenes() {
     controladorRef.current = controlador
 
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/ordenes-produccion/filtrar', {
+    // Ruta relativa: api.js ya define baseURL con el dominio del backend.
+    axios.get('/ordenes-produccion/filtrar', {
       params: { ...paramsFiltro(), limit: 20 },
       signal: controlador.signal
     })
@@ -101,7 +102,7 @@ function Ordenes() {
     if (ordenes.length === 0) return
     setCargandoMas(true)
     const ultimoId = ordenes[ordenes.length - 1].id
-    axios.get('https://packtech-production.up.railway.app/ordenes-produccion/filtrar', {
+    axios.get('/ordenes-produccion/filtrar', {
       params: { ...paramsFiltro(), limit: 20, antes_de: ultimoId }
     })
       .then((respuesta) => {
@@ -118,7 +119,7 @@ function Ordenes() {
       let todas = []
       let antesDe = undefined
       while (true) {
-        const respuesta = await axios.get('https://packtech-production.up.railway.app/ordenes-produccion/filtrar', {
+        const respuesta = await axios.get('/ordenes-produccion/filtrar', {
           params: { ...paramsFiltro(), limit: 200, antes_de: antesDe }
         })
         todas = [...todas, ...respuesta.data]
@@ -161,7 +162,7 @@ function Ordenes() {
   const eliminarOrden = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar esta orden? Se borrarán también todos sus movimientos.')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`)
+      await axios.delete(`/ordenes-produccion/${id}`)
       cargarOrdenes()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar la orden.')
@@ -197,7 +198,7 @@ function Ordenes() {
 const guardarEdicion = async () => {
   setGuardando(true)
   try {
-    await axios.put(`https://packtech-production.up.railway.app/ordenes-produccion/${editando.id}`, {
+    await axios.put(`/ordenes-produccion/${editando.id}`, {
       codigo: editando.codigo,
       ruc: editando.ruc,
       nombre_cliente: editando.nombre_cliente,

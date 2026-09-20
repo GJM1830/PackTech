@@ -62,10 +62,9 @@ function CrearOrden({ onCreada, duplicarDesde }) {
       return
     }
 
+    // Ruta relativa: api.js ya define baseURL con el dominio del backend.
     const temporizador = setTimeout(() => {
-      axios.get(
-        `https://packtech-production.up.railway.app/clientes/buscar?q=${query}`
-      )
+      axios.get(`/clientes/buscar?q=${query}`)
         .then((res) => setSugerenciasClientes(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -280,6 +279,7 @@ function CrearOrden({ onCreada, duplicarDesde }) {
             onChange={manejarCambio}
             required
             className={estiloInput}
+            placeholder="Ej. 120"
           />
         </div>
 

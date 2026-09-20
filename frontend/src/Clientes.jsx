@@ -21,7 +21,9 @@ function Clientes()   {
   const guardarEdicion = async () => {
     setGuardando(true)
     try {
-      await axios.put(`https://packtech-production.up.railway.app/clientes/${editando.id}`, {
+      // Ruta relativa: api.js ya define baseURL con el dominio del backend,
+      // así que no hace falta repetir la URL completa en cada petición.
+      await axios.put(`/clientes/${editando.id}`, {
         ruc: editando.ruc,
         nombre: editando.nombre
       })
@@ -38,7 +40,7 @@ function Clientes()   {
   const [cargandoMas, setCargandoMas] = useState(false)
 
   const cargarClientes = () => {
-    axios.get('https://packtech-production.up.railway.app/clientes?limit=20')
+    axios.get('/clientes?limit=20')
       .then((res) => {
         setClientes(res.data)
         setHayMas(res.data.length === 20)
@@ -54,7 +56,7 @@ function Clientes()   {
     if (clientes.length === 0) return
     setCargandoMas(true)
     const ultimoId = clientes[clientes.length - 1].id
-    axios.get(`https://packtech-production.up.railway.app/clientes?limit=20&antes_de=${ultimoId}`)
+    axios.get(`/clientes?limit=20&antes_de=${ultimoId}`)
       .then((res) => {
         setClientes((actual) => [...actual, ...res.data])
         setHayMas(res.data.length === 20)
@@ -73,7 +75,7 @@ function Clientes()   {
     setError(null)
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/clientes', form)
+      await axios.post('/clientes', form)
       setForm({ ruc: '', nombre: '' })
       cargarClientes()
     } catch (err) {
@@ -87,7 +89,7 @@ function Clientes()   {
     if (!confirm('¿Seguro que quieres eliminar este cliente?')) return
 
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/clientes/${id}`)
+      await axios.delete(`/clientes/${id}`)
       cargarClientes()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el cliente.')

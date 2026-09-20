@@ -214,8 +214,9 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
       setSugerenciasClientes([])
       return
     }
+    // Ruta relativa: api.js ya define baseURL con el dominio del backend.
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/clientes/buscar?q=${query}`)
+      axios.get(`/clientes/buscar?q=${query}`)
         .then((res) => setSugerenciasClientes(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -228,7 +229,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
       return
     }
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/vendedores/buscar?q=${form.vendedor}`)
+      axios.get(`/ordenes-produccion/vendedores/buscar?q=${form.vendedor}`)
         .then((res) => setSugerenciasVendedores(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -345,9 +346,9 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
       }
 
       if (editandoId) {
-        await axios.put(`https://packtech-production.up.railway.app/cotizaciones/${editandoId}`, payload)
+        await axios.put(`/cotizaciones/${editandoId}`, payload)
       } else {
-        await axios.post('https://packtech-production.up.railway.app/cotizaciones', payload)
+        await axios.post('/cotizaciones', payload)
       }
 
       // Se guardó con éxito: el borrador de esta edición ya no hace falta.
@@ -797,6 +798,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
               value={form.forma_pago}
               onChange={manejarCambio}
               className={estilo}
+              placeholder="Ej. 50% adelantado y 50% contra entrega"
             />
           </div>
           <div>
@@ -807,6 +809,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
               value={form.tiempo_entrega}
               onChange={manejarCambio}
               className={estilo}
+              placeholder="Ej. 10 días de aprobado el diseño o según mutuo acuerdo"
             />
           </div>
           <div>
@@ -817,6 +820,7 @@ function FormularioCotizacion({ onCreada, duplicarDesde, editando, onCancelarEdi
               value={form.validez_oferta}
               onChange={manejarCambio}
               className={estilo}
+              placeholder="Ej. 10 días"
             />
           </div>
           <div>
@@ -911,7 +915,7 @@ function ListaCotizaciones({ onDuplicar, onEditar, onTrasladar, refrescarTrigger
     controladorRef.current = controlador
 
     setCargando(true)
-    axios.get('https://packtech-production.up.railway.app/cotizaciones/filtrar', {
+    axios.get('/cotizaciones/filtrar', {
       params: { ...paramsFiltro(), limit: 20 },
       signal: controlador.signal
     })
@@ -932,7 +936,7 @@ function ListaCotizaciones({ onDuplicar, onEditar, onTrasladar, refrescarTrigger
     if (cotizaciones.length === 0) return
     setCargandoMas(true)
     const ultimoId = cotizaciones[cotizaciones.length - 1].id
-    axios.get('https://packtech-production.up.railway.app/cotizaciones/filtrar', {
+    axios.get('/cotizaciones/filtrar', {
       params: { ...paramsFiltro(), limit: 20, antes_de: ultimoId }
     })
       .then((res) => {
@@ -959,7 +963,7 @@ function ListaCotizaciones({ onDuplicar, onEditar, onTrasladar, refrescarTrigger
   const eliminar = async (id) => {
     if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/cotizaciones/${id}`)
+      await axios.delete(`/cotizaciones/${id}`)
       cargar()
     } catch (err) {
       alert(err.response?.data?.detail || 'No se pudo eliminar.')

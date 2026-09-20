@@ -235,15 +235,16 @@ function VistaGeneral() {
     const anterior = rangoAnterior()
 
     try {
+      // Ruta relativa: api.js ya define baseURL con el dominio del backend.
       const peticiones = [
-        axios.get('https://packtech-production.up.railway.app/reportes/resumen', {
+        axios.get('/reportes/resumen', {
           params: { agrupar_por: agrupacion, desde: desde || undefined, hasta: hasta || undefined }
         })
       ]
 
       if (anterior) {
         peticiones.push(
-          axios.get('https://packtech-production.up.railway.app/reportes/resumen', {
+          axios.get('/reportes/resumen', {
             params: { agrupar_por: agrupacion, desde: anterior.desde, hasta: anterior.hasta }
           })
         )
@@ -541,7 +542,7 @@ function VistaTipoMerma() {
       hasta = p.hasta()
     }
 
-    axios.get('https://packtech-production.up.railway.app/reportes/tipos-merma', {
+    axios.get('/reportes/tipos-merma', {
       params: { desde: desde || undefined, hasta: hasta || undefined }
     })
       .then((res) => {
@@ -692,7 +693,7 @@ function VistaOrden() {
       return
     }
     const t = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busqueda}`)
+      axios.get(`/ordenes-produccion/buscar?q=${busqueda}`)
         .then((res) => setSugerencias(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -704,7 +705,7 @@ function VistaOrden() {
     setSugerencias([])
     setCargando(true)
     setError(null)
-    axios.get(`https://packtech-production.up.railway.app/reportes/orden/${codigo}`)
+    axios.get(`/reportes/orden/${codigo}`)
       .then((res) => setReporte(res.data))
       .catch((err) => {
         setError(err.response?.data?.detail || 'No se pudo cargar la orden.')
@@ -913,7 +914,7 @@ function VistaAlertas() {
       hasta = p.hasta()
     }
 
-    axios.get('https://packtech-production.up.railway.app/reportes/alertas', {
+    axios.get('/reportes/alertas', {
       params: {
         desde: desde || undefined,
         hasta: hasta || undefined,

@@ -100,8 +100,12 @@ class Pedido(Base):
     observaciones_pedido: Mapped[str | None] = mapped_column(Text)
     imagen_url: Mapped[str | None] = mapped_column(Text)
     estado: Mapped[str | None] = mapped_column(String(50))
-    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
-    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+    # Se usa lambda para que la fecha/hora se calculen al crear CADA registro, no una sola
+    # vez cuando arranca el servidor (sin lambda, "datetime.utcnow().date" queda fijo al
+    # momento en que Python carga este archivo). En la práctica crud.py siempre pasa su
+    # propia fecha/hora explícita, así que esto es una red de seguridad, no el valor real.
+    fecha: Mapped[date] = mapped_column(Date, default=lambda: datetime.utcnow().date())
+    hora: Mapped[time] = mapped_column(Time, default=lambda: datetime.utcnow().time())
 
     cliente_obj: Mapped["Cliente"] = relationship("Cliente")
 
@@ -177,14 +181,16 @@ class OrdenProduccion(Base):
         String(50)
     )
 
+    # Red de seguridad (ver comentario completo en el modelo Pedido): lambda evita que la
+    # fecha/hora por defecto queden fijas al momento de arrancar el servidor.
     fecha: Mapped[date] = mapped_column(
         Date,
-        default=datetime.utcnow().date
+        default=lambda: datetime.utcnow().date()
     )
 
     hora: Mapped[time] = mapped_column(
         Time,
-        default=datetime.utcnow().time
+        default=lambda: datetime.utcnow().time()
     )
 
     cliente_obj: Mapped["Cliente"] = relationship("Cliente")
@@ -350,8 +356,9 @@ class MovimientoAglomerado(Base):
     detalle_merma_id: Mapped[int | None] = mapped_column(ForeignKey("detalles_merma.id"))
     origen_automatico: Mapped[bool] = mapped_column(default=False)
 
-    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
-    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+    # Red de seguridad (ver comentario completo en el modelo Pedido).
+    fecha: Mapped[date] = mapped_column(Date, default=lambda: datetime.utcnow().date())
+    hora: Mapped[time] = mapped_column(Time, default=lambda: datetime.utcnow().time())
 
     orden_obj: Mapped["OrdenProduccion"] = relationship("OrdenProduccion")
     operario_obj: Mapped["Operario"] = relationship("Operario")
@@ -412,8 +419,9 @@ class Cotizacion(Base):
     email_cliente: Mapped[str | None] = mapped_column(String(150))
     telefono_cliente: Mapped[str | None] = mapped_column(String(50))
     imagen_url: Mapped[str | None] = mapped_column(Text)
-    fecha: Mapped[date] = mapped_column(Date, default=datetime.utcnow().date)
-    hora: Mapped[time] = mapped_column(Time, default=datetime.utcnow().time)
+    # Red de seguridad (ver comentario completo en el modelo Pedido).
+    fecha: Mapped[date] = mapped_column(Date, default=lambda: datetime.utcnow().date())
+    hora: Mapped[time] = mapped_column(Time, default=lambda: datetime.utcnow().time())
 
     cliente_obj: Mapped["Cliente"] = relationship("Cliente")
 

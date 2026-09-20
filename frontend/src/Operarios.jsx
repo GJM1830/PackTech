@@ -21,7 +21,8 @@ function Operarios() {
   const guardarEdicion = async () => {
     setGuardando(true)
     try {
-      await axios.put(`https://packtech-production.up.railway.app/operarios/${editando.id}`, {
+      // Ruta relativa: api.js ya define baseURL con el dominio del backend.
+      await axios.put(`/operarios/${editando.id}`, {
         nombre: editando.nombre,
         cargo: editando.cargo
       })
@@ -38,7 +39,7 @@ function Operarios() {
   const [cargandoMas, setCargandoMas] = useState(false)
 
   const cargarOperarios = () => {
-    axios.get('https://packtech-production.up.railway.app/operarios?limit=20')
+    axios.get('/operarios?limit=20')
       .then((res) => {
         setOperarios(res.data)
         setHayMas(res.data.length === 20)
@@ -50,7 +51,7 @@ function Operarios() {
     if (operarios.length === 0) return
     setCargandoMas(true)
     const ultimoId = operarios[operarios.length - 1].id
-    axios.get(`https://packtech-production.up.railway.app/operarios?limit=20&antes_de=${ultimoId}`)
+    axios.get(`/operarios?limit=20&antes_de=${ultimoId}`)
       .then((res) => {
         setOperarios((actual) => [...actual, ...res.data])
         setHayMas(res.data.length === 20)
@@ -69,7 +70,7 @@ function Operarios() {
     setError(null)
 
     try {
-      await axios.post('https://packtech-production.up.railway.app/operarios', form)
+      await axios.post('/operarios', form)
       setForm({ nombre: '', cargo: '' })
       cargarOperarios()
     } catch (err) {
@@ -83,7 +84,7 @@ function Operarios() {
     if (!confirm('¿Seguro que quieres eliminar este operario?')) return
 
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/operarios/${id}`)
+      await axios.delete(`/operarios/${id}`)
       cargarOperarios()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el operario.')

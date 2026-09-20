@@ -1511,7 +1511,6 @@ def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglom
 
     if movimiento.tipo == "ajuste" and rol_usuario != "admin":
         raise HTTPException(status_code=403, detail="Solo un administrador puede registrar un ajuste de saldo.")
-        raise HTTPException(status_code=400, detail="Tipo de movimiento no válido.")
 
     nombre_operario_limpio = movimiento.nombre_operario.strip()
     if not nombre_operario_limpio:

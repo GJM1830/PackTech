@@ -44,7 +44,8 @@ function OrdenDetalle() {
   const descargarLiquidacion = async () => {
     setGenerandoLiquidacion(true)
     try {
-      const res = await axios.get(`https://packtech-production.up.railway.app/reportes/liquidacion/${orden.codigo}`)
+      // Ruta relativa: api.js ya define baseURL con el dominio del backend.
+      const res = await axios.get(`/reportes/liquidacion/${orden.codigo}`)
       await generarPDFLiquidacion(res.data)
     } catch (err) {
       alert(err.response?.data?.detail || 'No se pudo generar la liquidación.')
@@ -57,9 +58,9 @@ function OrdenDetalle() {
     setPedidoCompleto(null)
     try {
       const [ordenRes, movRes, opRes] = await Promise.all([
-        axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}`),
-        axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/${id}/movimientos`),
-        axios.get('https://packtech-production.up.railway.app/operarios?limit=1000')
+        axios.get(`/ordenes-produccion/${id}`),
+        axios.get(`/ordenes-produccion/${id}/movimientos`),
+        axios.get('/operarios?limit=1000')
       ])
 
       const movimientosOrdenados = [...movRes.data].sort((a, b) => {
@@ -83,7 +84,7 @@ function OrdenDetalle() {
     if (orden?.pedido_id && !pedidoCompleto) {
       setCargandoPedido(true)
       try {
-        const res = await axios.get(`https://packtech-production.up.railway.app/pedidos/${orden.pedido_id}`)
+        const res = await axios.get(`/pedidos/${orden.pedido_id}`)
         setPedidoCompleto(res.data)
       } catch (err) {
         console.error(err)
@@ -113,7 +114,7 @@ function OrdenDetalle() {
     setGuardando(true)
     try {
       await axios.put(
-        `https://packtech-production.up.railway.app/ordenes-produccion/${id}/procesos`,
+        `/ordenes-produccion/${id}/procesos`,
         { procesos_plan: seleccionados.join(',') }
       )
       setEditandoPlan(false)

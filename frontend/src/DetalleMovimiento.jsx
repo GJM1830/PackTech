@@ -60,14 +60,15 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const [sugerenciasTipoMaterial, setSugerenciasTipoMaterial] = useState([])
 
   const cargarDetallesMerma = () => {
-    axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`)
+    // Ruta relativa: api.js ya define baseURL con el dominio del backend.
+    axios.get(`/movimientos/${movimiento.id}/mermas`)
       .then((res) => setDetallesMerma(res.data))
       .catch((err) => console.error(err))
   }
 
   const cargarDetalles = () => {
     setCargando(true)
-    axios.get(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`)
+    axios.get(`/movimientos/${movimiento.id}/detalles`)
       .then((res) => {
         setDetalles(res.data)
         if (!esProcesoEspecial && res.data.length > 0) setTipo(res.data[0].tipo)
@@ -85,7 +86,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/tipos-merma/materiales/buscar?q=${tipoMaterial}`)
+      axios.get(`/tipos-merma/materiales/buscar?q=${tipoMaterial}`)
         .then((res) => setSugerenciasTipoMaterial(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -98,7 +99,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     return
   }
   const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${encodeURIComponent(movimiento.proceso)}&q=${tipoMermaInput}`)
+      axios.get(`/tipos-merma/buscar?proceso=${encodeURIComponent(movimiento.proceso)}&q=${tipoMermaInput}`)
         .then((res) => setSugerenciasTipoMerma(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -129,7 +130,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     const siguienteNumero = salidaBobinas.length + 1
 
     try {
-      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+      await axios.post(`/movimientos/${movimiento.id}/detalles`, {
         tipo: 'fardo',
         lado: 'salida',
         numero: siguienteNumero,
@@ -160,7 +161,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
       const tipoMaterialFinal = materialSeleccionado === 'OTROS'
         ? materialOtroTexto.trim().toUpperCase()
         : materialSeleccionado
-      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+      await axios.post(`/movimientos/${movimiento.id}/detalles`, {
         tipo: 'material',
         lado: 'entrada',
         numero: siguienteNumero,
@@ -190,7 +191,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     const esMaterialAplicable = PROCESOS_CON_MATERIAL.includes(movimiento.proceso) && lado === 'entrada'
 
     try {
-      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+      await axios.post(`/movimientos/${movimiento.id}/detalles`, {
         tipo: 'bobina',
         lado,
         numero: siguienteNumero,
@@ -218,7 +219,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     const siguienteNumero = detalles.length + 1
 
     try {
-      await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles`, {
+      await axios.post(`/movimientos/${movimiento.id}/detalles`, {
         tipo,
         lado: 'salida',
         numero: siguienteNumero,
@@ -240,7 +241,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
     setImportando(true)
     setError(null)
     try {
-      const res = await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/detalles/importar-anteriores`)
+      const res = await axios.post(`/movimientos/${movimiento.id}/detalles/importar-anteriores`)
       cargarDetalles()
       alert(`Se importaron ${res.data.importadas} bobina(s) del proceso anterior.`)
     } catch (err) {
@@ -253,7 +254,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   const eliminarDetalle = async (id) => {
     if (!confirm('¿Eliminar este registro?')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/detalles/${id}`)
+      await axios.delete(`/detalles/${id}`)
       cargarDetalles()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar.')
@@ -264,7 +265,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
   e.preventDefault()
   setEnviandoMerma(true)
   try {
-    await axios.post(`https://packtech-production.up.railway.app/movimientos/${movimiento.id}/mermas`, {
+    await axios.post(`/movimientos/${movimiento.id}/mermas`, {
       peso: parseFloat(pesoMerma),
       tipo_merma: tipoMermaInput.trim() || null
     })
@@ -281,7 +282,7 @@ function DetalleMovimiento({ movimiento, orden, onCerrar }) {
 const eliminarMerma = async (id) => {
   if (!confirm('¿Eliminar este registro de merma?')) return
   try {
-    await axios.delete(`https://packtech-production.up.railway.app/mermas/${id}`)
+    await axios.delete(`/mermas/${id}`)
     cargarDetallesMerma()
   } catch (err) {
     alert(err.response?.data?.detail || 'Error al eliminar.')
@@ -295,7 +296,7 @@ const abrirEdicionMerma = (detalle) => {
 const guardarEdicionMerma = async () => {
   setGuardandoMerma(true)
   try {
-    await axios.put(`https://packtech-production.up.railway.app/mermas/${editandoMerma.id}`, {
+    await axios.put(`/mermas/${editandoMerma.id}`, {
       peso: parseFloat(editandoMerma.peso),
       tipo_merma: editandoMerma.tipo_merma || null
     })
@@ -519,6 +520,7 @@ const duplicarMerma = (detalle) => {
                       onChange={(e) => setCantidadMaterial(e.target.value)}
                       required
                       className="w-full border border-slate-300 rounded px-3 py-2"
+                      placeholder="Ej. 100"
                     />
                   </div>
                   <div className="flex items-end">
@@ -608,6 +610,7 @@ const duplicarMerma = (detalle) => {
         onChange={(e) => setPesoFardo(e.target.value)}
         required
         className="w-full border border-slate-300 rounded px-3 py-2"
+        placeholder="Ej. 30"
       />
     </div>
     <div className="flex-1">
@@ -619,6 +622,7 @@ const duplicarMerma = (detalle) => {
         onChange={(e) => setMillaresFardo(e.target.value)}
         required
         className="w-full border border-slate-300 rounded px-3 py-2"
+        placeholder="Ej. 5"
       />
     </div>
     <div className="flex items-end">
@@ -642,6 +646,7 @@ const duplicarMerma = (detalle) => {
           onChange={(e) => setPesoBruto(e.target.value)}
           required
           className="w-full border border-slate-300 rounded px-3 py-2"
+          placeholder="Ej. 25.5"
         />
       </div>
       <div className="flex-1">
@@ -653,6 +658,7 @@ const duplicarMerma = (detalle) => {
           onChange={(e) => setPesoTuco(e.target.value)}
           required
           className="w-full border border-slate-300 rounded px-3 py-2"
+          placeholder="Ej. 1.2"
         />
       </div>
       <div className="flex-1">
@@ -735,6 +741,7 @@ const duplicarMerma = (detalle) => {
           onChange={(e) => setPesoMerma(e.target.value)}
           required
           className="w-full border border-slate-300 rounded px-3 py-2"
+          placeholder="Ej. 2.5"
         />
       </div>
       <div className="flex-1 relative">
@@ -836,6 +843,7 @@ const duplicarMerma = (detalle) => {
                   onChange={(e) => setPeso(e.target.value)}
                   required
                   className="w-full border border-slate-300 rounded px-3 py-2"
+                  placeholder="Ej. 25"
                 />
               </div>
               {tipo === 'fardo' && (
@@ -848,6 +856,7 @@ const duplicarMerma = (detalle) => {
                     onChange={(e) => setMillares(e.target.value)}
                     required
                     className="w-full border border-slate-300 rounded px-3 py-2"
+                    placeholder="Ej. 5"
                   />
                 </div>
               )}

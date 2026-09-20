@@ -85,7 +85,6 @@ function Movimientos() {
   const [fechaHasta, setFechaHasta] = useState(filtrosGuardados.hasta)
   const [filtroCliente, setFiltroCliente] = useState(filtrosGuardados.cliente)
   const [sugerenciasTipoLaminado, setSugerenciasTipoLaminado] = useState([])
-  const [sugerenciasTipoMerma, setSugerenciasTipoMerma] = useState([])
 
   const [enviando, setEnviando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
@@ -101,10 +100,12 @@ function Movimientos() {
   const cargarDatos = async () => {
     setCargando(true)
     try {
+      // Rutas relativas: api.js ya define baseURL con el dominio del backend,
+      // así que no hace falta repetir el dominio completo en cada petición.
       const [ordRes, opRes, maqRes] = await Promise.all([
-        axios.get('https://packtech-production.up.railway.app/ordenes-produccion?limit=500'),
-        axios.get('https://packtech-production.up.railway.app/operarios?limit=1000'),
-        axios.get('https://packtech-production.up.railway.app/movimientos/maquinas')
+        axios.get('/ordenes-produccion?limit=500'),
+        axios.get('/operarios?limit=1000'),
+        axios.get('/movimientos/maquinas')
       ])
 
       setOrdenes(ordRes.data)
@@ -144,7 +145,7 @@ function Movimientos() {
     controladorRef.current = controlador
 
     try {
-      const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+      const res = await axios.get('/movimientos/filtrar', {
         params: { ...paramsFiltroMovimientos(), limit: 20 },
         signal: controlador.signal
       })
@@ -162,7 +163,7 @@ function Movimientos() {
     setCargandoMas(true)
     try {
       const ultimoId = movimientos[movimientos.length - 1].id
-      const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+      const res = await axios.get('/movimientos/filtrar', {
         params: { ...paramsFiltroMovimientos(), limit: 20, antes_de: ultimoId }
       })
       setMovimientos((actual) => [...actual, ...res.data])
@@ -180,7 +181,7 @@ function Movimientos() {
       let todos = []
       let antesDe = undefined
       while (true) {
-        const res = await axios.get('https://packtech-production.up.railway.app/movimientos/filtrar', {
+        const res = await axios.get('/movimientos/filtrar', {
           params: { ...paramsFiltroMovimientos(), limit: 200, antes_de: antesDe }
         })
         todos = [...todos, ...res.data]
@@ -256,7 +257,7 @@ function Movimientos() {
   const eliminarMovimiento = async (id) => {
     if (!confirm('¿Seguro que quieres eliminar este movimiento?')) return
     try {
-      await axios.delete(`https://packtech-production.up.railway.app/movimientos/${id}`)
+      await axios.delete(`/movimientos/${id}`)
       cargarMovimientos()
     } catch (err) {
       alert(err.response?.data?.detail || 'Error al eliminar el movimiento.')
@@ -309,7 +310,7 @@ function Movimientos() {
 const guardarEdicion = async () => {
     setGuardando(true)
     try {
-      await axios.put(`https://packtech-production.up.railway.app/movimientos/${editando.id}`, {
+      await axios.put(`/movimientos/${editando.id}`, {
         codigo_orden: editando.orden_id,
         proceso: editando.proceso,
         nombre_operario: editando.nombre_operario,
@@ -362,7 +363,7 @@ const guardarEdicion = async () => {
     }
 
     try {
-      const respuesta = await axios.post('https://packtech-production.up.railway.app/movimientos', payload)
+      const respuesta = await axios.post('/movimientos', payload)
 
       setForm({
         orden_id: '',
@@ -403,7 +404,7 @@ const guardarEdicion = async () => {
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/tipos-merma/buscar?proceso=${form.proceso}&q=${form.tipo_laminado}`)
+      axios.get(`/tipos-merma/buscar?proceso=${form.proceso}&q=${form.tipo_laminado}`)
         .then((res) => setSugerenciasTipoLaminado(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -416,7 +417,7 @@ const guardarEdicion = async () => {
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/ordenes-produccion/buscar?q=${busquedaOrden}`)
+      axios.get(`/ordenes-produccion/buscar?q=${busquedaOrden}`)
         .then((res) => setSugerenciasOrdenes(res.data))
         .catch((err) => console.error(err))
     }, 300)
@@ -429,20 +430,12 @@ const guardarEdicion = async () => {
       return
     }
     const temporizador = setTimeout(() => {
-      axios.get(`https://packtech-production.up.railway.app/operarios/buscar?q=${busquedaOperario}`)
+      axios.get(`/operarios/buscar?q=${busquedaOperario}`)
         .then((res) => setSugerenciasOperarios(res.data))
         .catch((err) => console.error(err))
     }, 300)
     return () => clearTimeout(temporizador)
   }, [busquedaOperario, operarioSeleccionado])
-
-  useEffect(() => {
-    if (!esProcesoEspecial || form.proceso === 'Laminado') {
-      setSugerenciasTipoMerma([])
-      return
-    }
-    return
-  }, [form.proceso, esProcesoEspecial])
 
   const operariosUnicos = [...new Set(operarios.map((o) => o.nombre))].sort()
 
