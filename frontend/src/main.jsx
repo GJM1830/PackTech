@@ -1,3 +1,7 @@
+// Punto de entrada de la aplicación React. Monta <App /> dentro de un
+// ErrorBoundary (para no dejar la pantalla en blanco si algo falla) y
+// además evita que la rueda del mouse cambie el valor de un <input type="number">
+// enfocado (comportamiento por defecto molesto del navegador en formularios).
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

@@ -1,3 +1,6 @@
+// Menú de tres puntos (⋮) reutilizable en las tablas de todo el sistema.
+// Muestra solo los botones cuya función se le pasó como prop (Editar,
+// Duplicar, Eliminar); si una prop no se pasa, esa opción no aparece.
 import { useState, useRef, useEffect } from 'react'
 
 function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {

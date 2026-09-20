@@ -1,3 +1,12 @@
+// Genera el PDF de una Cotización con jsPDF, dibujando cada bloque "a mano"
+// (no usa autoTable): encabezado con logo, caja RUC/Fecha, bloque
+// SR(AS)/ESTIMADA(OS) con vendedor, tabla de datos de entrega opcionales,
+// tabla de productos (con fila de Clisse italic en azul suave debajo de
+// cada producto que la tenga), totales, Forma de pago/Tiempo de entrega/
+// Validez de oferta, observaciones y pie institucional con el saludo
+// firmado por el vendedor. Usa las utilidades de pdfUtils.js para medir
+// texto y evitar que algo se salga de su celda o de la hoja. Comparte
+// estilo y orden de bloques con GenerarPDFPedido.js.
 import jsPDF from 'jspdf'
 import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 

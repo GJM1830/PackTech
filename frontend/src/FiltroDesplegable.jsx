@@ -1,3 +1,6 @@
+// Filtro tipo dropdown con buscador interno, reutilizado en varias pantallas
+// (Movimientos: Proceso/Operario/Máquina; Pedidos: Estado). Se cierra solo
+// al hacer click afuera y siempre incluye la opción "Todos" para limpiar.
 import { useState, useRef, useEffect } from 'react'
 
 function FiltroDesplegable({ etiqueta, opciones, seleccionado, onSeleccionar }) {

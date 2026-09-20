@@ -1,3 +1,6 @@
+# Endpoints de Órdenes de Producción (OP): crear, listar, filtrar, buscar,
+# editar, eliminar, aprobar una OP "Preaprobada" y actualizar su ruta de
+# procesos (procesos_plan). Cada función delega la lógica real en crud.py.
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 

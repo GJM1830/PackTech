@@ -1,3 +1,7 @@
+// Formulario para registrar una nueva Orden de Producción (OP) directa
+// (sin pasar por un Pedido), usado también para duplicar una OP existente.
+// Autoguarda el borrador en localStorage mientras se escribe, e incluye
+// autocompletado de cliente por RUC o nombre.
 import { useState, useEffect } from 'react'
 import axios from './api'
 import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'

@@ -1,3 +1,7 @@
+// Modal genérico de edición simple (usado por Clientes, Operarios, Órdenes
+// y Movimientos). Recibe una lista de "campos" a mostrar (texto, número,
+// select) y delega el guardado real al componente que lo abre; este modal
+// solo arma el formulario y notifica los cambios hacia arriba.
 function ModalEditar({ titulo, campos, valores, onCambio, onGuardar, onCerrar, guardando }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

@@ -1,3 +1,9 @@
+# Schemas de Pydantic: definen la forma de los datos que entran (Create/Editar)
+# y salen (Response) de cada endpoint. FastAPI los usa para validar el body
+# de las peticiones y para armar automáticamente la respuesta JSON.
+# Un "...Create" es lo que manda el frontend al crear; un "...Response" es
+# lo que el backend devuelve (suele incluir campos calculados, como "cliente"
+# o "ultimo_proceso", que no existen como columna sino que se arman en crud.py).
 from datetime import date, time, datetime
 from pydantic import BaseModel
 

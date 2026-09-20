@@ -1,3 +1,8 @@
+# Endpoints de Pedidos: crear (cada ítem se vuelve una OrdenProduccion en
+# estado "Preaprobada"), listar los pendientes de aprobar, obtener por ID,
+# editar, aprobar (pasa el Pedido y sus OP a "Pendiente", entrando al flujo
+# normal de producción) y eliminar. Al editar, los ítems solo se reemplazan
+# mientras el Pedido sigue "Preaprobada" (ver crud.editar_pedido).
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 

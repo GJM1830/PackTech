@@ -1,80 +1,79 @@
-from pathlib import Path
-
-contenido = """ESTADO ACTUAL DEL PROYECTO — PACKTECH
+ESTADO ACTUAL DEL PROYECTO — PACKTECH
 
 1. FUNCIONALIDADES TERMINADAS
 
 Backend:
 - Conexión con PostgreSQL funcionando.
-- Modelos principales implementados: Cliente, Producto, Operario, OrdenProduccion, Movimiento y DetalleMovimiento.
-- Creación y consulta de Órdenes de Producción.
-- Registro y consulta de movimientos.
+- Modelos principales implementados: Cliente, Producto, Operario, OrdenProduccion, Movimiento, DetalleMovimiento, DetalleMerma, MovimientoAglomerado, Pedido, Cotizacion, CotizacionItem, Usuario, Vendedor, TipoMerma, TipoMaterial.
+- Creación y consulta de Órdenes de Producción (incluye edición y eliminación con reglas de rol).
+- Registro y consulta de movimientos, incluyendo procesos especiales (Extrusión, Impresión, Corte, Sellado, Laminado, Pegado) con bobinas/fardos por lado (entrada/salida) y detalle de merma real independiente del cálculo simple.
 - Consulta del historial de movimientos por OP.
+- Cálculo del estado de una OP a partir de su último movimiento y de su procesos_plan (ruta definida).
 - Validaciones básicas de referencias y duplicados.
-- Gestión de clientes, incluyendo creación, búsqueda, edición y eliminación.
-- Gestión de operarios, incluyendo creación, edición y eliminación.
+- Gestión de clientes: creación, búsqueda por RUC/nombre, edición, eliminación (bloqueada si tiene OP asociadas).
+- Gestión de operarios: creación, búsqueda, edición, eliminación.
 - Gestión de productos mediante creación y consulta.
-- Registro de detalles asociados a movimientos.
-- Cálculo del estado actual de una OP a partir de su último movimiento.
-- Separación de rutas mediante routers.
+- Registro de detalles asociados a movimientos (bobinas, fardos, materiales de Extrusión).
+- Separación de rutas mediante routers (ordenes, movimientos, clientes, operarios, detalles, auth, aglomerado, reportes, tipos_merma, pedidos, cotizaciones).
+- Sistema de Pedidos: un Pedido agrupa uno o más ítems, cada ítem se crea como una OrdenProduccion en estado "Preaprobada" (pedido_id la vincula al Pedido). Al aprobar el Pedido, sus OP pasan a "Pendiente" y entran al flujo normal de producción.
+- Edición de Pedido: los datos generales siempre se actualizan; los ítems (productos) SOLO se reemplazan (borran y recrean) mientras el Pedido sigue en estado "Preaprobada" — una vez aprobado, sus OP ya pueden tener movimientos reales y no se tocan por seguridad.
+- Sistema de Cotizaciones: documento de venta simple (Cotizacion + CotizacionItem) que NO genera producción ni OP. Incluye creación, listado paginado, búsqueda, filtrado combinado por código/cliente/rango de fechas, edición (reemplaza ítems completos) y eliminación.
+- Sistema de Clisse (molde de impresión) en Cotizaciones y Pedidos: por ítem se puede marcar "tiene_clisse" con cantidad de colores y precio (sin nombre propio, es solo un recordatorio de cobro). En Cotizaciones vive en CotizacionItem; en Pedidos vive directamente en OrdenProduccion (columnas tiene_clisse, cantidad_colores, precio_clisse) para no romper el flujo de producción — no afecta cantidad, unidad ni ningún cálculo productivo.
 - Backend desplegado en Railway.
 
 Frontend:
-- Aplicación React funcionando y desplegada en Vercel.
-- Pantallas/componentes para:
-  - Crear órdenes.
-  - Consultar órdenes.
-  - Consultar movimientos.
-  - Consultar el detalle de una OP.
-  - Gestionar clientes.
-  - Gestionar operarios.
-  - Registrar detalles de movimientos.
-- Buscadores y filtros en distintas pantallas.
-- Búsqueda de clientes por RUC con sugerencias.
-- Búsqueda de órdenes por código para registrar movimientos.
-- Menú de acciones de tres puntos.
-- Edición y eliminación de clientes.
-- Funcionalidad de duplicar órdenes.
-- Modales reutilizables para edición.
-- Estilo visual basado en Tailwind con una paleta profesional de slate, azul y verde.
+- Aplicación React (Vite) funcionando y desplegada en Vercel.
+- Pantallas/componentes para: Órdenes (crear/consultar/filtrar/editar/duplicar/eliminar), Movimientos (crear/consultar/filtrar/editar/eliminar, con detalle especial por proceso), Detalle de OP (ruta de producción editable, liquidación descargable, hoja de pedido), Clientes, Operarios, Aglomerado (entradas/salidas/ajustes con saldo tipo estado de cuenta), Reportes (vista general, por orden, por tipo de merma, alertas de producción), Pedidos, Cotizaciones.
+- Buscadores y filtros con debounce en distintas pantallas (clientes por RUC/nombre, operarios, órdenes, vendedores, tipos de merma/material).
+- Filtros estandarizados por periodo rápido (Hoy / Esta semana / Este mes / Este año / Todo / Personalizado) + texto libre + paginación "cargar más" (sin traer todo de una vez), aplicados de forma consistente en Órdenes, Movimientos y Cotizaciones.
+- Menú de acciones de tres puntos (Editar/Duplicar/Eliminar) reutilizado en todas las tablas que lo necesitan.
+- Edición de productos individuales dentro de una lista de ítems (Cotizaciones y Pedidos): cada ítem agregado tiene botones "Editar" y "Quitar" propios; editar carga el ítem en el bloque "Agregar producto", permite cambiar solo lo necesario y guardar sin afectar los demás ítems.
+- Duplicar OP, duplicar Pedido, duplicar Cotización.
+- Modales reutilizables para edición simple (ModalEditar) y formularios completos en línea para edición de Pedidos/Cotizaciones (reutilizan el mismo formulario de creación, precargado con los datos existentes).
+- Persistencia de borradores en localStorage para formularios largos (Orden, Movimiento, Pedido, Cotización): se autoguarda mientras se escribe, para no perder el trabajo si se cambia de pestaña o se recarga por accidente.
+  - IMPORTANTE: el borrador de "crear nuevo" y el borrador de "editar existente" viven en llaves de localStorage SEPARADAS (la de edición incluye el ID del registro que se edita). Esto evita que abandonar una edición a medias contamine el formulario de "nuevo" con datos de un registro ya existente (bug real que causaba el error "ya existe una cotización con ese código" y que ya está corregido en Cotizaciones y Pedidos).
+- Botón "🗑 Limpiar todo" en los formularios largos de Pedido y Cotización: limpia todo el formulario y cancela cualquier edición en curso, pero conserva los valores predefinidos de Forma de pago, Tiempo de entrega/Validez de oferta.
+- Persistencia de filtros de pantalla (periodo, código, cliente, etc.) en localStorage, independiente de los borradores de formulario.
+- Generación de PDFs con jsPDF (+ jspdf-autotable en reportes/registros/liquidación):
+  - Cotización y Pedido comparten el mismo estilo visual (paleta gris para imprimir, no celeste), mismo orden de bloques (encabezado con logo, caja RUC/Fecha, bloque SR(AS)/ESTIMADA(OS) con vendedor, tabla de datos propios de cada documento, tabla de productos DESCRIPCIÓN/MEDIDAS/CANT./UNIDAD/P.UNIT./TOTAL, totales, condiciones, firma/pie institucional).
+  - El Pedido tiene su propia tabla flotante de datos de entrega (Dirección, N° de contacto, Email, Teléfono) entre el bloque de cliente y la tabla de productos — dato exclusivo de Pedido, no de Cotización.
+  - El Clisse se muestra en el PDF como una fila italic en azul suave justo debajo de su producto, con cantidad de colores y precio (sin nombre), en ambos documentos.
+  - El vendedor aparece en el saludo final: "Atentamente, [nombre del vendedor]".
+  - Todas las celdas usan medición de texto multilínea (splitTextToSize protegido) y cálculo de alto de fila por la columna más larga, para que ningún texto largo se salga de su casilla ni de la hoja; hay salto de página automático cuando el contenido no cabe.
+  - Utilidades compartidas en pdfUtils.js (textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro) para blindar contra datos nulos/NaN y evitar duplicar esta lógica entre generadores.
+  - Descarga de PDFs de listados completos (Órdenes, Movimientos) respetando los filtros activos, sin límite de "cargar más" (trae todo el rango filtrado antes de generar el PDF).
+- Estilo visual basado en Tailwind con paleta profesional de slate, azul y verde (documentado en GUIA_PARA_IA.txt).
 
 2. FUNCIONALIDADES EN DESARROLLO
 
+- Ampliar Cotizaciones para incorporar los mismos campos que ya tiene Pedidos (Forma de pago, Tiempo de entrega como fecha seleccionable, Validez de la oferta ya existen en ambos; falta revisar paridad completa de campos opcionales como dirección/contacto/email/teléfono, que hoy son propios de Pedido).
 - Seguir unificando y puliendo el diseño visual de todas las pantallas.
-- Mejorar la experiencia de búsqueda y selección cuando existan muchas órdenes.
-- Terminar y ampliar las acciones de las tablas mediante el menú de tres puntos.
-- Mejorar la edición de órdenes y otras entidades donde corresponda.
-- Preparar funcionalidades de reportes.
-- Preparar generación y descarga de documentos PDF para liquidaciones e impresión.
-- Evaluar reportes semanales de producción. A traves de la pestaña reportes
-- Continuar preparando el sistema para un uso sin fallos en la empresa.
+- Mejorar la experiencia de búsqueda y selección cuando existan muchas órdenes/cotizaciones/pedidos.
+- Terminar y ampliar las acciones de las tablas mediante el menú de tres puntos donde falte.
+- Continuar preparando el sistema para un uso sin fallos en la empresa (profilaxis de código, manejo de errores).
 
 3. PROBLEMAS CONOCIDOS
 
 - El sistema depende de que frontend, backend y base de datos desplegada mantengan correctamente sus URLs y variables de entorno.
-- Los cambios en los modelos SQLAlchemy no actualizan automáticamente las tablas existentes de PostgreSQL; si se agrega o cambia una columna, la base de datos debe mantenerse sincronizada.
+- Los cambios en los modelos SQLAlchemy NO actualizan automáticamente las tablas existentes de PostgreSQL; cada columna nueva agregada en este chat (forma_pago/validez_oferta en pedidos; tiene_clisse/cantidad_colores_clisse/precio_clisse en cotizacion_items y en ordenes_produccion) requiere su propio ALTER TABLE manual en Railway antes de desplegar el backend que los usa. Verificar que todos esos ALTER ya se aplicaron.
 - Un cambio incorrecto en nombres de modelos, tablas, columnas, rutas o campos puede provocar errores tanto en backend como en frontend.
-- Algunas partes del frontend todavía pueden contener URLs explícitas del backend y conviene mantener una configuración consistente mediante el archivo de API correspondiente.
-- La edición/eliminación debe manejarse con cuidado cuando existen relaciones entre órdenes, movimientos y detalles.
-- La búsqueda debe seguir siendo eficiente a medida que aumente el número de Órdenes de Producción. (Actualmente cubierto por tablaas ocultas y función ilike)
+- Cuidado especial con el orden de declaración de variables/constantes usadas en useState inicial dentro de componentes grandes: un ReferenceError "Cannot access X before initialization" ya ocurrió en Movimientos.jsx por usar una constante (borrador de localStorage) antes de declararla en el cuerpo del componente; el build de producción (Vite) lo expone aunque en desarrollo pase desapercibido.
+- La edición/eliminación debe manejarse con cuidado cuando existen relaciones entre órdenes, movimientos, pedidos y cotizaciones.
+- La búsqueda debe seguir siendo eficiente a medida que aumente el número de registros (actualmente cubierto con filtrado en base de datos + paginación por cursor "antes_de", no carga todo de una vez).
+- Reemplazar ítems de un Pedido al editar solo es seguro mientras sigue "Preaprobada"; si en el futuro se permite editar ítems de un Pedido ya aprobado, hay que replantear esa lógica para no borrar movimientos reales.
 
 4. PRÓXIMOS PASOS
 
 Prioridad inmediata:
-- Corregir errores para poder utilizarse sin fallos
-- Revisar las acciones de las tablas y hacerlas consistentes.
-- Pestaña Pedidos funcional
-- Seguridad de uso en caso real
-- Descargar PDFs de los pedidos
-- Mejorar búsquedas y filtros. (Cubierto por ahora)
+- Confirmar que todos los ALTER TABLE pendientes (Pedido y Clisse en OP) ya se aplicaron en la base de producción.
+- Seguir revisando consistencia visual y de acciones entre Cotizaciones, Pedidos y Órdenes.
+- Igualar en Cotizaciones los campos que hoy solo tiene Pedidos (según se planificó, tomando Pedidos como referencia).
 
 Después:
 - Implementar reportes semanales.
-- Implementar generación de PDFs.
-- Diseñar una liquidación imprimible y completa.
-- Definir qué información debe aparecer en cada reporte.
-- Mejorar permisos/seguridad si el sistema empieza a utilizarse de forma operativa.
+- Mejorar permisos/seguridad si el sistema empieza a utilizarse de forma más operativa/real.
 - Continuar con pruebas sobre datos reales de producción.
+- Revisar si el precio del Clisse debe poder sumarse en una moneda distinta a la del producto (hoy usa siempre la moneda del producto, por decisión explícita, para evitar mezclar monedas en el total).
 
 5. QUÉ NO DEBE MODIFICARSE SIN REVISAR
 
@@ -82,24 +81,19 @@ No es una regla absoluta, pero estos elementos deben tocarse con cuidado porque 
 
 - Nombres de tablas de PostgreSQL.
 - Nombres de modelos SQLAlchemy.
-- Nombres de columnas existentes.
+- Nombres de columnas existentes (ojo particular con cantidad_colores, mapeado a la columna real "cantidad_colores_clisse" — el nombre del atributo Python y el de la columna SQL difieren a propósito).
 - IDs y claves foráneas.
 - Nombres de campos enviados por los schemas y recibidos por React.
 - Rutas/endpoints existentes.
-- Estructura de relaciones entre Cliente → OrdenProduccion → Movimiento → DetalleMovimiento.
+- Estructura de relaciones entre Cliente → OrdenProduccion → Movimiento → DetalleMovimiento, y Cliente → Pedido/Cotizacion → ítems.
 - La lógica que determina el estado de una OP a partir de su último movimiento.
 - La filosofía histórica del sistema: los movimientos representan eventos y no deben sobrescribirse como si fueran el estado histórico.
+- La regla de que los ítems de un Pedido solo se reemplazan mientras está "Preaprobada".
+- Las llaves de localStorage usadas para borradores (separar siempre "nuevo" de "editando X") y para filtros persistentes de cada pantalla.
+- pdfUtils.js y su contrato (textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro): lo usan varios generadores de PDF.
 - Las URLs y configuración de conexión entre frontend y backend desplegado.
 - La configuración de PostgreSQL/Railway.
-- Los archivos que actualmente contienen lógica compartida, como API, dependencias y configuración.
-
-Antes de modificar cualquiera de estos elementos, conviene comprobar qué archivos lo utilizan y probar el flujo afectado.
 
 OBJETIVO GENERAL DEL ESTADO ACTUAL
 
-El backend y frontend ya forman un sistema funcional para registrar y consultar producción. La siguiente etapa consiste principalmente en convertirlo en una herramienta más cómoda, segura, sin bugs, profesional y útil para el trabajo diario, especialmente mediante mejores búsquedas, reportes y documentos imprimibles.
-"""
-
-ruta = Path("/mnt/data/ESTADO_ACTUAL.txt")
-ruta.write_text(contenido, encoding="utf-8")
-print(f"Creado: {ruta}")
+El backend y frontend ya forman un sistema funcional y bastante maduro para registrar y consultar producción, además de gestionar Pedidos y Cotizaciones con un estilo visual y de interacción unificado entre pantallas. La siguiente etapa consiste en seguir puliendo consistencia (Cotizaciones alcanzando a Pedidos en campos), blindar el sistema contra errores (protección de PDFs, manejo de borradores, validaciones), y avanzar hacia reportes y funcionalidades operativas más avanzadas.

@@ -1,3 +1,10 @@
+# Modelos SQLAlchemy: cada clase representa una tabla de PostgreSQL.
+# Los nombres de columna en Python pueden diferir del nombre real de la
+# columna SQL cuando se indica explícitamente (ver ejemplo en OrdenProduccion:
+# cantidad_colores -> columna real "cantidad_colores_clisse").
+# No renombrar tablas/columnas existentes sin revisar sus dependencias
+# (ver GUIA_PARA_IA.txt, sección 11).
+
 # =========================
 # IMPORTACIONES
 # =========================

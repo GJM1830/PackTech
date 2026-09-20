@@ -1,3 +1,9 @@
+# Lógica de negocio del sistema: acá viven las funciones que crean, editan,
+# consultan y eliminan cada entidad (clientes, órdenes, movimientos, pedidos,
+# cotizaciones, aglomerado, reportes). Los routers solo reciben la petición
+# HTTP y delegan aquí; toda la lógica real y las validaciones están en este
+# archivo. Las funciones están agrupadas por sección con comentarios "====".
+
 # =========================
 # IMPORTACIONES
 # =========================

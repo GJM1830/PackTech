@@ -1,3 +1,8 @@
+# Endpoints de Aglomerado: registro tipo "estado de cuenta" de la merma
+# reciclada (entradas suman, salidas restan, ajuste fija el saldo a un
+# valor exacto). Independiente del flujo de OP, aunque puede vincularse a
+# una orden y arrastra entradas automáticas cuando se registra merma real
+# en un movimiento (ver crud.crear_detalle_merma).
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 

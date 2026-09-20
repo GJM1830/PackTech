@@ -1,3 +1,6 @@
+# Configuración de la conexión a PostgreSQL vía SQLAlchemy.
+# DATABASE_URL viene de una variable de entorno en producción (Railway);
+# si no existe, usa la base local de desarrollo como respaldo.
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase

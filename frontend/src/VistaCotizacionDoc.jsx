@@ -1,3 +1,6 @@
+// Modal de vista previa en pantalla de una Cotización, con botón para
+// descargar el PDF real generado por GenerarPDFCotizacionDoc.js. Es solo
+// presentación: no crea ni edita datos, únicamente muestra lo que ya existe.
 import { generarPDFCotizacionDoc } from './GenerarPDFCotizacionDoc'
 
 const formatearFecha = (fecha) => {

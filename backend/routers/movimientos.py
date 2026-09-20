@@ -1,3 +1,8 @@
+# Endpoints de Movimientos: registrar un evento de producción sobre una OP,
+# listar/filtrar/buscar movimientos, editar, eliminar, y gestionar los
+# detalles de merma (mermas) y el avance automático al siguiente proceso
+# de la ruta (siguiente-proceso). Cada movimiento es un evento histórico:
+# no se sobrescribe, se crea uno nuevo por cada paso de producción.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

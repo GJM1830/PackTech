@@ -1,3 +1,6 @@
+# Endpoint de autenticación simple: recibe una clave y devuelve el rol y
+# nombre del usuario si es válida. El frontend guarda la clave en
+# localStorage y la reenvía en el header X-Clave en cada petición protegida.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 

@@ -1,3 +1,8 @@
+# Endpoints de Detalles de Movimiento: bobinas, fardos y materiales que
+# componen la entrada/salida de un movimiento en procesos especiales
+# (Extrusión, Impresión, Corte, Sellado, Laminado, Pegado). Incluye también
+# el atajo "importar-anteriores" para traer las bobinas de salida del
+# proceso previo como entrada del siguiente, sin volver a tipearlas.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

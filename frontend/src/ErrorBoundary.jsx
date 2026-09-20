@@ -1,3 +1,6 @@
+// Red de seguridad de la interfaz: si un componente hijo lanza un error de
+// render no controlado, en vez de dejar la pantalla en blanco muestra un
+// mensaje amigable con botón para recargar. Envuelve toda la app en main.jsx.
 import { Component } from 'react'
 
 class ErrorBoundary extends Component {

@@ -1,3 +1,9 @@
+// Componente raíz de la aplicación. Define la barra de navegación (con
+// enlaces distintos según el rol del usuario), las rutas de React Router,
+// y contiene además el componente Ordenes (listado principal de Órdenes de
+// Producción con filtros por periodo/código/cliente/producto/estado,
+// paginación "cargar más" y descarga de PDF del listado filtrado).
+// Si no hay clave guardada en localStorage, se muestra Login en su lugar.
 import { useEffect, useState, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
 import axios from './api'

@@ -1,3 +1,10 @@
+// Modal de detalle para procesos especiales de producción (Extrusión,
+// Impresión, Corte, Sellado, Laminado, Pegado). Aquí se registran las
+// bobinas/fardos de entrada y salida (con peso bruto/tuco/neto), los
+// materiales usados en Extrusión, y la merma real por tipo — todo esto
+// recalcula automáticamente los totales de entrada/salida del movimiento
+// padre. También compara la salida declarada contra la suma real registrada
+// para detectar diferencias fuera de rango.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'

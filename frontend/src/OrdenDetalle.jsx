@@ -1,3 +1,8 @@
+// Pantalla de detalle de una Orden de Producción: muestra su historial de
+// movimientos (uno por proceso completado), permite definir/editar la ruta
+// de producción (procesos_plan) con reordenamiento manual, y da acceso a
+// la Hoja de Pedido (vista previa + PDF, reutilizando VistaPedido) y a la
+// descarga de la Liquidación completa de la orden.
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from './api'

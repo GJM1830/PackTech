@@ -1,3 +1,6 @@
+// Pantalla de acceso: pide una clave, la valida contra /login y guarda en
+// localStorage la clave, el rol y el nombre del usuario. Se muestra en vez
+// de App mientras no exista una clave guardada (ver App.jsx).
 import { useState } from 'react'
 import axios from 'axios'
 

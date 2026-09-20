@@ -1,3 +1,15 @@
+// Pantalla de Reportes, con cuatro vistas en pestañas:
+// - General: KPIs y gráficos de entrada/salida/merma agrupados por
+//   proceso/máquina/operario/cliente, con comparación contra el periodo
+//   anterior equivalente.
+// - Por Orden: recorrido completo de una OP buscada por código.
+// - Por Tipo de Merma: ranking de causas de merma en el periodo.
+// - Alertas: anomalías reales detectadas sobre los datos (órdenes sin
+//   movimiento, estancadas, días con poca actividad, movimientos sin
+//   merma registrada, máquinas con más merma, mermas estadísticamente
+//   fuera de lo normal para su proceso).
+// Todas las vistas comparten el mismo selector de periodo rápido y pueden
+// descargarse en PDF.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import {

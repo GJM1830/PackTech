@@ -1,3 +1,11 @@
+// Pantalla de Movimientos: registrar un evento de producción (proceso,
+// máquina, operario, entrada/salida) sobre una OP existente, con filtros
+// por periodo/código/cliente/proceso/operario/máquina, paginación "cargar
+// más" y descarga de PDF del listado filtrado. En procesos especiales
+// (Extrusión, Impresión, Corte, Sellado, Laminado, Pegado) la entrada/salida
+// no se escribe directo: se abre DetalleMovimiento para registrar bobinas/
+// fardos/materiales, y esos detalles recalculan los totales del movimiento.
+// Autoguarda el formulario en localStorage mientras se escribe.
 import { useEffect, useState, useRef } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'

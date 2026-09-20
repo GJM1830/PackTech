@@ -2,6 +2,11 @@ src:
 
 Aglomerado.jsx
 
+// Pantalla de Aglomerado: registro tipo "estado de cuenta" de la merma
+// reciclada. "Entrada" suma merma proveniente de un proceso, "Salida" resta
+// aglomerado usado en una orden destino, y "Ajuste" (solo admin) fija el
+// saldo a un valor exacto tras un conteo físico. El saldo se muestra arriba
+// en tiempo real y cada movimiento queda registrado en el historial.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import { puedeCrear } from './roles'
@@ -517,6 +522,10 @@ export default Aglomerado
 
 api.js:
 
+// Instancia de Axios compartida por todo el frontend: define el dominio del
+// backend (baseURL) y agrega automáticamente la clave guardada en localStorage
+// como header X-Clave en cada petición. El resto de la app importa este
+// archivo y usa rutas relativas ("/clientes", "/pedidos", etc.).
 import axios from 'axios'
 
 const api = axios.create({
@@ -725,6 +734,12 @@ App.css:
 
 App.jsx:
 
+// Componente raíz de la aplicación. Define la barra de navegación (con
+// enlaces distintos según el rol del usuario), las rutas de React Router,
+// y contiene además el componente Ordenes (listado principal de Órdenes de
+// Producción con filtros por periodo/código/cliente/producto/estado,
+// paginación "cargar más" y descarga de PDF del listado filtrado).
+// Si no hay clave guardada en localStorage, se muestra Login en su lugar.
 import { useEffect, useState, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
 import axios from './api'
@@ -1234,6 +1249,9 @@ export default App
 
 Clientes.jsx:
 
+// Pantalla de Clientes: alta rápida (RUC opcional + nombre), listado
+// paginado con "cargar más", filtro local por texto y edición/eliminación
+// mediante el menú de tres puntos (solo visible para vendedor o admin).
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
@@ -1509,6 +1527,16 @@ export function montoSeguro(valor, simbolo = '') {
 
 Pedidos.jsx:
 
+// Pantalla de Pedidos: un Pedido agrupa uno o más ítems/productos; cada
+// ítem se crea de inmediato como una OrdenProduccion en estado "Preaprobada"
+// (vinculada por pedido_id). Al aprobar el Pedido, esas OP pasan a
+// "Pendiente" y entran al flujo normal de producción.
+// Incluye dos pestañas: "Por Aprobar" (formulario de creación/edición +
+// listado con aprobar/editar/duplicar/eliminar) y "Seguimiento" (tarjetas
+// de los pedidos ya aprobados, con aviso visual de urgencia por fecha de
+// entrega). El formulario soporta Clisse por ítem (informativo, no es un
+// producto) y autoguarda su borrador en localStorage, separando "nuevo"
+// de "editando" para no mezclar datos entre ambos flujos.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import { esVendedorOMas } from './roles'
@@ -2734,6 +2762,15 @@ function Pedidos() {
 export default Pedidos
 
 Cotizaciones.jsx
+// Pantalla de Cotizaciones: documento de venta simple (Cotizacion +
+// CotizacionItem) que NO genera producción ni Órdenes de Producción; sirve
+// para ofertar al cliente antes de que exista un Pedido. Incluye
+// formulario de creación/edición con Clisse por ítem (informativo, igual
+// que en Pedidos), listado con filtros de periodo/código/cliente y
+// paginación "cargar más", y el botón "Pasar a Pedido" que traslada los
+// datos de la cotización como borrador precargado en la pantalla de
+// Pedidos (sin conversión automática todavía). Autoguarda su borrador en
+// localStorage, separando "nuevo" de "editando" para no mezclar datos.
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from './api'
@@ -3959,6 +3996,10 @@ export default Cotizaciones
 
 CrearOrden.jsx:
 
+// Formulario para registrar una nueva Orden de Producción (OP) directa
+// (sin pasar por un Pedido), usado también para duplicar una OP existente.
+// Autoguarda el borrador en localStorage mientras se escribe, e incluye
+// autocompletado de cliente por RUC o nombre.
 import { useState, useEffect } from 'react'
 import axios from './api'
 import { cargarFiltros, guardarFiltros } from './filtrosPersistentes'
@@ -4289,6 +4330,13 @@ export default CrearOrden
 
 DetalleMovimiento.jsx:
 
+// Modal de detalle para procesos especiales de producción (Extrusión,
+// Impresión, Corte, Sellado, Laminado, Pegado). Aquí se registran las
+// bobinas/fardos de entrada y salida (con peso bruto/tuco/neto), los
+// materiales usados en Extrusión, y la merma real por tipo — todo esto
+// recalcula automáticamente los totales de entrada/salida del movimiento
+// padre. También compara la salida declarada contra la suma real registrada
+// para detectar diferencias fuera de rango.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
@@ -5287,6 +5335,9 @@ dist/
 
 ErrorBoundar.jsx:
 
+// Red de seguridad de la interfaz: si un componente hijo lanza un error de
+// render no controlado, en vez de dejar la pantalla en blanco muestra un
+// mensaje amigable con botón para recargar. Envuelve toda la app en main.jsx.
 import { Component } from 'react'
 
 class ErrorBoundary extends Component {
@@ -5332,6 +5383,9 @@ export default ErrorBoundary
 
 FiltroDesplegable.jsx:
 
+// Filtro tipo dropdown con buscador interno, reutilizado en varias pantallas
+// (Movimientos: Proceso/Operario/Máquina; Pedidos: Estado). Se cierra solo
+// al hacer click afuera y siempre incluye la opción "Todos" para limpiar.
 import { useState, useRef, useEffect } from 'react'
 
 function FiltroDesplegable({ etiqueta, opciones, seleccionado, onSeleccionar }) {
@@ -5474,7 +5528,17 @@ export function guardarFiltros(clave, valores) {
 
 GenerarPDFPedido.js:
 
-  import jsPDF from 'jspdf'
+// Genera el PDF de un Pedido con jsPDF, dibujando cada bloque "a mano"
+// (no usa autoTable): encabezado con logo, caja RUC/Fecha, bloque
+// SR(AS)/ESTIMADA(OS) con vendedor, tabla flotante de datos de entrega
+// propia del Pedido (dirección, contacto, email, teléfono), tabla de
+// productos (con fila de Clisse italic en azul suave debajo de cada
+// producto que la tenga), totales, condiciones fijas + Forma de pago/
+// Tiempo de entrega/Validez de oferta/Observaciones, imagen y firma.
+// Usa las utilidades de pdfUtils.js para medir texto y evitar que algo se
+// salga de su celda o de la hoja. Comparte estilo y orden de bloques con
+// GenerarPDFCotizacionDoc.js (ver GUIA_PARA_IA.txt, sección 9).
+import jsPDF from 'jspdf'
 import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 
 const formatearFecha = (fecha) => {
@@ -5963,6 +6027,15 @@ export async function generarPDFPedido(pedido) {
 
 GenerarPDFCotizacionDoc.js:
 
+// Genera el PDF de una Cotización con jsPDF, dibujando cada bloque "a mano"
+// (no usa autoTable): encabezado con logo, caja RUC/Fecha, bloque
+// SR(AS)/ESTIMADA(OS) con vendedor, tabla de datos de entrega opcionales,
+// tabla de productos (con fila de Clisse italic en azul suave debajo de
+// cada producto que la tenga), totales, Forma de pago/Tiempo de entrega/
+// Validez de oferta, observaciones y pie institucional con el saludo
+// firmado por el vendedor. Usa las utilidades de pdfUtils.js para medir
+// texto y evitar que algo se salga de su celda o de la hoja. Comparte
+// estilo y orden de bloques con GenerarPDFPedido.js.
 import jsPDF from 'jspdf'
 import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 
@@ -6453,6 +6526,12 @@ export async function generarPDFCotizacionDoc(cotizacion) {
 
 GenerarPDFLiquidacion.js:
 
+// Genera el PDF de Liquidación de una Orden de Producción: recorre cada
+// proceso por el que pasó la OP (con sus bobinas/fardos de salida y sus
+// mermas registradas) usando jspdf-autotable para las tablas, y cierra con
+// un resumen final de merma total, kg netos/brutos y millares del último
+// proceso. Los datos se traen ya armados desde el backend
+// (GET /reportes/liquidacion/{codigo}).
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -6706,6 +6785,11 @@ export async function generarPDFLiquidacion(data) {
 
 GenerarPDFRegistros.js:
 
+// Genera el PDF de listados completos (Órdenes o Movimientos) respetando
+// los filtros activos en pantalla, usando jspdf-autotable en orientación
+// horizontal para que quepan más columnas. A diferencia de otros PDFs, este
+// recibe TODO el rango filtrado ya traído desde el backend (sin límite de
+// "cargar más"), porque el objetivo es imprimir el listado completo.
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -6898,6 +6982,13 @@ export async function generarPDFMovimientos(filas, config) {
 
 GenerarPDFReporte.js:
 
+// Genera el PDF de Reportes, con una función distinta por cada vista de
+// Reportes.jsx (generarGeneral, generarTipoMerma, generarOrden,
+// generarAlertas), todas usando jspdf-autotable para las tablas y un
+// gráfico de barras horizontal dibujado a mano (dibujarGraficoBarras) para
+// no depender de una librería de gráficos dentro del PDF. La función
+// pública generarPDFReporte(config) recibe config.tipo y delega a la
+// función correspondiente.
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -7431,6 +7522,9 @@ index.css:
 
 Login.jsx
 
+// Pantalla de acceso: pide una clave, la valida contra /login y guarda en
+// localStorage la clave, el rol y el nombre del usuario. Se muestra en vez
+// de App mientras no exista una clave guardada (ver App.jsx).
 import { useState } from 'react'
 import axios from 'axios'
 
@@ -7498,6 +7592,10 @@ export default Login
 
 main.jsx:
 
+// Punto de entrada de la aplicación React. Monta <App /> dentro de un
+// ErrorBoundary (para no dejar la pantalla en blanco si algo falla) y
+// además evita que la rueda del mouse cambie el valor de un <input type="number">
+// enfocado (comportamiento por defecto molesto del navegador en formularios).
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -7521,6 +7619,9 @@ createRoot(document.getElementById('root')).render(
 
 MenuAcciones.jsx:
 
+// Menú de tres puntos (⋮) reutilizable en las tablas de todo el sistema.
+// Muestra solo los botones cuya función se le pasó como prop (Editar,
+// Duplicar, Eliminar); si una prop no se pasa, esa opción no aparece.
 import { useState, useRef, useEffect } from 'react'
 
 function MenuAcciones({ onEditar, onDuplicar, onEliminar }) {
@@ -7589,6 +7690,10 @@ export default MenuAcciones
 
 ModalEditar.jsx:
 
+// Modal genérico de edición simple (usado por Clientes, Operarios, Órdenes
+// y Movimientos). Recibe una lista de "campos" a mostrar (texto, número,
+// select) y delega el guardado real al componente que lo abre; este modal
+// solo arma el formulario y notifica los cambios hacia arriba.
 function ModalEditar({ titulo, campos, valores, onCambio, onGuardar, onCerrar, guardando }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -7648,6 +7753,14 @@ export default ModalEditar
 
 Movimientos.jsx:
 
+// Pantalla de Movimientos: registrar un evento de producción (proceso,
+// máquina, operario, entrada/salida) sobre una OP existente, con filtros
+// por periodo/código/cliente/proceso/operario/máquina, paginación "cargar
+// más" y descarga de PDF del listado filtrado. En procesos especiales
+// (Extrusión, Impresión, Corte, Sellado, Laminado, Pegado) la entrada/salida
+// no se escribe directo: se abre DetalleMovimiento para registrar bobinas/
+// fardos/materiales, y esos detalles recalculan los totales del movimiento.
+// Autoguarda el formulario en localStorage mientras se escribe.
 import { useEffect, useState, useRef } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
@@ -8566,6 +8679,9 @@ export default Movimientos
 
 Operarios.jsx
 
+// Pantalla de Operarios: alta (nombre + cargo), listado paginado con
+// "cargar más", filtro local por texto y edición/eliminación mediante el
+// menú de tres puntos (solo visible para vendedor o admin).
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'
@@ -8786,6 +8902,11 @@ export default Operarios
 
 OrdenDetalle.jsx:
 
+// Pantalla de detalle de una Orden de Producción: muestra su historial de
+// movimientos (uno por proceso completado), permite definir/editar la ruta
+// de producción (procesos_plan) con reordenamiento manual, y da acceso a
+// la Hoja de Pedido (vista previa + PDF, reutilizando VistaPedido) y a la
+// descarga de la Liquidación completa de la orden.
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from './api'
@@ -9216,6 +9337,18 @@ export default OrdenDetalle
 
 Reportes.jsx:
 
+// Pantalla de Reportes, con cuatro vistas en pestañas:
+// - General: KPIs y gráficos de entrada/salida/merma agrupados por
+//   proceso/máquina/operario/cliente, con comparación contra el periodo
+//   anterior equivalente.
+// - Por Orden: recorrido completo de una OP buscada por código.
+// - Por Tipo de Merma: ranking de causas de merma en el periodo.
+// - Alertas: anomalías reales detectadas sobre los datos (órdenes sin
+//   movimiento, estancadas, días con poca actividad, movimientos sin
+//   merma registrada, máquinas con más merma, mermas estadísticamente
+//   fuera de lo normal para su proceso).
+// Todas las vistas comparten el mismo selector de periodo rápido y pueden
+// descargarse en PDF.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import {
@@ -10429,6 +10562,9 @@ function Reportes() {
 export default Reportes
 
 VistaCotizacionDoc.jsx:
+// Modal de vista previa en pantalla de una Cotización, con botón para
+// descargar el PDF real generado por GenerarPDFCotizacionDoc.js. Es solo
+// presentación: no crea ni edita datos, únicamente muestra lo que ya existe.
 import { generarPDFCotizacionDoc } from './GenerarPDFCotizacionDoc'
 
 const formatearFecha = (fecha) => {
@@ -10589,6 +10725,9 @@ export default VistaCotizacionDoc
 
 roles.jsx:
 
+// Helpers de permisos por rol, leyendo el rol guardado en localStorage al
+// iniciar sesión. Se usan en toda la app para mostrar/ocultar botones y
+// acciones según el rol (observador < produccion < vendedor < admin).
 export const obtenerRol = () => localStorage.getItem('packtech_rol')
 
 export const esAdmin = () => obtenerRol() === 'admin'
@@ -10599,6 +10738,10 @@ export const puedeCrear = () => obtenerRol() !== 'observador'
 
 VistaPedido.jsx:
 
+// Modal de vista previa en pantalla de un Pedido (o de una OP individual,
+// cuando se abre desde OrdenDetalle como "Hoja de Pedido"), con botón para
+// descargar el PDF real generado por GenerarPDFPedido.js. Es solo
+// presentación: no crea ni edita datos, únicamente muestra lo que ya existe.
 import { generarPDFPedido } from './GenerarPDFPedido'
 
 const formatearFecha = (fecha) => {

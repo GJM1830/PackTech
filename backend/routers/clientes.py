@@ -1,3 +1,6 @@
+# Endpoints de Clientes: crear, listar paginado, buscar por RUC/nombre,
+# obtener por RUC exacto, editar y eliminar (bloqueado si el cliente tiene
+# Órdenes de Producción asociadas, para no dejar OP huérfanas).
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 

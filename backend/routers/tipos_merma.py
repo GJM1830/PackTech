@@ -1,3 +1,6 @@
+# Endpoints de búsqueda para autocompletado de "tipo de merma" (por proceso)
+# y "tipo de material" (Extrusión). Estos catálogos se crean solos la
+# primera vez que se usa un valor nuevo (ver crud.crear_tipo_merma_si_no_existe).
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

@@ -1,3 +1,7 @@
+# Endpoints de Reportes: resumen agrupado (por proceso/máquina/operario/
+# cliente), reporte de una OP puntual, reporte por tipo de merma, hoja de
+# liquidación de una OP, y el panel de alertas/anomalías de producción
+# (órdenes sin movimiento, estancadas, con merma fuera de lo normal, etc.).
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

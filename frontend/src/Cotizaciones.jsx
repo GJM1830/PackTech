@@ -1,3 +1,12 @@
+// Pantalla de Cotizaciones: documento de venta simple (Cotizacion +
+// CotizacionItem) que NO genera producción ni Órdenes de Producción; sirve
+// para ofertar al cliente antes de que exista un Pedido. Incluye
+// formulario de creación/edición con Clisse por ítem (informativo, igual
+// que en Pedidos), listado con filtros de periodo/código/cliente y
+// paginación "cargar más", y el botón "Pasar a Pedido" que traslada los
+// datos de la cotización como borrador precargado en la pantalla de
+// Pedidos (sin conversión automática todavía). Autoguarda su borrador en
+// localStorage, separando "nuevo" de "editando" para no mezclar datos.
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from './api'

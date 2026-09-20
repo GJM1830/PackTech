@@ -1,3 +1,8 @@
+// Genera el PDF de listados completos (Órdenes o Movimientos) respetando
+// los filtros activos en pantalla, usando jspdf-autotable en orientación
+// horizontal para que quepan más columnas. A diferencia de otros PDFs, este
+// recibe TODO el rango filtrado ya traído desde el backend (sin límite de
+// "cargar más"), porque el objetivo es imprimir el listado completo.
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 

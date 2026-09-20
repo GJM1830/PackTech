@@ -1,3 +1,13 @@
+// Pantalla de Pedidos: un Pedido agrupa uno o más ítems/productos; cada
+// ítem se crea de inmediato como una OrdenProduccion en estado "Preaprobada"
+// (vinculada por pedido_id). Al aprobar el Pedido, esas OP pasan a
+// "Pendiente" y entran al flujo normal de producción.
+// Incluye dos pestañas: "Por Aprobar" (formulario de creación/edición +
+// listado con aprobar/editar/duplicar/eliminar) y "Seguimiento" (tarjetas
+// de los pedidos ya aprobados, con aviso visual de urgencia por fecha de
+// entrega). El formulario soporta Clisse por ítem (informativo, no es un
+// producto) y autoguarda su borrador en localStorage, separando "nuevo"
+// de "editando" para no mezclar datos entre ambos flujos.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import { esVendedorOMas } from './roles'

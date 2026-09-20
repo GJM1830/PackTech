@@ -1,3 +1,9 @@
+// Genera el PDF de Liquidación de una Orden de Producción: recorre cada
+// proceso por el que pasó la OP (con sus bobinas/fardos de salida y sus
+// mermas registradas) usando jspdf-autotable para las tablas, y cierra con
+// un resumen final de merma total, kg netos/brutos y millares del último
+// proceso. Los datos se traen ya armados desde el backend
+// (GET /reportes/liquidacion/{codigo}).
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 

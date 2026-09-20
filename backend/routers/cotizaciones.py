@@ -1,3 +1,6 @@
+# Endpoints de Cotizaciones: documento de venta simple que NO genera OP ni
+# producción. Crear, listar paginado, buscar, filtrar por código/cliente/
+# rango de fechas, editar (reemplaza todos los ítems) y eliminar.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

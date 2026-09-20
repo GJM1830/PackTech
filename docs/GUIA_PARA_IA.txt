@@ -1,7 +1,7 @@
 GUIA PARA IA — PROYECTO PACKTECH
 
 PROPÓSITO
-PackTech es un sistema web interno para digitalizar y controlar el seguimiento de las Órdenes de Producción (OP) de Pack Tech S.A.C.
+PackTech es un sistema web interno para digitalizar y controlar el seguimiento de las Órdenes de Producción (OP) de Pack Tech S.A.C., además de gestionar Pedidos y Cotizaciones relacionados a esas órdenes.
 
 La IA debe trabajar sobre el proyecto existente, evitando rehacer arquitectura o introducir cambios innecesarios.
 
@@ -16,29 +16,36 @@ El sistema permite registrar y consultar:
 - Movimientos de producción.
 - Operarios.
 - Productos.
-- Detalles de movimientos.
+- Detalles de movimientos (bobinas, fardos, materiales, merma real).
+- Pedidos (agrupan ítems que se convierten en OP en estado "Preaprobada").
+- Cotizaciones (documento de venta simple, NO genera producción ni OP).
+- Aglomerado (entradas/salidas/ajustes tipo estado de cuenta, independiente del flujo de OP).
 
 Flujo productivo:
 
 Cliente
+→ Pedido (opcional, agrupa uno o más ítems)
 → Orden de Producción
 → Extrusión
 → Impresión
+→ Laminado / Pegado (según ruta)
 → Sellado
 → Corte
-→ Almacén (Para un futuro)
-→ Despacho (Para un futuro)
+→ Almacén (para un futuro)
+→ Despacho (para un futuro)
 
-La idea central del sistema es registrar eventos de producción. Y ahora también gestionar Cotizaciones
+La Cotización es un documento aparte: sirve para ofertar al cliente antes de que exista un Pedido o una OP. No crea registros de producción. Si el cliente acepta, hoy se traslada manualmente a un Pedido (no hay conversión automática todavía).
+
+La idea central del sistema es registrar eventos de producción.
 
 Cada movimiento debe permitir saber:
-- Qué OP fue procesada. 
+- Qué OP fue procesada.
 - En qué proceso.
 - Qué operario intervino.
 - Qué máquina se utilizó.
 - Cantidad de entrada.
 - Cantidad de salida.
-- Merma.
+- Merma (calculada) y merma real (registrada en detalle, por tipo).
 - Observaciones.
 - Fecha y hora.
 
@@ -52,11 +59,13 @@ Usar siempre estos términos:
 
 OP = Orden de Producción.
 
-OrdenProduccion = modelo backend correspondiente a una OP.
+OrdenProduccion = modelo backend correspondiente a una OP. También es el modelo que representa cada ítem de un Pedido (vinculado por pedido_id).
 
 Movimiento = registro de una operación/proceso realizado sobre una OP.
 
-DetalleMovimiento = información adicional asociada a un Movimiento.
+DetalleMovimiento = información adicional asociada a un Movimiento (bobinas, fardos, materiales).
+
+DetalleMerma = registro de merma real por tipo, asociado a un Movimiento.
 
 Cliente = cliente de la empresa.
 
@@ -64,9 +73,17 @@ Operario = persona que realiza el proceso.
 
 Proceso = etapa de producción.
 
-Número de Pedido = nombre utilizado en la interfaz para identificar visualmente una OP.
+Pedido = documento que agrupa ítems de un cliente antes de aprobarse; cada ítem es una OrdenProduccion en estado "Preaprobada". Al aprobar el Pedido, esas OP pasan a "Pendiente".
+
+Cotizacion / CotizacionItem = documento de venta simple, no genera OP ni producción.
+
+Clisse = molde de impresión. Es un dato informativo por ítem (en Cotización y en Pedido/OP): tiene_clisse, cantidad_colores, precio_clisse. No tiene nombre propio. No es un producto ni afecta cantidad/unidad/cálculos de producción; solo se suma como referencia de cobro al cliente en el documento (PDF) y al total.
+
+Número de Pedido = nombre utilizado en la interfaz para identificar visualmente una OP o un Pedido (campo "codigo" / "codigo_base").
 
 Código de OP = campo "codigo" de OrdenProduccion.
+
+Borrador = copia local (localStorage) del formulario en progreso, para no perder el trabajo si el operador cambia de pestaña o recarga por accidente. Ver sección 8.
 
 No cambiar nombres existentes de modelos, tablas, campos, endpoints o propiedades sin revisar primero todas sus dependencias.
 
@@ -87,6 +104,7 @@ Frontend:
 - JavaScript/JSX
 - Tailwind CSS
 - Axios
+- jsPDF + jspdf-autotable (generación de PDFs)
 
 Base de datos:
 - PostgreSQL
@@ -123,7 +141,7 @@ Backend principal:
   Aplicación FastAPI y configuración general.
 
 - routers/
-  Endpoints separados por funcionalidad.
+  Endpoints separados por funcionalidad: ordenes, movimientos, clientes, operarios, detalles, auth, aglomerado, reportes, tipos_merma, pedidos, cotizaciones.
 
 Frontend principal:
 
@@ -137,10 +155,10 @@ Frontend principal:
   Registro de nuevas OP y duplicación de órdenes.
 
 - Movimientos.jsx
-  Registro, consulta y filtrado de movimientos.
+  Registro, consulta, filtrado y edición de movimientos.
 
 - OrdenDetalle.jsx
-  Detalle e historial de una OP.
+  Detalle e historial de una OP, ruta de producción, liquidación y hoja de pedido.
 
 - Clientes.jsx
   Gestión de clientes.
@@ -148,17 +166,41 @@ Frontend principal:
 - Operarios.jsx
   Gestión de operarios.
 
+- Aglomerado.jsx
+  Registro tipo estado de cuenta de merma aglomerada.
+
+- Reportes.jsx
+  Vista general, por orden, por tipo de merma, alertas de producción.
+
+- Pedidos.jsx
+  Formulario y listado de Pedidos, aprobación de ítems, vista de seguimiento.
+
+- Cotizaciones.jsx
+  Formulario y listado de Cotizaciones.
+
 - DetalleMovimiento.jsx
-  Gestión de detalles de movimientos.
+  Gestión de detalles de movimientos (bobinas, fardos, materiales, merma real).
 
 - MenuAcciones.jsx
-  Menú de tres puntos para acciones de registros.
+  Menú de tres puntos para acciones de registros (Editar/Duplicar/Eliminar).
 
 - ModalEditar.jsx
-  Modal reutilizable para edición.
+  Modal reutilizable para edición simple de un registro.
 
 - FiltroDesplegable.jsx
-  Componente reutilizable para filtros.
+  Componente reutilizable para filtros tipo dropdown.
+
+- filtrosPersistentes.js
+  Utilidades compartidas para periodos rápidos (Hoy/Semana/Mes/Año/Todo) y persistencia de filtros de pantalla en localStorage.
+
+- pdfUtils.js
+  Utilidades compartidas para blindar los generadores de PDF: textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro.
+
+- GenerarPDFPedido.js / GenerarPDFCotizacionDoc.js / GenerarPDFLiquidacion.js / GenerarPDFReporte.js / GenerarPDFRegistros.js
+  Generadores de PDF por tipo de documento. Pedido y Cotización comparten estilo y estructura de bloques (ver sección 7).
+
+- VistaPedido.jsx / VistaCotizacionDoc.jsx
+  Modales de vista previa en pantalla + botón de descarga de PDF.
 
 ==================================================
 5. REGLAS PARA MODIFICAR CÓDIGO
@@ -179,6 +221,7 @@ Especialmente:
 - propiedades JSON
 - IDs
 - claves foráneas
+- llaves de localStorage (borradores y filtros)
 
 REGLA 3:
 No eliminar funcionalidades existentes para implementar una nueva.
@@ -191,7 +234,7 @@ Si una modificación afecta backend y frontend, indicar ambos lados.
 REGLA 5:
 No asumir que cambiar un modelo SQLAlchemy modifica automáticamente PostgreSQL.
 
-Si se agrega/modifica una columna, comprobar que la base de datos también esté sincronizada.
+Si se agrega/modifica una columna, indicar explícitamente el ALTER TABLE necesario y comprobar que la base de datos también esté sincronizada antes de que el backend nuevo se despliegue.
 
 REGLA 6:
 Mantener la estructura actual salvo que exista una razón clara para cambiarla.
@@ -231,11 +274,16 @@ Rojo:
 Regla visual:
 - Azul = acciones y navegación.
 - Verde = confirmaciones, guardado, éxito y estados positivos.
-- Rojo = eliminar, errores y acciones peligrosas.
+- Rojo = eliminar, limpiar formulario y acciones peligrosas/destructivas.
 - Slate = estructura, fondos, textos y bordes.
+- Púrpura (purple-700) = uso puntual para resaltar información de Clisse en listas e ítems (no es parte de la paleta principal, solo distintivo de ese dato).
+
+Regla visual para PDFs impresos (Cotización, Pedido):
+- Usar gris (slate claro) para casillas rellenas de cabeceras y totales, NO celeste — porque estas hojas se imprimen y el celeste desperdicia tóner/tinta y se ve mal en blanco y negro.
+- El azul se reserva para texto de énfasis puntual (títulos, montos de totales) y para la fila de Clisse (texto italic en azul suave), nunca como relleno grande de celda.
 
 REGLA 8:
-No introducir dependencias nuevas si la funcionalidad puede realizarse con las herramientas actuales. Salvo se pida lo contrario
+No introducir dependencias nuevas si la funcionalidad puede realizarse con las herramientas actuales. Salvo se pida lo contrario.
 
 REGLA 9:
 Cuando se entregue código, preferir instrucciones precisas del tipo:
@@ -248,6 +296,11 @@ Cuando se entregue código, preferir instrucciones precisas del tipo:
 
 Esto facilita aplicar cambios sin perder código existente.
 
+Cuando el cambio sea grande, toque la lógica central de un archivo, o modifique muchas partes relacionadas entre sí, es preferible entregar el archivo completo en vez de muchos fragmentos "Busca/Reemplaza" encadenados, para evitar errores de aplicación. Se debe indicar explícitamente que es el archivo completo y qué reemplaza.
+
+REGLA 10:
+Antes de crear cualquier archivo o lógica nueva, revisar si ya existe algo reutilizable (pdfUtils.js, filtrosPersistentes.js, MenuAcciones.jsx, ModalEditar.jsx, FiltroDesplegable.jsx, roles.jsx) en vez de duplicar lógica.
+
 ==================================================
 6. FILOSOFÍA DEL SISTEMA
 ==================================================
@@ -257,81 +310,95 @@ El sistema debe evolucionar hacia una herramienta profesional de uso diario.
 Prioridades:
 
 1. Fiabilidad.
-2. No perder información.
+2. No perder información (incluyendo el trabajo en progreso del operador: ver borradores en sección 8).
 3. Trazabilidad.
 4. Facilidad de uso.
 5. Rapidez para registrar producción.
-6. Interfaz profesional.
+6. Interfaz profesional y consistente entre pantallas.
 7. Reportes.
-8. Documentos imprimibles.
-9. Visual Atractivo
+8. Documentos imprimibles (PDF) claros, protegidos contra desbordes y con estilo unificado.
+9. Visual atractivo.
 
 No diseñar funcionalidades pensando solamente en unos pocos registros.
 
-El sistema debe poder trabajar con grandes cantidades de OP, por lo que los buscadores y filtros deben ser prácticos para miles de registros.
+El sistema debe poder trabajar con grandes cantidades de OP/Pedidos/Cotizaciones, por lo que los buscadores y filtros deben ser prácticos para miles de registros.
 
 Ejemplo:
-No obligar al usuario a recorrer manualmente miles de OP para registrar un movimiento.
+No obligar al usuario a recorrer manualmente miles de registros para encontrar uno.
 
 Preferir:
 - búsqueda por texto
 - autocompletado
 - sugerencias
 - selección por código
-- filtros
+- filtros por periodo rápido + texto, resueltos en el backend
+- paginación por cursor ("cargar más"), nunca traer todo de una vez salvo que se pida explícitamente descargar un PDF con todo el rango filtrado
 
 ==================================================
 7. ESTADO DEL PROYECTO
 ==================================================
 
-Actualmente existe una aplicación funcional con backend y frontend desplegados.
+Actualmente existe una aplicación funcional con backend y frontend desplegados, cubriendo:
 
-Ya existen funcionalidades para:
-- Crear OP.
-- Consultar OP.
-- Registrar movimientos.
-- Consultar movimientos.
-- Consultar historial de una OP.
-- Gestionar clientes.
-- Gestionar operarios.
-- Gestionar productos.
-- Registrar detalles de movimientos.
-- Editar/eliminar algunas entidades.
-- Buscar clientes.
-- Buscar OP por código.
-- Duplicar OP.
-- Menús de acciones mediante tres puntos.
-- Modales de edición.
-- Filtros.
-- Ver reportes
-- Ver Aglomerado
-- Se esta implementando todo lo que es Cotizaciones
+- Crear, consultar, filtrar, editar, duplicar y eliminar OP.
+- Registrar, consultar, filtrar, editar y eliminar movimientos (con manejo especial por proceso: bobinas, fardos, materiales, merma real).
+- Consultar historial de una OP y su ruta de producción.
+- Gestionar clientes, operarios y productos.
+- Gestionar Pedidos: crear, listar (por aprobar / seguimiento), editar, duplicar, aprobar, eliminar. Los ítems son editables individualmente (Editar/Quitar) mientras se arma el formulario.
+- Gestionar Cotizaciones: crear, listar con filtros de periodo/código/cliente, editar, duplicar, eliminar. Ítems editables individualmente igual que en Pedidos.
+- Sistema de Clisse en ambos (Pedido y Cotización), informativo, sin romper el flujo de producción.
+- Registrar movimientos de Aglomerado con saldo calculado tipo estado de cuenta.
+- Ver reportes (general, por orden, por tipo de merma, alertas) y descargarlos en PDF.
+- Generar y descargar PDFs de Pedido y Cotización con el mismo estilo visual y orden de bloques, adaptado a los campos propios de cada uno.
+- Persistencia de borradores de formularios largos separando claramente "nuevo" de "editando", evitando el bug de contaminación entre ambos.
+- Botón de "Limpiar todo" en formularios largos, que respeta valores predefinidos de negocio (forma de pago, validez de oferta, etc.).
 
-El diseño visual está siendo profesionalizado progresivamente.
+El diseño visual está unificado entre las pantallas principales y sigue mejorándose de forma incremental.
 
 ==================================================
-8. FUNCIONALIDADES FUTURAS / EN DESARROLLO
+8. BORRADORES Y PERSISTENCIA LOCAL (localStorage)
+==================================================
+
+Patrón obligatorio para cualquier formulario largo nuevo (o al tocar uno existente):
+
+1. Definir una llave para "crear nuevo": ej. `packtech_borrador_pedido`.
+2. Definir una llave SEPARADA para "editar existente": ej. `packtech_borrador_pedido_editando`, cuyo valor guardado incluye el `id` del registro que se está editando.
+3. Mientras `editandoId` (o equivalente) esté activo, el autoguardado escribe SOLO en la llave de edición, nunca en la de "nuevo". Esto evita que abandonar una edición a medias deje un borrador contaminado que luego choca al crear un registro nuevo (por ejemplo, un código duplicado).
+4. Al abrir una edición, primero se busca si existe un borrador de edición pendiente para ESE mismo ID; si existe, se recupera tal cual; si no, se cargan los datos reales del servidor.
+5. El borrador de edición se borra explícitamente (`localStorage.removeItem`) en tres momentos: al guardar con éxito, al cancelar la edición, y al usar "Limpiar todo".
+6. Los filtros de pantalla (periodo, texto de búsqueda, etc.) usan su propia llave de localStorage, totalmente independiente de los borradores de formulario, vía filtrosPersistentes.js.
+
+No mezclar estos dos sistemas (borradores de formulario vs. filtros de pantalla) ni reutilizar la misma llave para ambos.
+
+==================================================
+9. GENERACIÓN DE PDFs
+==================================================
+
+- Pedido y Cotización deben mantenerse visualmente consistentes: mismo orden de bloques (encabezado + logo, caja RUC/Fecha, bloque SR(AS)/ESTIMADA(OS) con vendedor, bloque de datos propios de cada documento si aplica, tabla de productos, totales, condiciones, firma/pie), misma paleta gris de impresión, mismas utilidades de blindaje.
+- Los campos exclusivos de un documento (por ejemplo, dirección/contacto/email/teléfono en Pedido) van en un bloque propio, en la posición equivalente a donde iría en el otro documento si existiera, sin inventar datos que el otro documento no tiene.
+- Todo texto que pueda ser largo (descripción, medidas, observaciones, condiciones) debe medirse con `medirLineas` de pdfUtils.js antes de dibujarse, y el alto de cada fila debe calcularse con `alturaFilaMultilinea` tomando la columna que necesite más líneas. Nunca asumir una sola línea fija.
+- Antes de dibujar un bloque que podría no caber en lo que resta de la página, usar `asegurarEspacio` (o el patrón de cabecera repetida en tablas) para saltar de página en vez de dibujar fuera de la hoja.
+- Nunca usar `Number(x).toFixed(2)` directo sobre un dato que puede ser null/undefined/NaN: usar `montoSeguro`.
+- Cualquier llamado a un generador de PDF desde un botón debe estar envuelto en try/catch con una alerta al usuario si falla, nunca fallar en silencio.
+
+==================================================
+10. FUNCIONALIDADES FUTURAS / EN DESARROLLO
 ==================================================
 
 Intereses actuales del proyecto:
 
-- Mejorar y unificar el diseño.
-- Funciones de seguridad
+- Igualar en Cotizaciones los campos opcionales que hoy solo tiene Pedido (dirección, contacto, email, teléfono), tomando Pedidos como referencia de diseño y comportamiento.
+- Mejorar y unificar el diseño donde aún falte.
+- Funciones de seguridad.
 - Perfeccionar acciones de tablas.
-- Corregir errores
-- Profilaxis informatica
-- Edición de órdenes preaprobadas
-- Búsquedas eficientes.
+- Corregir errores.
+- Profilaxis informática (blindaje contra datos nulos/errores, como ya se hizo en los generadores de PDF).
+- Búsquedas eficientes a mayor escala.
 - Reportes semanales.
-- Reportes de producción.
-- Generación de PDF.
-- Subida de imágenes
-- Liquidaciones completas imprimibles.
-- Mejorar el flujo de trabajo del fiscalizador.
 - Preparar el sistema para uso real a mayor escala.
 
 ==================================================
-9. ARCHIVOS QUE CONSULTAR ANTES DE TOCAR ALGO
+11. ARCHIVOS QUE CONSULTAR ANTES DE TOCAR ALGO
 ==================================================
 
 Antes de modificar BACKEND:
@@ -349,7 +416,7 @@ Antes de modificar FRONTEND:
 1. App.jsx
 2. api.js
 3. Componente JSX que se quiere modificar.
-4. Componentes reutilizados por él.
+4. Componentes reutilizados por él (MenuAcciones, ModalEditar, FiltroDesplegable, filtrosPersistentes.js, pdfUtils.js, roles.jsx).
 5. Si afecta datos: revisar también el endpoint/backend correspondiente.
 
 Si la modificación afecta una OP:
@@ -376,8 +443,36 @@ Si afecta clientes:
 - Clientes.jsx
 - CrearOrden.jsx
 
+Si afecta Pedidos:
+- revisar models.py (OrdenProduccion y Pedido)
+- schemas.py (PedidoCreate, PedidoEditar, PedidoItemCreate, PedidoItemResponse, PedidoResponse)
+- crud.py (crear_pedido, editar_pedido, _armar_respuesta_pedido, aprobar_pedido)
+- routers/pedidos.py
+- Pedidos.jsx
+- GenerarPDFPedido.js, VistaPedido.jsx
+
+Si afecta Cotizaciones:
+- revisar models.py (Cotizacion, CotizacionItem)
+- schemas.py (CotizacionCreate, CotizacionItemCreate, CotizacionResponse, CotizacionItemResponse)
+- crud.py (crear_cotizacion, editar_cotizacion, _armar_respuesta_cotizacion, filtrar_cotizaciones)
+- routers/cotizaciones.py
+- Cotizaciones.jsx
+- GenerarPDFCotizacionDoc.js, VistaCotizacionDoc.jsx
+
+Si afecta el sistema de Clisse:
+- revisar el modelo correspondiente (CotizacionItem u OrdenProduccion según el documento)
+- schemas.py de ese documento
+- crud.py: verificar que el precio del Clisse se sume correctamente al subtotal/total en `_armar_respuesta_*`
+- el formulario del documento correspondiente (bloque "¿Este producto lleva Clisse?")
+- el generador de PDF correspondiente (fila italic en azul suave debajo del producto)
+
+Si afecta PDFs en general:
+- pdfUtils.js primero
+- el generador específico (GenerarPDFPedido.js / GenerarPDFCotizacionDoc.js / GenerarPDFLiquidacion.js / GenerarPDFReporte.js / GenerarPDFRegistros.js)
+- el componente de vista previa que lo invoca (VistaPedido.jsx / VistaCotizacionDoc.jsx / OrdenDetalle.jsx / Reportes.jsx / App.jsx según corresponda)
+
 ==================================================
-10. CÓMO TRABAJAR CON EL DESARROLLADOR
+12. CÓMO TRABAJAR CON EL DESARROLLADOR
 ==================================================
 
 El desarrollador prefiere trabajar de forma incremental.
@@ -404,15 +499,21 @@ Si falta información:
 
 No asumir que el código actual es igual a una versión anterior del proyecto.
 
+Si el cambio requiere una migración de base de datos (ALTER TABLE), decirlo explícitamente y dar el SQL exacto, sin asumir que el desarrollador lo hará por su cuenta sin indicación.
+
+Si se piden varias tareas en un mismo mensaje, resolverlas todas pero mantener cada cambio autocontenido y claramente separado por archivo, para que se puedan aplicar una por una si hace falta.
+
+Al final de una tarea grande, si hay alternativas de solución razonables (no solo una única forma correcta), mencionarlas brevemente para que el desarrollador decida.
+
 ==================================================
-11. PRINCIPIO IMPORTANTE
+13. PRINCIPIO IMPORTANTE
 ==================================================
 
-PackTech ya existe y está funcionando.
+PackTech ya existe y está funcionando, con un conjunto amplio de funcionalidades (OP, Movimientos, Pedidos, Cotizaciones, Aglomerado, Reportes) y un estilo visual ya definido.
 
 La IA NO debe tratarlo como un proyecto nuevo.
 
-Cada cambio debe considerarse una modificación sobre un sistema existente.
+Cada cambio debe considerarse una modificación sobre un sistema existente, coherente con las decisiones ya tomadas (paleta gris en PDFs impresos, separación de borradores nuevo/edición, Clisse como dato informativo, reemplazo de ítems de Pedido solo en estado Preaprobada, etc.).
 
 Antes de eliminar, renombrar o reestructurar algo, comprobar sus dependencias.
 

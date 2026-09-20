@@ -1,3 +1,7 @@
+# Dependencias compartidas por los routers: obtener una sesión de base de
+# datos por request (obtener_db) y validar la clave de acceso enviada en el
+# header X-Clave, comprobando que el rol del usuario alcance para la acción
+# (requiere_rol usa jerarquía; requiere_alguno_de exige roles exactos).
 import os
 from fastapi import Header, HTTPException
 from sqlalchemy.orm import Session

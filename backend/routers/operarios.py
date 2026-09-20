@@ -1,3 +1,6 @@
+# Endpoints de Operarios: crear, listar paginado, buscar por nombre,
+# editar y eliminar (al eliminar, sus movimientos/aglomerado quedan sin
+# operario asignado en vez de romperse, ver crud.eliminar_operario).
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

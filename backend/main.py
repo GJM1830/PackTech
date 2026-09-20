@@ -1,3 +1,7 @@
+# Punto de entrada de la API. Aquí se crea la app de FastAPI, se configura
+# CORS (qué dominios del frontend pueden llamar a este backend) y se registran
+# todos los routers (cada uno agrupa los endpoints de una parte del sistema:
+# ordenes, movimientos, clientes, pedidos, cotizaciones, etc.).
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware

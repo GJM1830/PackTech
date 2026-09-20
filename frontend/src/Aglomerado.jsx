@@ -1,3 +1,8 @@
+// Pantalla de Aglomerado: registro tipo "estado de cuenta" de la merma
+// reciclada. "Entrada" suma merma proveniente de un proceso, "Salida" resta
+// aglomerado usado en una orden destino, y "Ajuste" (solo admin) fija el
+// saldo a un valor exacto tras un conteo físico. El saldo se muestra arriba
+// en tiempo real y cada movimiento queda registrado en el historial.
 import { useEffect, useState } from 'react'
 import axios from './api'
 import { puedeCrear } from './roles'

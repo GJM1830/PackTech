@@ -1,3 +1,10 @@
+// Genera el PDF de Reportes, con una función distinta por cada vista de
+// Reportes.jsx (generarGeneral, generarTipoMerma, generarOrden,
+// generarAlertas), todas usando jspdf-autotable para las tablas y un
+// gráfico de barras horizontal dibujado a mano (dibujarGraficoBarras) para
+// no depender de una librería de gráficos dentro del PDF. La función
+// pública generarPDFReporte(config) recibe config.tipo y delega a la
+// función correspondiente.
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 

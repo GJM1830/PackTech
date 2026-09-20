@@ -1,3 +1,13 @@
+// Genera el PDF de un Pedido con jsPDF, dibujando cada bloque "a mano"
+// (no usa autoTable): encabezado con logo, caja RUC/Fecha, bloque
+// SR(AS)/ESTIMADA(OS) con vendedor, tabla flotante de datos de entrega
+// propia del Pedido (dirección, contacto, email, teléfono), tabla de
+// productos (con fila de Clisse italic en azul suave debajo de cada
+// producto que la tenga), totales, condiciones fijas + Forma de pago/
+// Tiempo de entrega/Validez de oferta/Observaciones, imagen y firma.
+// Usa las utilidades de pdfUtils.js para medir texto y evitar que algo se
+// salga de su celda o de la hoja. Comparte estilo y orden de bloques con
+// GenerarPDFCotizacionDoc.js (ver GUIA_PARA_IA.txt, sección 9).
 import jsPDF from 'jspdf'
 import { textoSeguro, medirLineas, alturaFilaMultilinea, asegurarEspacio, montoSeguro } from './pdfUtils'
 

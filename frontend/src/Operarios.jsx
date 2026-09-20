@@ -1,3 +1,6 @@
+// Pantalla de Operarios: alta (nombre + cargo), listado paginado con
+// "cargar más", filtro local por texto y edición/eliminación mediante el
+// menú de tres puntos (solo visible para vendedor o admin).
 import { useEffect, useState } from 'react'
 import axios from './api'
 import MenuAcciones from './MenuAcciones'

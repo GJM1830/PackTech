@@ -1,3 +1,7 @@
+// Modal de vista previa en pantalla de un Pedido (o de una OP individual,
+// cuando se abre desde OrdenDetalle como "Hoja de Pedido"), con botón para
+// descargar el PDF real generado por GenerarPDFPedido.js. Es solo
+// presentación: no crea ni edita datos, únicamente muestra lo que ya existe.
 import { generarPDFPedido } from './GenerarPDFPedido'
 
 const formatearFecha = (fecha) => {

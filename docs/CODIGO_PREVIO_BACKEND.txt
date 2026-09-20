@@ -17,6 +17,12 @@ web: uvicorn main:app --host 0.0.0.0 --port $PORT
 backend/crud.py
 ################################################################################
 
+# Lógica de negocio del sistema: acá viven las funciones que crean, editan,
+# consultan y eliminan cada entidad (clientes, órdenes, movimientos, pedidos,
+# cotizaciones, aglomerado, reportes). Los routers solo reciben la petición
+# HTTP y delegan aquí; toda la lógica real y las validaciones están en este
+# archivo. Las funciones están agrupadas por sección con comentarios "====".
+
 # =========================
 # IMPORTACIONES
 # =========================
@@ -2767,6 +2773,9 @@ def reporte_alertas(
 backend/database.py
 ################################################################################
 
+# Configuración de la conexión a PostgreSQL vía SQLAlchemy.
+# DATABASE_URL viene de una variable de entorno en producción (Railway);
+# si no existe, usa la base local de desarrollo como respaldo.
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
@@ -2791,6 +2800,10 @@ class Base(DeclarativeBase):
 backend/dependencias.py
 ################################################################################
 
+# Dependencias compartidas por los routers: obtener una sesión de base de
+# datos por request (obtener_db) y validar la clave de acceso enviada en el
+# header X-Clave, comprobando que el rol del usuario alcance para la acción
+# (requiere_rol usa jerarquía; requiere_alguno_de exige roles exactos).
 import os
 from fastapi import Header, HTTPException
 from sqlalchemy.orm import Session
@@ -2869,6 +2882,10 @@ def verificar_clave(x_clave: str = Header(None)):
 backend/main.py
 ################################################################################
 
+# Punto de entrada de la API. Aquí se crea la app de FastAPI, se configura
+# CORS (qué dominios del frontend pueden llamar a este backend) y se registran
+# todos los routers (cada uno agrupa los endpoints de una parte del sistema:
+# ordenes, movimientos, clientes, pedidos, cotizaciones, etc.).
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -2927,6 +2944,13 @@ def root():
 ################################################################################
 backend/models.py
 ################################################################################
+
+# Modelos SQLAlchemy: cada clase representa una tabla de PostgreSQL.
+# Los nombres de columna en Python pueden diferir del nombre real de la
+# columna SQL cuando se indica explícitamente (ver ejemplo en OrdenProduccion:
+# cantidad_colores -> columna real "cantidad_colores_clisse").
+# No renombrar tablas/columnas existentes sin revisar sus dependencias
+# (ver GUIA_PARA_IA.txt, sección 11).
 
 # =========================
 # IMPORTACIONES
@@ -3380,6 +3404,12 @@ class CotizacionItem(Base):
 backend/schemas.py
 ################################################################################
 
+# Schemas de Pydantic: definen la forma de los datos que entran (Create/Editar)
+# y salen (Response) de cada endpoint. FastAPI los usa para validar el body
+# de las peticiones y para armar automáticamente la respuesta JSON.
+# Un "...Create" es lo que manda el frontend al crear; un "...Response" es
+# lo que el backend devuelve (suele incluir campos calculados, como "cliente"
+# o "ultimo_proceso", que no existen como columna sino que se arman en crud.py).
 from datetime import date, time, datetime
 from pydantic import BaseModel
 
@@ -4023,6 +4053,11 @@ conn.close()
 backend/routers/aglomerado.py
 ################################################################################
 
+# Endpoints de Aglomerado: registro tipo "estado de cuenta" de la merma
+# reciclada (entradas suman, salidas restan, ajuste fija el saldo a un
+# valor exacto). Independiente del flujo de OP, aunque puede vincularse a
+# una orden y arrastra entradas automáticas cuando se registra merma real
+# en un movimiento (ver crud.crear_detalle_merma).
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
@@ -4089,6 +4124,9 @@ def buscar_clasificaciones(
 backend/routers/auth.py
 ################################################################################
 
+# Endpoint de autenticación simple: recibe una clave y devuelve el rol y
+# nombre del usuario si es válida. El frontend guarda la clave en
+# localStorage y la reenvía en el header X-Clave en cada petición protegida.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -4111,6 +4149,9 @@ def login(datos: schemas.LoginRequest, db: Session = Depends(obtener_db)):
 backend/routers/clientes.py
 ################################################################################
 
+# Endpoints de Clientes: crear, listar paginado, buscar por RUC/nombre,
+# obtener por RUC exacto, editar y eliminar (bloqueado si el cliente tiene
+# Órdenes de Producción asociadas, para no dejar OP huérfanas).
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -4201,6 +4242,9 @@ def editar_cliente(
 ################################################################################
 backend/routers/cotizaciones.py
 ################################################################################
+# Endpoints de Cotizaciones: documento de venta simple que NO genera OP ni
+# producción. Crear, listar paginado, buscar, filtrar por código/cliente/
+# rango de fechas, editar (reemplaza todos los ítems) y eliminar.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -4283,6 +4327,11 @@ def eliminar_cotizacion(
 ################################################################################
 backend/routers/detalles.py
 ################################################################################
+# Endpoints de Detalles de Movimiento: bobinas, fardos y materiales que
+# componen la entrada/salida de un movimiento en procesos especiales
+# (Extrusión, Impresión, Corte, Sellado, Laminado, Pegado). Incluye también
+# el atajo "importar-anteriores" para traer las bobinas de salida del
+# proceso previo como entrada del siguiente, sin volver a tipearlas.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -4327,6 +4376,11 @@ def importar_bobinas_anteriores(
 backend/routers/movimientos.py
 ################################################################################
 
+# Endpoints de Movimientos: registrar un evento de producción sobre una OP,
+# listar/filtrar/buscar movimientos, editar, eliminar, y gestionar los
+# detalles de merma (mermas) y el avance automático al siguiente proceso
+# de la ruta (siguiente-proceso). Cada movimiento es un evento histórico:
+# no se sobrescribe, se crea uno nuevo por cada paso de producción.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -4474,6 +4528,9 @@ def siguiente_proceso(
 backend/routers/operarios.py
 ################################################################################
 
+# Endpoints de Operarios: crear, listar paginado, buscar por nombre,
+# editar y eliminar (al eliminar, sus movimientos/aglomerado quedan sin
+# operario asignado en vez de romperse, ver crud.eliminar_operario).
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -4535,6 +4592,9 @@ def buscar_operarios(
 backend/routers/ordenes.py
 ################################################################################
 
+# Endpoints de Órdenes de Producción (OP): crear, listar, filtrar, buscar,
+# editar, eliminar, aprobar una OP "Preaprobada" y actualizar su ruta de
+# procesos (procesos_plan). Cada función delega la lógica real en crud.py.
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
@@ -4672,6 +4732,11 @@ def obtener_orden(
 ################################################################################
 backend/routers/pedidos.py
 ################################################################################
+# Endpoints de Pedidos: crear (cada ítem se vuelve una OrdenProduccion en
+# estado "Preaprobada"), listar los pendientes de aprobar, obtener por ID,
+# editar, aprobar (pasa el Pedido y sus OP a "Pendiente", entrando al flujo
+# normal de producción) y eliminar. Al editar, los ítems solo se reemplazan
+# mientras el Pedido sigue "Preaprobada" (ver crud.editar_pedido).
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
@@ -4758,6 +4823,10 @@ backend/routers/productos.py
 backend/routers/reportes.py
 ################################################################################
 
+# Endpoints de Reportes: resumen agrupado (por proceso/máquina/operario/
+# cliente), reporte de una OP puntual, reporte por tipo de merma, hoja de
+# liquidación de una OP, y el panel de alertas/anomalías de producción
+# (órdenes sin movimiento, estancadas, con merma fuera de lo normal, etc.).
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -4820,6 +4889,9 @@ def alertas(
 backend/routers/tipos_merma.py
 ################################################################################
 
+# Endpoints de búsqueda para autocompletado de "tipo de merma" (por proceso)
+# y "tipo de material" (Extrusión). Estos catálogos se crean solos la
+# primera vez que se usa un valor nuevo (ver crud.crear_tipo_merma_si_no_existe).
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
