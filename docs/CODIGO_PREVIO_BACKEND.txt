@@ -149,6 +149,10 @@ def editar_cliente(
 # ÓRDENES DE PRODUCCIÓN
 # =========================
 
+# Crea una OP nueva. Resuelve el cliente por RUC o nombre (lo crea si no
+# existe), valida que el código no esté repetido, calcula el costo total
+# según el tipo de precio (por kg o por millares/unidades/rollos), y crea
+# el vendedor en el catálogo si es un nombre nuevo.
 def crear_orden_produccion(
     db: Session,
     orden: schemas.OrdenProduccionCreate
@@ -279,6 +283,10 @@ def buscar_clientes(db: Session, q: str):
     )
 
 
+# Calcula el estado visible de una OP a partir de su último proceso
+# registrado y de su ruta planificada (procesos_plan). No es un campo que
+# se guarde y sobrescriba: se recalcula cada vez a partir del historial de
+# movimientos, respetando la filosofía de que los movimientos son eventos.
 def calcular_estado(proceso: str | None, procesos_plan: str | None = None, procesos_completados: set | None = None) -> str:
     if procesos_plan:
         ruta = [p for p in procesos_plan.split(",") if p]
@@ -298,6 +306,9 @@ def calcular_estado(proceso: str | None, procesos_plan: str | None = None, proce
     return "En proceso"
 
 
+# Trae el proceso más reciente y el conjunto de procesos ya completados de
+# una OP, a partir de sus movimientos. Es la base que usan calcular_estado
+# y las funciones que listan/buscan órdenes para armar "ultimo_proceso".
 def _procesos_orden(db: Session, orden_id: int):
     movimientos = (
         db.query(models.Movimiento)
@@ -310,6 +321,10 @@ def _procesos_orden(db: Session, orden_id: int):
     return proceso_actual, procesos_completados
 
 
+# Recalcula el estado de una OP con calcular_estado y lo guarda en la
+# columna "estado" solo si cambió (evita escrituras innecesarias). Se llama
+# después de crear/eliminar un movimiento, que es cuando el estado puede
+# cambiar.
 def _actualizar_estado_persistido(db: Session, orden):
     proceso_actual, procesos_completados = _procesos_orden(db, orden.id)
     nuevo_estado = calcular_estado(proceso_actual, orden.procesos_plan, procesos_completados)
@@ -319,6 +334,9 @@ def _actualizar_estado_persistido(db: Session, orden):
         db.refresh(orden)
 
 
+# Guarda la ruta de producción (lista de procesos separados por coma) que
+# se definió/editó desde OrdenDetalle.jsx, y recalcula el estado de la OP
+# por si el nuevo plan cambia si la orden ya quedó "Terminada" o no.
 def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     orden = db.get(models.OrdenProduccion, orden_id)
     if orden is None:
@@ -339,6 +357,11 @@ def actualizar_procesos_plan(db: Session, orden_id: int, procesos: str):
     return orden
 
 
+# Lista de órdenes para la pantalla principal, paginada por cursor
+# ("antes_de" = id de la última orden ya cargada). Excluye las OP en estado
+# "Preaprobada" porque esas pertenecen a un Pedido que aún no fue aprobado.
+# Por cada orden calcula sobre la marcha el RUC/nombre del cliente y su
+# estado/último proceso reales.
 def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | None = None):
     query = db.query(models.OrdenProduccion).filter(models.OrdenProduccion.estado != "Preaprobada")
 
@@ -364,6 +387,11 @@ def obtener_ordenes_produccion(db: Session, limit: int = 20, antes_de: int | Non
     return ordenes
 
 
+# Elimina una OP y en cascada todo lo que depende de ella (detalles de
+# movimiento, detalles de merma, movimientos y sus referencias en
+# Aglomerado). Solo un admin puede eliminar una OP que ya está en
+# producción (no "Preaprobada"), para evitar borrar accidentalmente
+# historial real de planta.
 def eliminar_orden_produccion(
     db: Session,
     orden_id: int,
@@ -450,6 +478,10 @@ def _resolver_cliente_pedido(db: Session, ruc: str | None, nombre_cliente: str |
     return cliente
 
 
+# Crea un Pedido y, en el mismo paso, una OrdenProduccion en estado
+# "Preaprobada" por cada ítem (codigo = "{codigo_base}-{n}", vinculada por
+# pedido_id). El Clisse de cada ítem se guarda como dato informativo en la
+# propia OrdenProduccion (no afecta cantidad/unidad/costo de producción).
 def crear_pedido(db: Session, pedido: schemas.PedidoCreate):
     if not pedido.codigo_base or not pedido.codigo_base.strip():
         raise HTTPException(status_code=400, detail="El código del pedido no puede estar vacío.")
@@ -551,6 +583,10 @@ def crear_pedido(db: Session, pedido: schemas.PedidoCreate):
     return obtener_pedido_por_id(db, nuevo_pedido.id)
 
 
+# Completa un Pedido con los datos que no vienen directo de la tabla:
+# sus ítems (las OP vinculadas), el RUC/nombre del cliente, y el costo
+# total sumando el costo de cada ítem más el precio del Clisse de los
+# ítems que lo tengan.
 def _armar_respuesta_pedido(db: Session, pedido: models.Pedido):
     items = (
         db.query(models.OrdenProduccion)
@@ -593,6 +629,9 @@ def obtener_pedidos_preaprobados(db: Session):
     return [_armar_respuesta_pedido(db, p) for p in pedidos]
 
 
+# Aprueba un Pedido: lo pasa de "Preaprobada" a "Pendiente" junto con todas
+# sus OP asociadas, que a partir de aquí entran al flujo normal de
+# producción (visibles en Órdenes, aceptan movimientos, etc.).
 def aprobar_pedido(db: Session, pedido_id: int):
     pedido = db.get(models.Pedido, pedido_id)
     if pedido is None:
@@ -610,6 +649,9 @@ def aprobar_pedido(db: Session, pedido_id: int):
     return _armar_respuesta_pedido(db, pedido)
 
 
+# Elimina un Pedido eliminando primero cada uno de sus ítems (OP) mediante
+# eliminar_orden_produccion, para reutilizar la misma limpieza en cascada
+# (movimientos, detalles, merma, aglomerado) que ya usa esa función.
 def eliminar_pedido(db: Session, pedido_id: int, rol_usuario: str):
     pedido = db.get(models.Pedido, pedido_id)
     if pedido is None:
@@ -627,6 +669,12 @@ def eliminar_pedido(db: Session, pedido_id: int, rol_usuario: str):
     db.commit()
 
 
+# Edita un Pedido. Los datos generales (cliente, vendedor, fecha de
+# entrega, contacto, condiciones, etc.) siempre se actualizan, tanto en el
+# Pedido como en cada una de sus OP. Los ÍTEMS (productos) solo se
+# reemplazan —borrando y recreando— mientras el Pedido sigue "Preaprobada":
+# una vez aprobado, esas OP ya pueden tener movimientos reales registrados,
+# así que por seguridad no se tocan (ver GUIA_PARA_IA.txt, sección 11).
 def editar_pedido(db: Session, pedido_id: int, datos: schemas.PedidoEditar):
     pedido = db.get(models.Pedido, pedido_id)
     if pedido is None:
@@ -733,6 +781,10 @@ def editar_pedido(db: Session, pedido_id: int, datos: schemas.PedidoEditar):
 # MOVIMIENTOS
 # =========================
 
+# Registra un movimiento (evento de producción) sobre una OP: resuelve o
+# crea el operario por nombre, registra tipo_merma/tipo_laminado nuevos en
+# su catálogo si aplica, calcula la merma simple (entrada - salida) y
+# recalcula el estado de la OP a partir del nuevo historial.
 def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     orden = db.get(models.OrdenProduccion, movimiento.orden_id)
     if orden is None:
@@ -800,6 +852,10 @@ def crear_movimiento(db: Session, movimiento: schemas.MovimientoCreate):
     return nuevo_movimiento
 
 
+# Recalcula entrada/salida/merma de un movimiento sumando el peso neto de
+# sus detalles (bobinas/fardos) por lado. Se llama cada vez que se agrega o
+# elimina un detalle, para que el movimiento padre siempre refleje la suma
+# real de sus componentes.
 def actualizar_totales_movimiento(db: Session, movimiento_id: int):
     movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
@@ -951,6 +1007,12 @@ def buscar_ordenes(db: Session, q: str):
     return resultados
 
 
+# Filtrado combinado de Órdenes (código/cliente + producto + rango de
+# fecha + estado). El estado es un valor CALCULADO (no una columna), así
+# que no puede filtrarse en SQL: se trae un lote más grande cuando hay
+# filtro de estado, se calcula el estado real de cada orden en Python, y
+# solo entonces se filtra y se recorta al límite pedido (ver el docstring
+# interno de la función para el detalle completo).
 def filtrar_ordenes_produccion(
     db: Session,
     q: str | None = None,
@@ -1015,6 +1077,10 @@ def filtrar_ordenes_produccion(
     return ordenes
 
 
+# Elimina un movimiento y en cascada sus detalles (bobinas/fardos), sus
+# registros de merma y las entradas de Aglomerado que se generaron
+# automáticamente a partir de esa merma. Al final recalcula el estado de
+# la OP, ya que borrar un movimiento puede hacer que retroceda de estado.
 def eliminar_movimiento(
     db: Session,
     movimiento_id: int
@@ -1168,6 +1234,11 @@ def editar_operario(
 # DETALLES DE MERMA
 # =========================
 
+# Registra una merma real (por tipo) asociada a un movimiento. Exige que el
+# movimiento ya tenga operario y máquina asignados antes de aceptar merma.
+# Además de guardar el detalle, genera automáticamente una entrada en
+# Aglomerado (origen_automatico=True) para que ese peso quede reflejado en
+# el saldo de aglomerado sin que el operador tenga que registrarlo dos veces.
 def crear_detalle_merma(db: Session, movimiento_id: int, detalle: schemas.DetalleMermaCreate):
     movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
@@ -1285,6 +1356,9 @@ def eliminar_detalle_merma(db: Session, detalle_id: int):
     actualizar_merma_real(db, movimiento_id)
 
 
+# Suma todos los detalles de merma de un movimiento y actualiza su columna
+# merma_real. Se llama después de crear/editar/eliminar un detalle de
+# merma, para que el movimiento siempre refleje el total real registrado.
 def actualizar_merma_real(db: Session, movimiento_id: int):
     movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
@@ -1305,6 +1379,10 @@ def actualizar_merma_real(db: Session, movimiento_id: int):
 # DETALLES DE MOVIMIENTO
 # =========================
 
+# Registra una bobina o fardo (entrada o salida) de un movimiento en
+# proceso especial. Calcula el peso neto (bruto - tuco), valida que no sea
+# negativo, registra el tipo de material nuevo en su catálogo si aplica, y
+# al final recalcula los totales del movimiento padre.
 def crear_detalle_movimiento(db: Session, movimiento_id: int, detalle: schemas.DetalleMovimientoCreate):
     movimiento = db.get(models.Movimiento, movimiento_id)
 
@@ -1360,6 +1438,9 @@ def obtener_detalles_movimiento(
     )
 
 
+# Elimina una bobina/fardo y recalcula los totales del movimiento padre.
+# Caso especial: si era el último material de un movimiento de Extrusión,
+# la entrada vuelve a 0 en vez de quedar con el valor del material borrado.
 def eliminar_detalle_movimiento(db: Session, detalle_id: int):
     detalle = db.get(models.DetalleMovimiento, detalle_id)
     if detalle is None:
@@ -1527,6 +1608,10 @@ def buscar_clasificaciones_aglomerado(db: Session, q: str):
     )
 
 
+# Registra un movimiento manual de Aglomerado (entrada, salida o ajuste).
+# El tipo "ajuste" (fija el saldo a un valor exacto tras un conteo físico)
+# solo lo puede hacer un admin. Resuelve/crea operario, y si se indicó un
+# código de orden destino, valida que exista antes de vincularlo.
 def crear_movimiento_aglomerado(db: Session, movimiento: schemas.MovimientoAglomeradoCreate, rol_usuario: str):
     if movimiento.cantidad is None or movimiento.cantidad <= 0:
         raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a cero.")
@@ -1614,6 +1699,9 @@ def obtener_movimientos_aglomerado(db: Session):
     return movimientos
 
 
+# Calcula el saldo actual de Aglomerado recorriendo TODO el historial en
+# orden cronológico: las entradas suman, las salidas restan, y un "ajuste"
+# no suma ni resta sino que fija el saldo a ese valor exacto desde ese punto.
 def calcular_saldo_aglomerado(db: Session):
     todos = (
         db.query(models.MovimientoAglomerado)
@@ -1654,6 +1742,10 @@ def merma_efectiva(movimiento) -> float:
     return float(movimiento.merma_real) if movimiento.merma_real is not None else 0.0
 
 
+# Arma el reporte "Vista General": agrupa todos los movimientos del rango
+# de fechas por proceso, máquina, operario o cliente (según agrupar_por),
+# sumando entrada/salida/merma y contando cuántos movimientos tienen o no
+# merma registrada por grupo. Ordena los grupos de mayor a menor merma.
 def reporte_resumen(db: Session, desde: str | None, hasta: str | None, agrupar_por: str):
     query = db.query(models.Movimiento)
 
@@ -1708,6 +1800,9 @@ def reporte_resumen(db: Session, desde: str | None, hasta: str | None, agrupar_p
     return resultado
 
 
+# Arma el reporte "Por Orden": el recorrido paso a paso de una OP buscada
+# por código, con entrada/salida/merma de cada proceso y los totales
+# acumulados de toda la orden.
 def reporte_orden(db: Session, codigo: str):
     orden = (
         db.query(models.OrdenProduccion)
@@ -1766,6 +1861,10 @@ def reporte_orden(db: Session, codigo: str):
 PROCESOS_ESPECIALES = ['Extrusión', 'Impresión', 'Corte', 'Sellado', 'Laminado', 'Pegado']
 
 
+# Edita los datos generales de un movimiento (orden, proceso, operario,
+# máquina, observación, horas). La entrada/salida solo se puede editar
+# directamente si el proceso NO es uno de los "especiales" (esos calculan
+# entrada/salida a partir de sus bobinas/fardos, no se editan a mano).
 def editar_movimiento(db: Session, movimiento_id: int, datos: schemas.MovimientoEditar):
     movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
@@ -1844,6 +1943,11 @@ def reporte_por_tipo_merma(db: Session, desde: str | None, hasta: str | None):
     resultado.sort(key=lambda g: g["peso"], reverse=True)
     return resultado
 
+# Dada una OP con ruta de producción definida, determina cuál es el
+# siguiente proceso pendiente (el primero de la ruta que aún no tiene
+# movimiento) y crea automáticamente ese movimiento vacío, copiando como
+# bobinas de entrada las bobinas de salida del proceso anterior — así el
+# operador no tiene que volver a tipear los mismos pesos.
 def crear_siguiente_movimiento(db: Session, orden_id: int):
     orden = db.get(models.OrdenProduccion, orden_id)
     if orden is None:
@@ -1920,6 +2024,10 @@ def crear_siguiente_movimiento(db: Session, orden_id: int):
 
     return {"siguiente_proceso": siguiente, "movimiento": nuevo_movimiento, "mensaje": None}
 
+# Atajo manual equivalente a lo que hace crear_siguiente_movimiento con
+# las bobinas: copia las bobinas de salida del proceso inmediatamente
+# anterior de la misma orden como bobinas de entrada de este movimiento,
+# agregándolas después de las que ya existan (no las reemplaza).
 def importar_bobinas_anteriores(db: Session, movimiento_id: int):
     movimiento = db.get(models.Movimiento, movimiento_id)
     if movimiento is None:
@@ -1973,6 +2081,10 @@ def importar_bobinas_anteriores(db: Session, movimiento_id: int):
 
     return {"importadas": len(bobinas_salida)}
 
+# Edita todos los campos de una OP existente (solo admin, ver
+# routers/ordenes.py). Igual que al crear, resuelve el cliente y recalcula
+# el costo total según el tipo de precio, y al final devuelve el estado y
+# último proceso ya recalculados.
 def editar_orden_produccion(
     db: Session,
     orden_id: int,
@@ -2067,6 +2179,9 @@ def editar_orden_produccion(
 
     return orden
 
+# Aprueba una OP suelta que está en "Preaprobada" (caso poco común: OP
+# creada directamente en ese estado sin pasar por un Pedido), pasándola a
+# "Pendiente" para que entre al flujo normal de producción.
 def aprobar_orden_preaprobada(db: Session, orden_id: int):
     orden = db.get(models.OrdenProduccion, orden_id)
     if orden is None:
@@ -2134,6 +2249,9 @@ def obtener_ordenes_seguimiento(db: Session):
 
     return ordenes
 
+# Arma los datos completos para la Liquidación de una OP (usada por
+# GenerarPDFLiquidacion.js): materiales usados en Extrusión, y por cada
+# proceso sus bobinas/fardos de salida junto con sus mermas registradas.
 def reporte_liquidacion(db: Session, codigo: str):
     from sqlalchemy import func
 
@@ -2239,6 +2357,9 @@ def _siguiente_codigo_cotizacion(db: Session) -> str:
     return f"COT-{siguiente_numero}"
 
 
+# Completa una Cotización con lo que no viene directo de la tabla: RUC/
+# nombre del cliente, sus ítems, y subtotal/IGV/total calculados sumando
+# el costo de cada ítem más el precio del Clisse de los que lo tengan.
 def _armar_respuesta_cotizacion(cotizacion: models.Cotizacion, items: list[models.CotizacionItem]):
     cotizacion.ruc = cotizacion.cliente_obj.ruc
     cotizacion.cliente = cotizacion.cliente_obj.nombre
@@ -2254,6 +2375,10 @@ def _armar_respuesta_cotizacion(cotizacion: models.Cotizacion, items: list[model
     return cotizacion
 
 
+# Crea una Cotización con todos sus ítems en un solo paso. NO crea ninguna
+# OrdenProduccion (a diferencia de Pedido): es solo un documento de venta.
+# El Clisse de cada ítem se guarda como dato informativo en el propio
+# CotizacionItem.
 def crear_cotizacion(db: Session, datos: schemas.CotizacionCreate):
     if not datos.codigo or not datos.codigo.strip():
         raise HTTPException(status_code=400, detail="El número de cotización no puede estar vacío.")
@@ -2459,6 +2584,9 @@ def obtener_cotizacion_por_id(db: Session, cotizacion_id: int):
     return _armar_respuesta_cotizacion(cotizacion, items)
 
 
+# Edita una Cotización. A diferencia de Pedido, aquí los ítems SIEMPRE se
+# reemplazan por completo (borrar y recrear), porque una Cotización nunca
+# genera Órdenes de Producción reales que puedan verse afectadas.
 def editar_cotizacion(db: Session, cotizacion_id: int, datos: schemas.CotizacionCreate):
     cotizacion = db.get(models.Cotizacion, cotizacion_id)
     if cotizacion is None:
@@ -2585,6 +2713,9 @@ def obtener_maquinas_unicas(db: Session):
 # ALERTAS / ANOMALÍAS DE PRODUCCIÓN
 # =========================
 
+# Alerta: Órdenes ya aprobadas (no "Preaprobada") que todavía no tienen
+# ningún movimiento registrado, es decir, aprobadas pero sin haber
+# empezado en planta.
 def _alertas_ordenes_sin_movimientos(db: Session):
     ordenes = (
         db.query(models.OrdenProduccion)
@@ -2604,6 +2735,9 @@ def _alertas_ordenes_sin_movimientos(db: Session):
     return resultado
 
 
+# Alerta: Órdenes en proceso (no "Preaprobada" ni "Terminado") cuyo último
+# movimiento registrado tiene "dias_estancado" días o más de antigüedad,
+# es decir, que llevan mucho tiempo sin avanzar.
 def _alertas_ordenes_estancadas(db: Session, dias_estancado: int):
     hoy = ahora_lima().date()
     ordenes = (
@@ -2636,6 +2770,9 @@ def _alertas_ordenes_estancadas(db: Session, dias_estancado: int):
     return resultado
 
 
+# Alerta: de los últimos "dias_analisis" días, cuáles tuvieron "umbral" o
+# menos movimientos registrados en total — útil para detectar días de baja
+# actividad en planta o de registro incompleto.
 def _alertas_dias_pocos_movimientos(db: Session, dias_analisis: int, umbral: int):
     hoy = ahora_lima().date()
     resultado = []
@@ -2649,6 +2786,9 @@ def _alertas_dias_pocos_movimientos(db: Session, dias_analisis: int, umbral: int
     return resultado
 
 
+# Alerta: movimientos del rango de fechas que no tienen ningún detalle de
+# merma registrado, señal de un posible registro incompleto por parte del
+# operador.
 def _alertas_movimientos_sin_merma(db: Session, desde: str | None, hasta: str | None):
     query = db.query(models.Movimiento)
     if desde:
@@ -2677,6 +2817,8 @@ def _alertas_movimientos_sin_merma(db: Session, desde: str | None, hasta: str | 
     return resultado
 
 
+# Alerta/ranking: las 10 máquinas con más merma acumulada en el rango de
+# fechas, sumando todos los detalles de merma de sus movimientos.
 def _alertas_maquinas_top_merma(db: Session, desde: str | None, hasta: str | None):
     query = (
         db.query(models.DetalleMerma)
@@ -2752,6 +2894,8 @@ def _alertas_ordenes_merma_excesiva(db: Session, desde: str | None, hasta: str |
     return resultado
 
 
+# Punto de entrada del panel de Alertas: junta el resultado de las 6
+# funciones _alertas_* de arriba en un solo objeto de respuesta.
 def reporte_alertas(
     db: Session,
     desde: str | None = None,
